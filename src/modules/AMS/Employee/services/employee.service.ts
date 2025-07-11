@@ -94,9 +94,6 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     const employees = await employeeModel.employee.gpFindMany({
       select: {
         id: true,
-        name: true,
-        surname: true,
-        image: true,
         faceDescriptor: true,
       },
     });

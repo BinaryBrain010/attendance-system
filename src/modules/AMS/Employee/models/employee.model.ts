@@ -273,6 +273,9 @@ const employeeModel = prisma.$extends({
 
         return createdData;
       },
+      async gpFindMany(this: any, args?: any) {
+        return await this.findMany(args);
+      },
     },
   },
 });
