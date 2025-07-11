@@ -24,8 +24,5 @@ export interface Employee {
 
 export interface EmployeeFaceRecognitionData {
   id: string;
-  name: string;
-  surname: string;
-  image?: string;
   faceDescriptor?: any; // JSON type, as per Prisma schema
 }

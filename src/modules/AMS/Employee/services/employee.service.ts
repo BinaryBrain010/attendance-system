@@ -92,6 +92,7 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
 
   async getEmployeesForFaceRecognition(): Promise<EmployeeFaceRecognitionData[]> {
     const employees = await employeeModel.employee.gpFindMany({
+      
       select: {
         id: true,
         faceDescriptor: true,
