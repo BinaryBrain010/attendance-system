@@ -50,6 +50,7 @@ class EmployeeRoutes {
 
   private initializeRoutes(): void {
     this.router.get('/get', this.controller.getAllEmployees.bind(this.controller));
+    this.router.get('/getFaceRecognitionData', this.controller.getEmployeesForFaceRecognition.bind(this.controller));
     this.router.post('/get', this.controller.getEmployees.bind(this.controller));
     this.router.post('/getDeleted', this.controller.getDeletedEmployees.bind(this.controller));
     this.router.get('/total', this.controller.getTotalEmployees.bind(this.controller));

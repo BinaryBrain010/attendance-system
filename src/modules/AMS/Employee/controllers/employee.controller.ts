@@ -252,6 +252,13 @@ class EmployeeController extends BaseController<EmployeeService> {
     const errorMessage = "Error restoring employee:";
     this.handleRequest(operation, successMessage, errorMessage, res);
   }
+
+  async getEmployeesForFaceRecognition(req: Request, res: Response) {
+    const operation = () => this.service.getEmployeesForFaceRecognition();
+    const successMessage = "Employees for face recognition retrieved successfully!";
+    const errorMessage = "Error retrieving employees for face recognition:";
+    this.handleRequest(operation, successMessage, errorMessage, res);
+  }
 }
 
 export default EmployeeController;

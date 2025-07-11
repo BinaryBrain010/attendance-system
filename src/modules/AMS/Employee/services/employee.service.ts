@@ -1,6 +1,7 @@
 import employeeModel from "../models/employee.model";
 import { Employee } from "../types/employee";
 import { paginatedData } from "../../../../types/paginatedData";
+import { EmployeeFaceRecognitionData } from "../types/employee";
 
 class EmployeeService {
   async getAllEmployees(): Promise<Employee[]> {
@@ -87,6 +88,19 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
 
   async getTotal() {
     return await employeeModel.employee.gpCount();
+  }
+
+  async getEmployeesForFaceRecognition(): Promise<EmployeeFaceRecognitionData[]> {
+    const employees = await employeeModel.employee.gpFindMany({
+      select: {
+        id: true,
+        name: true,
+        surname: true,
+        image: true,
+        faceDescriptor: true,
+      },
+    });
+    return employees;
   }
 }
 
