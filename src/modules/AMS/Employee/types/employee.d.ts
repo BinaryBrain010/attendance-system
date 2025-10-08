@@ -14,6 +14,7 @@ export interface Employee {
   martialStatus: string; // Updated for proper naming convention
   noOfChildrens?: number; // Updated to match the optional field
   filePaths: string[];
+  notes?: string;
   company: Company;
   image?: string;
   code: string;

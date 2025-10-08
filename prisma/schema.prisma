@@ -222,6 +222,7 @@ model Employee {
   martialStatus      String
   noOfChildrens      Int?
   filePaths          String[]       @default([])
+  notes              String?
   status             EmployeeStatus @default(ACTIVE)
   resignationDate    DateTime?
 
