@@ -5,12 +5,25 @@ import { Customer } from "../../../../types/schema";
 
 class CustomerController extends BaseController<CustomerService> {
   protected service = new CustomerService();
+  protected moduleName: string = "APP";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
 
   async getAllCustomers(req: Request, res: Response) {
     const operation = () => this.service.getAllCustomers();
     const successMessage = "Customers retrieved successfully!";
     const errorMessage = "Error retrieving customers:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched all customers`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getCustomers(req: Request, res: Response) {
@@ -18,7 +31,8 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.getCustomers(page, pageSize);
     const successMessage = "Customers retrieved successfully!";
     const errorMessage = "Error retrieving customers:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched customers for page ${page} with size ${pageSize}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getDeletedCustomers(req: Request, res: Response) {
@@ -26,7 +40,8 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.getDeletedCustomers(page, pageSize);
     const successMessage = "Deleted Customers retrieved successfully!";
     const errorMessage = "Error retrieving deleted customers:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched deleted customers for page ${page} with size ${pageSize}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async searchCustomers(req: Request, res: Response) {
@@ -35,14 +50,16 @@ class CustomerController extends BaseController<CustomerService> {
       this.service.searchCustomer(searchTerm, page, pageSize);
     const successMessage = "Customers retrieved successfully!";
     const errorMessage = "Error retrieving customers:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Searched customers with term "${searchTerm}" for page ${page} with size ${pageSize}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getTotalCustomers(req: Request, res: Response) {
     const operation = () => this.service.getTotalCustomers();
     const successMessage = "Total customers count retrieved successfully!";
     const errorMessage = "Error retrieving total customers count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched total customers count`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async createCustomer(req: Request, res: Response) {
@@ -50,7 +67,8 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.createCustomer(customerData);
     const successMessage = "Customer created successfully!";
     const errorMessage = "Error creating customer:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Created customer: ${customerData.name}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, customerData.id);
   }
 
   async updateCustomer(req: Request, res: Response) {
@@ -58,7 +76,8 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.updateCustomer(id, data);
     const successMessage = "Customer updated successfully!";
     const errorMessage = "Error updating customer:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Updated customer with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async deleteCustomer(req: Request, res: Response) {
@@ -66,7 +85,8 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.deleteCustomer(id);
     const successMessage = "Customer deleted successfully!";
     const errorMessage = "Error deleting customer:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Deleted customer with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getCustomerById(req: Request, res: Response) {
@@ -74,14 +94,16 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.getCustomerById(id);
     const successMessage = "Customer retrieved successfully!";
     const errorMessage = "Error retrieving customer:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched customer with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getFrequentCustomers(req: Request, res: Response) {
     const operation = () => this.service.getFrequentCustomer();
     const successMessage = "Customer retrieved successfully!";
     const errorMessage = "Error retrieving customer:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched frequent customers`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async restoreCustomer(req: Request, res: Response) {
@@ -89,7 +111,8 @@ class CustomerController extends BaseController<CustomerService> {
     const operation = () => this.service.restoreCustomer(id);
     const successMessage = "Customer restored successfully!";
     const errorMessage = "Error restoring customer:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Restored customer with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 }
 

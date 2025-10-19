@@ -6,6 +6,18 @@ import AuthHelper from "../../../../Auth/helper/auth.helper";
 
 class AccessController extends BaseController<AccessService> {
   protected service = new AccessService();
+  protected moduleName: string = "RBAC";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
 
   async getUserGroup(req: Request, res: Response) {
     let id = AuthHelper.getUserIdFromHeader(req);
@@ -13,7 +25,8 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.getUserGroup(id);
       const successMessage = "User groups retrieved successfully!";
       const errorMessage = "Error retrieving user groups:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      const activityLog = `Fetched user groups for user ID: ${id}`;
+      await this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
     }
   }
 
@@ -23,7 +36,8 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.getUserRole(id);
       const successMessage = "User role retrieved successfully!";
       const errorMessage = "Error retrieving user role:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+        const activityLog = `Fetched user role for user ID: ${id}`;
+        await this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
     }
   }
 
@@ -35,7 +49,7 @@ class AccessController extends BaseController<AccessService> {
   //       this.service.getUserPermission(id, feature, permission);
   //     const successMessage = "User permission retrieved successfully!";
   //     const errorMessage = "Error retrieving user permission:";
-  //     await this.handleRequest(operation, successMessage, errorMessage, res);
+  //     await this.handle(operation, successMessage, errorMessage, res);
   //   }
   // }
 
@@ -45,7 +59,8 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.getPermission(id, feature);
       const successMessage = "Role permission retrieved successfully!";
       const errorMessage = "Error retrieving role permission:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+        const activityLog = `Fetched permission for role ID: ${id}, feature: ${feature}`;
+        await this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
     }
   }
 
@@ -57,7 +72,7 @@ class AccessController extends BaseController<AccessService> {
   //       this.service.getGroupPermission(id, feature, permission);
   //     const successMessage = "Group permission retrieved successfully!";
   //     const errorMessage = "Error retrieving group permission:";
-  //     await this.handleRequest(operation, successMessage, errorMessage, res);
+  //     await this.handle(operation, successMessage, errorMessage, res);
   //   }
   // }
 
@@ -69,7 +84,8 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.checkPermission(id, feature);
       const successMessage = "Permission checked successfully!";
       const errorMessage = "Error checking permission:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+        const activityLog = `Checked permission for user ID: ${id}, feature: ${feature}`;
+        await this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
     }
   }
 
@@ -81,7 +97,8 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.checkPermissions(id, features);
       const successMessage = "Permission checked successfully!";
       const errorMessage = "Error checking permission:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+        const activityLog = `Checked permissions for user ID: ${id}, features: ${features}`;
+        await this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
     }
   }
 }

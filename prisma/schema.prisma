@@ -7,34 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Status {
-  pending
-  approved
-  cancelled
-}
-
-enum ParentType {
-  Role
-  User
-  Group
-}
-
-enum EmployeeStatus {
-  ACTIVE
-  RESIGNED
-  REJOINED
-}
-
 model Customer {
   id         String     @id @default(uuid())
   name       String
   email      String?
   phone      String?
   address    String?
-  gatePasses GatePass[]
   createdAt  DateTime?
   updatedAt  DateTime?
   isDeleted  DateTime?
+  gatePasses GatePass[]
 }
 
 model Item {
@@ -43,10 +25,10 @@ model Item {
   description String?
   quantity    Int?
   unitPrice   Float?
-  gatePasses  GatePassItem[]
   createdAt   DateTime?
   updatedAt   DateTime?
   isDeleted   DateTime?
+  gatePasses  GatePassItem[]
 }
 
 model GatePass {
@@ -62,8 +44,8 @@ model GatePass {
   isDeleted     DateTime?
   issuedAt      DateTime?      @default(now())
   validUntil    DateTime?
-  items         GatePassItem[]
   customer      Customer       @relation(fields: [customerId], references: [id])
+  items         GatePassItem[]
 }
 
 model GatePassItem {
@@ -75,37 +57,35 @@ model GatePassItem {
   createdAt  DateTime?
   updatedAt  DateTime?
   isDeleted  DateTime?
-  item       Item      @relation(fields: [itemId], references: [id])
   gatePass   GatePass  @relation(fields: [gatePassId], references: [id])
+  item       Item      @relation(fields: [itemId], references: [id])
 }
 
 model User {
-  id        String    @id @default(uuid()) @db.VarChar(36)
-  username  String    @unique @db.VarChar(256)
-  password  String    @db.VarChar(256)
-  createdAt DateTime?
-  updatedAt DateTime?
-  isDeleted DateTime?
-
-  userGroups      UserGroup[]
+  id              String           @id @default(uuid()) @db.VarChar(36)
+  username        String           @unique @db.VarChar(256)
+  password        String           @db.VarChar(256)
+  createdAt       DateTime?
+  updatedAt       DateTime?
+  isDeleted       DateTime?
+  employeeId      String?          @unique
   blacklistTokens BlacklistToken[]
   loggedInUsers   LoggedInUsers[]
-  userRoles       UserRole[]
   employee        Employee?        @relation(fields: [employeeId], references: [id])
-  employeeId      String?          @unique
+  userGroups      UserGroup[]
+  userRoles       UserRole[]
 }
 
 model Group {
-  id          String    @id @default(uuid()) @db.VarChar(36)
-  name        String    @unique @db.VarChar(256)
-  readAccess  Json?     @db.JsonB
-  writeAccess Json?     @db.JsonB
+  id          String      @id @default(uuid()) @db.VarChar(36)
+  name        String      @unique @db.VarChar(256)
+  readAccess  Json?
+  writeAccess Json?
   createdAt   DateTime?
   updatedAt   DateTime?
   isDeleted   DateTime?
-
-  userGroups UserGroup[]
-  groupRoles GroupRole[]
+  groupRoles  GroupRole[]
+  userGroups  UserGroup[]
 }
 
 model UserGroup {
@@ -116,24 +96,22 @@ model UserGroup {
   createdAt DateTime?
   updatedAt DateTime?
   isDeleted DateTime?
-
-  user  User  @relation(fields: [userId], references: [id])
-  group Group @relation(fields: [groupId], references: [id])
+  group     Group     @relation(fields: [groupId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, groupId])
 }
 
 model Role {
-  id          String    @id @default(uuid()) @db.VarChar(36)
-  name        String    @unique
-  readAccess  Json?     @db.JsonB
-  writeAccess Json?     @db.JsonB
+  id          String      @id @default(uuid()) @db.VarChar(36)
+  name        String      @unique
+  readAccess  Json?
+  writeAccess Json?
   createdAt   DateTime?
   updatedAt   DateTime?
   isDeleted   DateTime?
-
-  userRoles  UserRole[]
-  groupRoles GroupRole[]
+  groupRoles  GroupRole[]
+  userRoles   UserRole[]
 }
 
 model UserRole {
@@ -144,9 +122,8 @@ model UserRole {
   createdAt DateTime?
   updatedAt DateTime?
   isDeleted DateTime?
-
-  user User @relation(fields: [userId], references: [id])
-  role Role @relation(fields: [roleId], references: [id])
+  role      Role      @relation(fields: [roleId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, roleId])
 }
@@ -159,9 +136,8 @@ model GroupRole {
   createdAt DateTime?
   updatedAt DateTime?
   isDeleted DateTime?
-
-  group Group @relation(fields: [groupId], references: [id])
-  role  Role  @relation(fields: [roleId], references: [id])
+  group     Group     @relation(fields: [groupId], references: [id])
+  role      Role      @relation(fields: [roleId], references: [id])
 
   @@unique([groupId, roleId])
 }
@@ -170,18 +146,18 @@ model AppFeature {
   name            String       @id @db.VarChar(256)
   parentFeatureId String?      @db.VarChar(256)
   label           String
-  parentFeature   AppFeature?  @relation("ParentChild", fields: [parentFeatureId], references: [name])
-  children        AppFeature[] @relation("ParentChild")
   createdAt       DateTime?
   updatedAt       DateTime?
   isDeleted       DateTime?
+  parentFeature   AppFeature?  @relation("ParentChild", fields: [parentFeatureId], references: [name])
+  children        AppFeature[] @relation("ParentChild")
 }
 
 model FeaturePermission {
   id          String     @id @default(uuid()) @db.VarChar(36)
   parentType  ParentType
   parentId    String     @db.VarChar(36)
-  permissions Json       @db.JsonB
+  permissions Json
   createdAt   DateTime?
   updatedAt   DateTime?
   isDeleted   DateTime?
@@ -206,143 +182,107 @@ model LoggedInUsers {
 }
 
 model Employee {
-  id                 String         @id @default(uuid()) @db.VarChar(36)
+  id                 String              @id @default(uuid()) @db.VarChar(36)
   name               String
   surname            String
   address            String
-  dob                DateTime
-  cnic               String         @default("")
   joiningDate        DateTime
   bloodGroup         String
+  company            Company
+  code               String              @unique
+  createdAt          DateTime?
+  updatedAt          DateTime?
+  isDeleted          DateTime?
+  image              String?
   contactNo          String
-  emergencyContactNo String?
-  faceDescriptor     Json?          @db.JsonB
-  designation        String
   department         String
+  designation        String
+  dob                DateTime
+  filePaths          String[]            @default([])
   martialStatus      String
   noOfChildrens      Int?
-  filePaths          String[]       @default([])
+  emergencyContactNo String?
+  cnic               String              @default("")
+  faceDescriptor     Json?
   notes              String?
-  status             EmployeeStatus @default(ACTIVE)
   resignationDate    DateTime?
-
-  company   Company
-  image     String?
-  code      String    @unique
-  createdAt DateTime?
-  updatedAt DateTime?
-  isDeleted DateTime?
-
-  user              User?
-  attendances       Attendance[]
-  leaveRequests     LeaveRequest[]
+  status             EmployeeStatus      @default(ACTIVE)
+  attendances        Attendance[]
   attendanceRequests AttendanceRequest[]
-  leaveAllocation   LeaveAllocation[]
-  shiftAssignments  ShiftAssignment[]
-  todos             Todo[]
-}
-
-enum Company {
-  SOLARMAX
-  POWERHIGHWAY
-  OKASHASMART
+  leaveAllocation    LeaveAllocation[]
+  leaveRequests      LeaveRequest[]
+  shiftAssignments   ShiftAssignment[]
+  todos              Todo[]
+  user               User?
 }
 
 model Attendance {
   id         String           @id @default(uuid()) @db.VarChar(36)
-  employee   Employee         @relation(fields: [employeeId], references: [id])
   employeeId String
   date       DateTime
   status     AttendanceStatus
-  comment    String?
   checkIn    DateTime?
   checkOut   DateTime?
   location   String?
   createdAt  DateTime?
   updatedAt  DateTime?
   isDeleted  DateTime?
-}
-
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-  ON_LEAVE
-  HALF_DAY
-  HOLIDAYS
+  comment    String?
+  employee   Employee         @relation(fields: [employeeId], references: [id])
 }
 
 model LeaveRequest {
   id         String      @id @default(uuid()) @db.VarChar(36)
-  employee   Employee    @relation(fields: [employeeId], references: [id])
   employeeId String
   reason     String?
   startDate  DateTime
   endDate    DateTime
+  status     LeaveStatus @default(PENDING)
+  location   String?
+  createdAt  DateTime?   @default(now())
+  updatedAt  DateTime?   @updatedAt
+  isDeleted  DateTime?
+  image      String?
+  employee   Employee    @relation(fields: [employeeId], references: [id])
+}
+
+model AttendanceRequest {
+  id         String      @id @default(uuid()) @db.VarChar(36)
+  employeeId String
+  reason     String?
   status     LeaveStatus @default(PENDING)
   image      String?
   location   String?
   createdAt  DateTime?   @default(now())
   updatedAt  DateTime?   @updatedAt
   isDeleted  DateTime?
-}
-
-model AttendanceRequest {
-  id         String      @id @default(uuid()) @db.VarChar(36)
   employee   Employee    @relation(fields: [employeeId], references: [id])
-  employeeId String
-  reason     String?
-  status     LeaveStatus @default(PENDING)
-  image      String? 
-  location   String? 
-  createdAt  DateTime?   @default(now())
-  updatedAt  DateTime?   @updatedAt
-  isDeleted  DateTime?
-}
-
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
 }
 
 model LeaveConfiguration {
-  id          String    @id @default(uuid()) @db.VarChar(36)
-  name        String    @unique
+  id          String            @id @default(uuid()) @db.VarChar(36)
+  name        String            @unique
   description String?
   maxDays     Int
-  createdAt   DateTime? @default(now())
-  updatedAt   DateTime? @updatedAt
+  createdAt   DateTime?         @default(now())
+  updatedAt   DateTime?         @updatedAt
   isDeleted   DateTime?
-
-  employees LeaveAllocation[]
+  employees   LeaveAllocation[]
 }
 
 model LeaveAllocation {
   id                  String              @id @default(uuid()) @db.VarChar(36)
-  employee            Employee            @relation(fields: [employeeId], references: [id])
   employeeId          String
-  leaveConfig         LeaveConfiguration? @relation(fields: [leaveConfigId], references: [id])
   leaveConfigId       String?
   assignedDays        Int
   note                String?
-  allocationStartDate DateTime
-  allocationEndDate   DateTime?
   createdAt           DateTime?           @default(now())
   updatedAt           DateTime?           @updatedAt
   isDeleted           DateTime?
-}
-
-enum ScheduleParent {
-  LEAVE
-  ABSENT
-  CHECK_OUT
-}
-
-enum ScheduleStatus {
-  SUCCESS
-  FAIL
-  SKIP
+  allocationEndDate   DateTime?
+  allocationStartDate DateTime
+  employee            Employee            @relation(fields: [employeeId], references: [id])
+  leaveConfig         LeaveConfiguration? @relation(fields: [leaveConfigId], references: [id])
 }
 
 model AttendanceScheduler {
@@ -350,23 +290,22 @@ model AttendanceScheduler {
   parent      ScheduleParent
   runTime     DateTime
   status      ScheduleStatus
-  employeeIds String[]
   log         String?
   createdAt   DateTime?
-  updatedAt   DateTime?
   isDeleted   DateTime?
+  updatedAt   DateTime?
+  employeeIds String[]
 }
 
 model Shift {
-  id          String    @id @default(uuid()) @db.VarChar(36)
-  name        String    @unique
+  id          String            @id @default(uuid()) @db.VarChar(36)
+  name        String            @unique
   startTime   DateTime
   endTime     DateTime
   description String?
-  createdAt   DateTime? @default(now())
-  updatedAt   DateTime? @updatedAt
+  createdAt   DateTime?         @default(now())
+  updatedAt   DateTime?         @updatedAt
   isDeleted   DateTime?
-
   assignments ShiftAssignment[]
 }
 
@@ -379,26 +318,96 @@ model ShiftAssignment {
   createdAt  DateTime? @default(now())
   updatedAt  DateTime? @updatedAt
   isDeleted  DateTime?
-
-  employee Employee @relation(fields: [employeeId], references: [id])
-  shift    Shift    @relation(fields: [shiftId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  shift      Shift     @relation(fields: [shiftId], references: [id])
 
   @@unique([employeeId, shiftId, startDate])
 }
 
 model Todo {
-  id          String    @id @default(uuid()) @db.VarChar(36)
+  id          String       @id @default(uuid()) @db.VarChar(36)
   employeeId  String
   title       String
   description String?
   dueDate     DateTime?
-  status      TodoStatus @default(PENDING)
+  status      TodoStatus   @default(PENDING)
   priority    TodoPriority @default(MEDIUM)
-  createdAt   DateTime?  @default(now())
-  updatedAt   DateTime?  @updatedAt
+  createdAt   DateTime?    @default(now())
+  updatedAt   DateTime?    @updatedAt
   isDeleted   DateTime?
+  employee    Employee     @relation(fields: [employeeId], references: [id])
+}
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+model ActivityLog {
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  userId     String?   @db.VarChar(36)
+  action     String
+  module     String?
+  entityId   String?
+  method     String?
+  route      String?
+  ip         String?
+  request    Json?
+  success    Boolean?
+  statusCode Int?
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+  isDeleted  DateTime?
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([module])
+}
+
+enum Status {
+  pending
+  approved
+  cancelled
+}
+
+enum ParentType {
+  Role
+  User
+  Group
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  RESIGNED
+  REJOINED
+}
+
+enum Company {
+  SOLARMAX
+  POWERHIGHWAY
+  OKASHASMART
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  ON_LEAVE
+  HALF_DAY
+  HOLIDAYS
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ScheduleParent {
+  LEAVE
+  ABSENT
+  CHECK_OUT
+}
+
+enum ScheduleStatus {
+  SUCCESS
+  FAIL
+  SKIP
 }
 
 enum TodoStatus {

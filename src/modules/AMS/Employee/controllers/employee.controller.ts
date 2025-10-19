@@ -9,6 +9,18 @@ class EmployeeController extends BaseController<EmployeeService> {
   protected service = new EmployeeService();
   private pdfUtility: EmployeePDF = new EmployeePDF();
   private excelUtility = new EmployeeExcelUtility();
+  protected moduleName: string = "AMS";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
 
   async getAllEmployees(req: Request, res: Response) {
     const param = req.query.filter as string;
@@ -25,7 +37,8 @@ class EmployeeController extends BaseController<EmployeeService> {
 
     const successMessage = "Employees retrieved successfully!";
     const errorMessage = "Error retrieving employees:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = param ? `Fetched filtered employees (filter: ${param})` : `Fetched all employees`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async deleteFiles(req: Request, res: Response) {
@@ -43,7 +56,8 @@ class EmployeeController extends BaseController<EmployeeService> {
 
     let successMessage = "File deleted successfully!";
     let errorMessage = "Error deleting file:";
-    await this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Deleted file '${fileName}' for employee (id: ${employeeId})`;
+    await this.handle(operation, successMessage, errorMessage, activityLog, res, req, employeeId);
   }
 
   async getEmployeeExcel(req: Request, res: Response): Promise<void> {
@@ -62,11 +76,12 @@ class EmployeeController extends BaseController<EmployeeService> {
   }
 
  async getEmployeeByUserId(req: Request, res: Response) {
-    const { userId } = req.body;
-    let successMessage = "Files retrieved successfully!";
-    let errorMessage = "Error retrieving files:";
-    const operation = () => this.service.getEmployeeByUserId(userId);
-    await this.handleRequest(operation, successMessage, errorMessage, res);
+  const { userId } = req.body;
+  let successMessage = "Files retrieved successfully!";
+  let errorMessage = "Error retrieving files:";
+  const operation = () => this.service.getEmployeeByUserId(userId);
+  const activityLog = `Fetched employee by userId (userId: ${userId})`;
+  await this.handle(operation, successMessage, errorMessage, activityLog, res, req, userId);
   }
 
   async getEmployeeCard(req: Request, res: Response) {
@@ -110,7 +125,8 @@ class EmployeeController extends BaseController<EmployeeService> {
 
     let successMessage = "Files retrieved successfully!";
     let errorMessage = "Error retrieving files:";
-    await this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched files for employee (id: ${employeeId})`;
+    await this.handle(operation, successMessage, errorMessage, activityLog, res, req, employeeId);
   }
 
   async updateFiles(req: Request, res: Response) {
@@ -173,19 +189,21 @@ class EmployeeController extends BaseController<EmployeeService> {
   }
 
   async getEmployees(req: Request, res: Response) {
-    const { page, pageSize } = req.body;
-    const operation = () => this.service.getEmployees(page, pageSize);
-    const successMessage = "Employees retrieved successfully!";
-    const errorMessage = "Error retrieving employees:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { page, pageSize } = req.body;
+  const operation = () => this.service.getEmployees(page, pageSize);
+  const successMessage = "Employees retrieved successfully!";
+  const errorMessage = "Error retrieving employees:";
+  const activityLog = `Fetched employees (page: ${page}, pageSize: ${pageSize})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getDeletedEmployees(req: Request, res: Response) {
-    const { page, pageSize } = req.body;
-    const operation = () => this.service.getDeletedEmployees(page, pageSize);
-    const successMessage = "Deleted employees retrieved successfully!";
-    const errorMessage = "Error retrieving deleted employees:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { page, pageSize } = req.body;
+  const operation = () => this.service.getDeletedEmployees(page, pageSize);
+  const successMessage = "Deleted employees retrieved successfully!";
+  const errorMessage = "Error retrieving deleted employees:";
+  const activityLog = `Fetched deleted employees (page: ${page}, pageSize: ${pageSize})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async searchEmployees(req: Request, res: Response) {
@@ -194,70 +212,79 @@ class EmployeeController extends BaseController<EmployeeService> {
       this.service.searchEmployee(searchTerm, page, pageSize);
     const successMessage = "Employees retrieved successfully!";
     const errorMessage = "Error retrieving employees:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Searched employees (searchTerm: ${searchTerm}, page: ${page}, pageSize: ${pageSize})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getTotalEmployees(req: Request, res: Response) {
-    const operation = () => this.service.getTotalEmployees();
-    const successMessage = "Total employees count retrieved successfully!";
-    const errorMessage = "Error retrieving total employees count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const operation = () => this.service.getTotalEmployees();
+  const successMessage = "Total employees count retrieved successfully!";
+  const errorMessage = "Error retrieving total employees count:";
+  const activityLog = `Fetched total employees count`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async createEmployee(req: Request, res: Response) {
-    const employeeData: Employee = req.body;
+  const employeeData: Employee = req.body;
 
-    const operation = () => this.service.createEmployee(employeeData);
-    const successMessage = "Employee created successfully!";
-    const errorMessage = "Error creating employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const operation = () => this.service.createEmployee(employeeData);
+  const successMessage = "Employee created successfully!";
+  const errorMessage = "Error creating employee:";
+  const activityLog = `Created employee (name: ${employeeData?.name || ''})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req, employeeData?.id);
   }
 
   async updateEmployee(req: Request, res: Response) {
-    const { id, data } = req.body;
-    const operation = () => this.service.updateEmployee(id, data);
-    const successMessage = "Employee updated successfully!";
-    const errorMessage = "Error updating employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { id, data } = req.body;
+  const operation = () => this.service.updateEmployee(id, data);
+  const successMessage = "Employee updated successfully!";
+  const errorMessage = "Error updating employee:";
+  const activityLog = `Updated employee (id: ${id})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async deleteEmployee(req: Request, res: Response) {
-    const { id } = req.body;
-    const operation = () => this.service.deleteEmployee(id);
-    const successMessage = "Employee deleted successfully!";
-    const errorMessage = "Error deleting employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { id } = req.body;
+  const operation = () => this.service.deleteEmployee(id);
+  const successMessage = "Employee deleted successfully!";
+  const errorMessage = "Error deleting employee:";
+  const activityLog = `Deleted employee (id: ${id})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getEmployeeById(req: Request, res: Response) {
-    const { id } = req.body;
-    const operation = () => this.service.getEmployeeById(id);
-    const successMessage = "Employee retrieved successfully!";
-    const errorMessage = "Error retrieving employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { id } = req.body;
+  const operation = () => this.service.getEmployeeById(id);
+  const successMessage = "Employee retrieved successfully!";
+  const errorMessage = "Error retrieving employee:";
+  const activityLog = `Fetched employee by id (id: ${id})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getEmployeeByCode(req: Request, res: Response) {
-    const { code } = req.body;
-    const operation = () => this.service.getEmployeeByCode(code);
-    const successMessage = "Employee retrieved successfully!";
-    const errorMessage = "Error retrieving employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { code } = req.body;
+  const operation = () => this.service.getEmployeeByCode(code);
+  const successMessage = "Employee retrieved successfully!";
+  const errorMessage = "Error retrieving employee:";
+  const activityLog = `Fetched employee by code (code: ${code})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req, code);
   }
 
   async restoreEmployee(req: Request, res: Response) {
-    const { id } = req.body;
-    const operation = () => this.service.restoreEmployee(id);
-    const successMessage = "Employee restored successfully!";
-    const errorMessage = "Error restoring employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const { id } = req.body;
+  const operation = () => this.service.restoreEmployee(id);
+  const successMessage = "Employee restored successfully!";
+  const errorMessage = "Error restoring employee:";
+  const activityLog = `Restored employee (id: ${id})`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getEmployeesForFaceRecognition(req: Request, res: Response) {
-    const operation = () => this.service.getEmployeesForFaceRecognition();
-    const successMessage = "Employees for face recognition retrieved successfully!";
-    const errorMessage = "Error retrieving employees for face recognition:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+  const operation = () => this.service.getEmployeesForFaceRecognition();
+  const successMessage = "Employees for face recognition retrieved successfully!";
+  const errorMessage = "Error retrieving employees for face recognition:";
+  const activityLog = `Fetched employees for face recognition`;
+  this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 }
 

@@ -11,11 +11,25 @@ class AttendanceController extends BaseController<AttendanceService> {
   private excelUtility = new AttendanceExcelUtility();
   private pdfUtility = new AttendancePDF();
 
+  protected moduleName: string = "AMS";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
+
   async getAllAttendances(req: Request, res: Response) {
     const operation = () => this.service.getAllattendances();
     const successMessage = "Attendances retrieved successfully!";
     const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched all attendances`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getAttendances(req: Request, res: Response) {
@@ -23,7 +37,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getAttendances(page, pageSize);
     const successMessage = "Attendances retrieved successfully!";
     const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched attendances (page: ${page}, pageSize: ${pageSize})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getEmployeeAttendance(req: Request, res: Response) {
@@ -32,7 +47,8 @@ class AttendanceController extends BaseController<AttendanceService> {
       this.service.getEmployeeAttendance(employeeId, from, to);
     const successMessage = "Attendances retrieved successfully!";
     const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched attendance for employee (id: ${employeeId}, from: ${from}, to: ${to})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, employeeId);
   }
 
   async getDated(req: Request, res: Response) {
@@ -40,7 +56,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getDatedAttendance(from, to);
     const successMessage = "Attendances retrieved successfully!";
     const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched attendances by date (from: ${from}, to: ${to})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getDeletedAttendances(req: Request, res: Response) {
@@ -48,7 +65,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getDeletedAttendances(page, pageSize);
     const successMessage = "Deleted Attendances retrieved successfully!";
     const errorMessage = "Error retrieving deleted Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched deleted attendances (page: ${page}, pageSize: ${pageSize})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async searchAttendances(req: Request, res: Response) {
@@ -57,7 +75,8 @@ class AttendanceController extends BaseController<AttendanceService> {
       this.service.searchAttendance(searchTerm, page, pageSize);
     const successMessage = "Attendances retrieved successfully!";
     const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Searched attendances (searchTerm: ${searchTerm}, page: ${page}, pageSize: ${pageSize})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async faceAttendance(req: Request, res: Response) {
@@ -65,7 +84,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.faceAttendance(image);
     const successMessage = "Attendances retrieved successfully!";
     const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched attendance by face recognition`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getSpecificTypeAttendances(req: Request, res: Response) {
@@ -74,8 +94,8 @@ class AttendanceController extends BaseController<AttendanceService> {
       this.service.getSpecifcAttendances(type, employeeId);
     const successMessage = `Total Attendances count retrieved successfully for type: ${type}!`;
     const errorMessage = `Error retrieving total Attendances count for type: ${type}:`;
-
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched attendances for type: ${type}, employeeId: ${employeeId}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, employeeId);
   }
 
   async downloadExcelAttendance(req: Request, res: Response) {
@@ -83,7 +103,7 @@ class AttendanceController extends BaseController<AttendanceService> {
     let data: any = [];
 
     if (employeeId) {
-        data = await this.service.getEmployeeAttendance(employeeId, from, to);
+      data = await this.service.getEmployeeAttendance(employeeId, from, to);
     } else {
       // If no employeeId is provided
       if (from || to) {
@@ -94,7 +114,7 @@ class AttendanceController extends BaseController<AttendanceService> {
         data = await this.service.getAllattendances();
       }
     }
- 
+
     const result = await this.excelUtility.create(data);
 
     res.setHeader(
@@ -113,9 +133,9 @@ class AttendanceController extends BaseController<AttendanceService> {
     console.log({ from, to, employeeId });
     try {
       let data: any = [];
-  
+
       if (employeeId) {
-          data = await this.service.getEmployeeAttendance(employeeId, from, to);
+        data = await this.service.getEmployeeAttendance(employeeId, from, to);
       } else {
         // If no employeeId is provided
         if (from || to) {
@@ -126,33 +146,33 @@ class AttendanceController extends BaseController<AttendanceService> {
           data = await this.service.getAllattendances();
         }
       }
-  
 
-        const pdfDoc = this.pdfUtility.generateAttendancePDF(data);
-  
-        // Format current date as YYYY-MM-DD
-        const currentDate = new Date()
-          .toLocaleDateString("en-CA", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          })
-          .split("-")
-          .join("-");
-  
-        pdfDoc.getBuffer((buffer: Buffer) => {
-          if (buffer) {
-            res.writeHead(200, {
-              "Content-Type": "application/pdf",
-              "Content-Disposition": `attachment; filename=Attendance-Report-${currentDate}.pdf`,
-              "Content-Length": buffer.length,
-            });
-            res.end(buffer);
-          } else {
-            res.status(500).json({ error: "Error generating PDF buffer" });
-          }
-        });
-      
+
+      const pdfDoc = this.pdfUtility.generateAttendancePDF(data);
+
+      // Format current date as YYYY-MM-DD
+      const currentDate = new Date()
+        .toLocaleDateString("en-CA", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+        .split("-")
+        .join("-");
+
+      pdfDoc.getBuffer((buffer: Buffer) => {
+        if (buffer) {
+          res.writeHead(200, {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename=Attendance-Report-${currentDate}.pdf`,
+            "Content-Length": buffer.length,
+          });
+          res.end(buffer);
+        } else {
+          res.status(500).json({ error: "Error generating PDF buffer" });
+        }
+      });
+
     } catch (error) {
       console.error("Error generating PDF:", error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -163,7 +183,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getTotalAttendances();
     const successMessage = "Total Attendances count retrieved successfully!";
     const errorMessage = "Error retrieving total Attendances count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched total attendances count`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async createAttendance(req: Request, res: Response) {
@@ -172,7 +193,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.createAttendance(AttendanceData);
     const successMessage = "Attendance created successfully!";
     const errorMessage = "Error creating Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Created attendance (employeeId: ${AttendanceData?.employeeId || ''}, date: ${AttendanceData?.date || ''})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, AttendanceData?.employeeId);
   }
 
   async checkAttendance(req: Request, res: Response) {
@@ -216,7 +238,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.updateAttendance(id, data);
     const successMessage = "Attendance updated successfully!";
     const errorMessage = "Error updating Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Updated attendance (id: ${id})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async deleteAttendance(req: Request, res: Response) {
@@ -224,7 +247,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.deleteAttendance(id);
     const successMessage = "Attendance deleted successfully!";
     const errorMessage = "Error deleting Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Deleted attendance (id: ${id})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getAttendanceById(req: Request, res: Response) {
@@ -232,7 +256,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getAttendanceById(id);
     const successMessage = "Attendance retrieved successfully!";
     const errorMessage = "Error retrieving Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Fetched attendance by id (id: ${id})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async restoreAttendance(req: Request, res: Response) {
@@ -240,7 +265,8 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.restoreAttendance(id);
     const successMessage = "Attendance restored successfully!";
     const errorMessage = "Error restoring Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Restored attendance (id: ${id})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async importAttendance(req: Request, res: Response) {
@@ -261,7 +287,8 @@ class AttendanceController extends BaseController<AttendanceService> {
       this.service.importAttendance(employeeId, month, file);
     const successMessage = "Attendance imported successfully!";
     const errorMessage = "Error importing Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    const activityLog = `Imported attendance for employee (id: ${employeeId}, month: ${month})`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, employeeId);
   }
 }
 

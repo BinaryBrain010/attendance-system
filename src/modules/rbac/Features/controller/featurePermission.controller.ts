@@ -6,12 +6,25 @@ import AuthHelper from '../../../../Auth/helper/auth.helper';
 
 class FeaturePermissionController extends BaseController<FeaturePermissionService> {
   protected service = new FeaturePermissionService();
+  protected moduleName: string = "RBAC";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
 
   async getAllFeaturePermissions(req: Request, res: Response) {
     let operation = () => this.service.getAllFeaturePermissions();
     let successMessage = 'Feature permissions retrieved successfully!';
     let errorMessage = 'Error retrieving feature permissions:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched all feature permissions`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async createFeaturePermission(req: Request, res: Response) {
@@ -19,7 +32,11 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let operation = () => this.service.createFeaturePermission(permissionData);
     let successMessage = 'Permission created successfully!';
     let errorMessage = 'Error creating permission:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+
+    // no feature id available in featurePermissionModel.model
+    //  let activityLog = `Created feature permission for feature ID: ${permissionData.featureId}`;
+    let activityLog = `Created feature permission`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async updateFeaturePermission(req: Request, res: Response) {
@@ -27,7 +44,8 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let operation = () => this.service.updateFeaturePermission(id, data);
     let successMessage = 'Permission updated successfully!';
     let errorMessage = 'Error updating permission:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Updated feature permission with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getAllowedFeatures(req: Request, res: Response) {
@@ -36,7 +54,8 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let operation = () => this.service.gpGetAllowedFeatures(parentId,parentType);
     let successMessage = 'Permission getting allowed successfully!';
     let errorMessage = 'Error allowed features permission:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched allowed features for parentType: ${parentType}, parentId: ${parentId}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, parentId);
   }
 
   async deleteFeaturePermission(req: Request, res: Response) {
@@ -44,7 +63,8 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let operation = () => this.service.deleteFeaturePermission(id);
     let successMessage = 'Permission deleted successfully!';
     let errorMessage = 'Error deleting permission:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Deleted feature permission with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async restoreFeaturePermission(req: Request, res: Response) {
@@ -52,7 +72,8 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let operation = () => this.service.restoreFeaturePermission(id);
     let successMessage = 'Permission restored successfully!';
     let errorMessage = 'Error restoring permission:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Restored feature permission with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getFeaturePermissionById(req: Request, res: Response) {
@@ -62,7 +83,8 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let operation = () => this.service.getById(id);
     let successMessage = 'Feature permission retrieved successfully!';
     let errorMessage = 'Error retrieving feature permission:';
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched feature permission with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   // }
 }
 }

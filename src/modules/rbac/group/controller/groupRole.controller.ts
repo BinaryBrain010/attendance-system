@@ -6,12 +6,25 @@ import AuthHelper from "../../../../Auth/helper/auth.helper";
 
 class GroupController extends BaseController<GroupRoleService> {
   protected service = new GroupRoleService();
+  protected moduleName: string = "RBAC";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
 
   async getAllGroupRoles(req: Request, res: Response) {
     let operation = () => this.service.getAllGroupRoles();
     let successMessage = "Groups retrieved successfully!";
     let errorMessage = "Error retrieving groups:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    let activityLog = `Fetched all group roles`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async createGroupRole(req: Request, res: Response) {
@@ -19,7 +32,8 @@ class GroupController extends BaseController<GroupRoleService> {
     let operation = () => this.service.createGroupRole(groupData);
     let successMessage = "Group created successfully!";
     let errorMessage = "Error creating group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    let activityLog = `Created group role(s)`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async updateGroupRole(req: Request, res: Response) {
@@ -27,7 +41,8 @@ class GroupController extends BaseController<GroupRoleService> {
     let operation = () => this.service.updateGroupRole(id, data);
     let successMessage = "Group updated successfully!";
     let errorMessage = "Error updating group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    let activityLog = `Updated group role with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async deleteGroupRole(req: Request, res: Response) {
@@ -35,7 +50,8 @@ class GroupController extends BaseController<GroupRoleService> {
     let operation = () => this.service.deleteGroupRole(id);
     let successMessage = "Group deleted successfully!";
     let errorMessage = "Error deleting group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    let activityLog = `Deleted group role with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async restoreGroupRole(req: Request, res: Response) {
@@ -43,7 +59,8 @@ class GroupController extends BaseController<GroupRoleService> {
     let operation = () => this.service.restoreGroupRole(id);
     let successMessage = "Group restored successfully!";
     let errorMessage = "Error restoring group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    let activityLog = `Restored group role with ID: ${id}`;
+    this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getGroupRoleById(req: Request, res: Response) {
@@ -53,7 +70,8 @@ class GroupController extends BaseController<GroupRoleService> {
       let operation = () => this.service.getById(id);
       let successMessage = "Group retrieved successfully!";
       let errorMessage = "Error retrieving group:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      let activityLog = `Fetched group role with ID: ${id}`;
+      this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
     // }
   }
 }

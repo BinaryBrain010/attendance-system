@@ -17,19 +17,33 @@ class UserController extends BaseController<UserService> {
   protected tokenService = new BlackListedTokenService();
   protected accessService = new AccessService();
   protected employeeService = new EmployeeService();
+  protected moduleName: string = "RBAC";
+
+  protected handle(operation: () => Promise<any>,
+    successMessage: string,
+    errorMessage: string,
+    activityLog: string,
+    res: Response,
+    req: Request,
+    entityId?: string
+  ) {
+    this.handleRequest(operation, successMessage, errorMessage, activityLog, res, req, this.moduleName, entityId);
+  }
 
   async getUsers(req: Request, res: Response) {
     let operation = () => this.service.getUsers();
     let successMessage = "Users retrieved successfully!";
     let errorMessage = "Error retrieving users:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched all users`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getNonAssociatedUsers(req: Request, res: Response) {
     let operation = () => this.service.getNonAssociatedUsers();
     let successMessage = "User  retrieved successfully!";
     let errorMessage = "Error retrieving users:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched non-associated users`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async getAllUsers(req: Request, res: Response) {
@@ -39,7 +53,8 @@ class UserController extends BaseController<UserService> {
       let operation = () => this.service.getAllUsers(page, pageSize, id);
       let successMessage = "Users retrieved successfully!";
       let errorMessage = "Error retrieving Users:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+        let activityLog = `Fetched all users for page ${page} with size ${pageSize}`;
+        await this.handle(operation, successMessage, errorMessage, activityLog, res, req);
     }
   }
 
@@ -49,7 +64,8 @@ class UserController extends BaseController<UserService> {
       let operation = () => this.service.totalUsers(id);
       let successMessage = "Users retrieved successfully!";
       let errorMessage = "Error retrieving users:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+        let activityLog = `Fetched total users count`;
+        this.handle(operation, successMessage, errorMessage, activityLog, res, req);
     }
   }
 
@@ -58,7 +74,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.getById(id);
     let successMessage = "Users retrieved successfully!";
     let errorMessage = "Error retrieving users:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched user with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getLoggedInUser(req: Request, res: Response) {
@@ -66,7 +83,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.getLoggedInUser(userId);
     let successMessage = "Users retrieved successfully!";
     let errorMessage = "Error retrieving users:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched logged in user with ID: ${userId}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, userId);
   }
 
   async checkPreviousPassword(req: Request, res: Response) {
@@ -75,7 +93,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.checkPreviousPassword(userId, password);
     let successMessage = "checked successfully!";
     let errorMessage = "Error checking users:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Checked previous password for user ID: ${userId}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, userId);
   }
 
   async changePassword(req: Request, res: Response) {
@@ -84,7 +103,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.changePassword(userId, password);
     let successMessage = "password chnaged successfully!";
     let errorMessage = "Error changing password ";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Changed password for user ID: ${userId}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, userId);
   }
 
   async changeUserPassword(req: Request, res: Response) {
@@ -93,7 +113,8 @@ class UserController extends BaseController<UserService> {
     await this.service.removeLoggedInUser(userId, "");
     let successMessage = "password changed successfully!";
     let errorMessage = "Error changing password ";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Changed password for user ID: ${userId}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, userId);
   }
 
   async logoutOfAllDevices(req: Request, res: Response) {
@@ -101,7 +122,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.removeLoggedInUser(userId, "");
     let successMessage = "logged out of all devices successfully!";
     let errorMessage = "Error logging out of all devices ";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Logged out of all devices for user ID: ${userId}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, userId);
   }
 
   async logoutUserOfAllDevices(req: Request, res: Response) {
@@ -109,7 +131,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.removeLoggedInUser(id, "");
     let successMessage = "logged out of all devices successfully!";
     let errorMessage = "Error logging of all devices ";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Logged out of all devices for user ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async getDetailedUser(req: Request, res: Response) {
@@ -117,7 +140,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.getDetailed(id);
     let successMessage = "Users retrieved successfully!";
     let errorMessage = "Error retrieving users:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Fetched detailed user with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   //   async changeCompany(req: Request, res: Response) {
@@ -125,7 +149,7 @@ class UserController extends BaseController<UserService> {
   //     let operation = () => this.service.changeCompany(userId, companyId);
   //     let successMessage = "changed compnany successfully!";
   //     let errorMessage = "Error changing company:";
-  //     this.handleRequest(operation, successMessage, errorMessage, res);
+  //     this.handle(operation, successMessage, errorMessage, res);
   //   }
 
   async createUser(req: Request, res: Response) {
@@ -133,7 +157,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.createUsers(userData);
     let successMessage = "User created successfully!";
     let errorMessage = "Error creating user:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Created user: ${userData.username}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req);
   }
 
   async updateUser(req: Request, res: Response) {
@@ -141,7 +166,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.updateUsers(id, data);
     let successMessage = "User updated successfully!";
     let errorMessage = "Error updating user:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Updated user with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async deleteUser(req: Request, res: Response) {
@@ -149,7 +175,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.deleteUser(id);
     let successMessage = "User deleted successfully!";
     let errorMessage = "Error deleting user:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Deleted user with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async searchUsers(req: Request, res: Response) {
@@ -160,7 +187,8 @@ class UserController extends BaseController<UserService> {
         this.service.searchUsers(searchTerm, page, pageSize);
       let successMessage = "Search results retrieved successfully!";
       let errorMessage = "Error retrieving search results:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+        let activityLog = `Searched users with term \"${searchTerm}\" for page ${page} with size ${pageSize}`;
+        await this.handle(operation, successMessage, errorMessage, activityLog, res, req);
     }
   }
 
@@ -169,7 +197,8 @@ class UserController extends BaseController<UserService> {
     let operation = () => this.service.restoreUser(id);
     let successMessage = "User restored successfully!";
     let errorMessage = "Error restoring user:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+     let activityLog = `Restored user with ID: ${id}`;
+     this.handle(operation, successMessage, errorMessage, activityLog, res, req, id);
   }
 
   async loginUser(req: Request, res: Response) {

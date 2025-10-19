@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { secretKey } from "../../environment/environment";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 class AuthHelper {
   static getTokenFromHeader(req: Request): string | null {
@@ -20,7 +23,29 @@ class AuthHelper {
         console.error("error");
       }
     }
+
     console.error("Authorization header missing");
+  }
+
+  static async getUserNameForUserId(req: Request): Promise<string | null> {
+    const userId = this.getUserIdFromHeader(req);
+    
+    if (!userId) {
+      console.error("Unable to extract userId from header");
+      return null;
+    }
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true }
+      });
+
+      return user?.username || null;
+    } catch (e) {
+      console.error("Error fetching username:", e);
+      return null;
+    }
   }
 
 //   static getCompanyIdFromHeader(req: Request): string {
