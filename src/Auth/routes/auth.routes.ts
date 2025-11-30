@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import UserController from '../../modules/rbac/user/controller/user.controller';
+import { loginLimiter } from '../../middleware/rateLimiter.middleware';
 
 class AuthRoutes {
   private router: Router;
@@ -12,9 +13,141 @@ class AuthRoutes {
   }
 
   private initializeRoutes(): void {
-    this.router.post('/login', this.controller.loginUser.bind(this.controller));
+    /**
+     * @swagger
+     * /auth/login:
+     *   post:
+     *     summary: User login
+     *     tags: [Authentication]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - username
+     *               - password
+     *               - platform
+     *             properties:
+     *               username:
+     *                 type: string
+     *                 example: admin
+     *               password:
+     *                 type: string
+     *                 format: password
+     *                 example: password123
+     *               rememberMe:
+     *                 type: boolean
+     *                 example: false
+     *               platform:
+     *                 type: string
+     *                 enum: [Mobile, Admin, Attendance App, quick-solutions]
+     *                 example: Admin
+     *     responses:
+     *       200:
+     *         description: Login successful
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       401:
+     *         description: Invalid credentials
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Error'
+     *       429:
+     *         description: Too many login attempts
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Error'
+     */
+    this.router.post('/login', loginLimiter, this.controller.loginUser.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /auth/logout:
+     *   get:
+     *     summary: Logout current user
+     *     tags: [Authentication]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Logout successful
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       401:
+     *         description: Unauthorized
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Error'
+     */
     this.router.get('/logout', this.controller.logoutUser.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /auth/logoutOfAllDevices:
+     *   get:
+     *     summary: Logout from all devices
+     *     tags: [Authentication]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Logout from all devices successful
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       401:
+     *         description: Unauthorized
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Error'
+     */
     this.router.get('/logoutOfAllDevices', this.controller.logoutOfAllDevices.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /auth/logoutUserOfAllDevices:
+     *   post:
+     *     summary: Logout specific user from all devices
+     *     tags: [Authentication]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - userId
+     *             properties:
+     *               userId:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *     responses:
+     *       200:
+     *         description: Logout successful
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       401:
+     *         description: Unauthorized
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Error'
+     */
     this.router.post('/logoutUserOfAllDevices', this.controller.logoutUserOfAllDevices.bind(this.controller));
   }
   

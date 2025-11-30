@@ -1,5 +1,6 @@
 import SeederHelper from "./src/helper/seeder.helper";
 import ResetHelper from "./src/helper/reset.helper";
+import logger from "./src/core/logger/logger";
 
 class Seeder {
   private seederService: SeederHelper;
@@ -9,25 +10,34 @@ class Seeder {
     this.resetHelper = new ResetHelper();
     this.seederService = new SeederHelper();
     if (force) {
-      this.reset();
-      setTimeout(() => {
+      this.reset().then(() => {
         this.startSeeding();
-      }, 1000);
+      }).catch((error) => {
+        logger.error("Error in seeder initialization:", error);
+        process.exit(1);
+      });
     } else {
       this.startSeeding();
     }
   }
 
   private async startSeeding() {
-    await this.seederService.Seeder();
+    try {
+      await this.seederService.Seeder();
+      logger.info("Seeding completed successfully");
+    } catch (error) {
+      logger.error("Error during seeding:", error);
+      process.exit(1);
+    }
   }
 
   private async reset() {
     try {
       await this.resetHelper.resetDB();
-      console.log("reseted");
+      logger.info("Database reset completed");
     } catch (error) {
-      console.error("error reseting ", error);
+      logger.error("Error resetting database:", error);
+      throw error;
     }
   }
 }

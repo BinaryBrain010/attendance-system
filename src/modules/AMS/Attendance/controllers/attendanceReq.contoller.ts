@@ -8,96 +8,72 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
 
   async getAllAttendanceRequests(req: Request, res: Response) {
     const operation = () => this.service.getAllAttendanceRequests();
-    const successMessage = "Attendance requests retrieved successfully!";
-    const errorMessage = "Error retrieving attendance requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance requests retrieved successfully!" });
   }
 
   async getAttendanceRequests(req: Request, res: Response) {
     const { page, pageSize } = req.body;
     const operation = () => this.service.getAttendanceRequests(page, pageSize);
-    const successMessage = "Attendance requests retrieved successfully!";
-    const errorMessage = "Error retrieving attendance requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance requests retrieved successfully!" });
   }
 
   async createAttendanceRequest(req: Request, res: Response) {
     const attendanceRequestData: AttendanceRequest = req.body;
     const operation = () => this.service.createAttendanceRequest(attendanceRequestData);
-    const successMessage = "Attendance request created successfully!";
-    const errorMessage = "Error creating attendance request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance request created successfully!" });
   }
 
   async updateAttendanceRequest(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateAttendanceRequest(id, data);
-    const successMessage = "Attendance request updated successfully!";
-    const errorMessage = "Error updating attendance request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance request updated successfully!" });
   }
 
   async deleteAttendanceRequest(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendanceRequest(id);
-    const successMessage = "Attendance request deleted successfully!";
-    const errorMessage = "Error deleting attendance request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance request deleted successfully!" });
   }
 
   async restoreAttendanceRequest(req: Request, res: Response) {
     const { requestId } = req.body;
     const operation = () => this.service.restoreAttendanceRequest(requestId);
-    const successMessage = "Attendance request restored successfully!";
-    const errorMessage = "Error restoring attendance request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance request restored successfully!" });
   }
 
   async getAttendanceRequestById(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.getAttendanceRequestById(id);
-    const successMessage = "Attendance request retrieved successfully!";
-    const errorMessage = "Error retrieving attendance request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance request retrieved successfully!" });
   }
 
   async getAttendanceRequestsByEmployeeId(req: Request, res: Response) {
     const { employeeId } = req.body;
     const operation = () => this.service.getAttendanceRequestsByEmployeeId(employeeId);
-    const successMessage = "Attendance requests for the employee retrieved successfully!";
-    const errorMessage = "Error retrieving attendance requests for the employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance requests for the employee retrieved successfully!" });
   }
 
   async getDeletedAttendanceRequests(req: Request, res: Response) {
     const { page, pageSize } = req.body;
     const operation = () => this.service.getDeletedAttendanceRequests(page, pageSize);
-    const successMessage = "Deleted attendance requests retrieved successfully!";
-    const errorMessage = "Error retrieving deleted attendance requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Deleted attendance requests retrieved successfully!" });
   }
 
   async searchAttendanceRequests(req: Request, res: Response) {
     const { searchTerm, page, pageSize } = req.body;
     const operation = () => this.service.searchAttendanceRequests(searchTerm, page, pageSize);
-    const successMessage = "Attendance requests retrieved successfully!";
-    const errorMessage = "Error retrieving attendance requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance requests retrieved successfully!" });
   }
 
   async getTotalAttendanceRequests(req: Request, res: Response) {
     const operation = () => this.service.getTotalAttendanceRequests();
-    const successMessage = "Total attendance requests count retrieved successfully!";
-    const errorMessage = "Error retrieving total attendance requests count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Total attendance requests count retrieved successfully!" });
   }
 
   async updateAttendanceRequestStatus(req: Request, res: Response) {
     const { id, status } = req.body;
     const operation = () => this.service.updateAttendanceRequestStatus(id, status);
-    const successMessage = "Attendance request status updated successfully!";
-    const errorMessage = "Error updating attendance request status:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance request status updated successfully!" });
   }
 }
 

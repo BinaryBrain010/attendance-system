@@ -10,7 +10,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.getAllLeaveRequests();
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveRequests(req: Request, res: Response) {
@@ -18,7 +18,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.getLeaveRequests(page, pageSize);
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveRequestsByEmployeeId(req: Request, res: Response) {
@@ -26,7 +26,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.getLeaveRequestsByEmployeeId(employeeId);
     const successMessage = "Leave requests for the employee retrieved successfully!";
     const errorMessage = "Error retrieving leave requests for the employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getDeletedLeaveRequests(req: Request, res: Response) {
@@ -34,7 +34,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.getDeletedLeaveRequests(page, pageSize);
     const successMessage = "Deleted leave requests retrieved successfully!";
     const errorMessage = "Error retrieving deleted leave requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async searchLeaveRequests(req: Request, res: Response) {
@@ -42,14 +42,14 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.searchLeaveRequests(searchTerm, page, pageSize);
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getTotalLeaveRequests(req: Request, res: Response) {
     const operation = () => this.service.getTotalLeaveRequests();
     const successMessage = "Total leave requests count retrieved successfully!";
     const errorMessage = "Error retrieving total leave requests count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createLeaveRequest(req: Request, res: Response) {
@@ -57,7 +57,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.createLeaveRequest(leaveRequestData);
     const successMessage = "Leave request created successfully!";
     const errorMessage = "Error creating leave request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateLeaveRequest(req: Request, res: Response) {
@@ -65,7 +65,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.updateLeaveRequest(id, data);
     const successMessage = "Leave request updated successfully!";
     const errorMessage = "Error updating leave request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteLeaveRequest(req: Request, res: Response) {
@@ -73,7 +73,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.deleteLeaveRequest(id);
     const successMessage = "Leave request deleted successfully!";
     const errorMessage = "Error deleting leave request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreLeaveRequest(req: Request, res: Response) {
@@ -81,7 +81,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.restoreLeaveRequest(requestId);
     const successMessage = "Leave request restored successfully!";
     const errorMessage = "Error restoring leave request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveRequestById(req: Request, res: Response) {
@@ -89,7 +89,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.getLeaveRequestById(requestId);
     const successMessage = "Leave request retrieved successfully!";
     const errorMessage = "Error retrieving leave request:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateLeaveRequestStatus(req: Request, res: Response) {
@@ -97,7 +97,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const operation = () => this.service.updateLeaveRequestStatus(id, status);
     const successMessage = "Leave request status updated successfully!";
     const errorMessage = "Error updating leave request status:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 }
 

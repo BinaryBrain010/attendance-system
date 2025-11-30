@@ -2,25 +2,35 @@ import jwt from "jsonwebtoken";
 import { secretKey } from "../environment/environment";
 import { Request, Response, NextFunction } from "express";
 import BlackListedTokenService from "../modules/rbac/Token/service/token.service";
+import logger from "../core/logger/logger";
 
 const blackListedTokenService = new BlackListedTokenService();
 
 class Authentication {
   public authenticateToken(
     req: Request,
-    res: Response<any, Record<string, any>>,
+    res: Response,
     next: NextFunction
   ): void {
     const token = req.headers.authorization?.split(" ")[1];
     const secret_key = secretKey || "";
+    
     if (!token) {
-      res.status(401).send("Unauthorized");
+      logger.warn("Authentication attempt without token", { path: req.path });
+      res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401 });
       return;
     }
 
-    jwt.verify(token, secret_key, async (err: any, decoded: any) => {
+    jwt.verify(token, secret_key, async (err: jwt.VerifyErrors | null, decoded: jwt.JwtPayload | string | undefined) => {
       if (err) {
-        res.status(403).send("Invalid token");
+        logger.warn("Invalid token provided", { path: req.path, error: err.message });
+        res.status(403).json({ success: false, message: "Invalid token", statusCode: 403 });
+        return;
+      }
+
+      if (!decoded || typeof decoded === 'string') {
+        logger.warn("Token decoded incorrectly", { path: req.path });
+        res.status(403).json({ success: false, message: "Invalid token", statusCode: 403 });
         return;
       }
 
@@ -29,11 +39,12 @@ class Authentication {
       );
 
       if (isBlacklisted) {
-        res.status(401).send("Unauthorized");
+        logger.warn("Blacklisted token used", { path: req.path, userId: decoded.userId });
+        res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401 });
         return;
       }
 
-      (req as any).userId = decoded.userId;
+      (req as Request & { userId?: string }).userId = decoded.userId as string;
       next();
     });
   }

@@ -11,7 +11,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.getAllRoles();
     let successMessage = "Roles retrieved successfully!";
     let errorMessage = "Error retrieving roles:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getRoles(req: Request, res: Response) {
@@ -21,7 +21,7 @@ class RoleController extends BaseController<RoleService> {
       let operation = () => this.service.getRoles(page, pageSize, id);
       let successMessage = "Roles retrieved successfully!";
       let errorMessage = "Error retrieving Roles:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -31,7 +31,7 @@ class RoleController extends BaseController<RoleService> {
       let operation = () => this.service.totalRoles(id);
       let successMessage = "Roles retrieved successfully!";
       let errorMessage = "Error retrieving roles:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -42,7 +42,7 @@ class RoleController extends BaseController<RoleService> {
       let operation = () => this.service.getById(id, userId);
       let successMessage = "Role retrieved successfully!";
       let errorMessage = "Error retrieving role:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -51,7 +51,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.getDetailedRoleById(id);
     let successMessage = "Role retrieved successfully!";
     let errorMessage = "Error retrieving role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getRoleByName(req: Request, res: Response) {
@@ -59,7 +59,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.getByName(name);
     let successMessage = "Role retrieved successfully!";
     let errorMessage = "Error retrieving role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createRole(req: Request, res: Response) {
@@ -67,7 +67,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.createRole(roleData);
     let successMessage = "Role created successfully!";
     let errorMessage = "Error creating role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateRole(req: Request, res: Response) {
@@ -75,7 +75,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.updateRole(id, data);
     let successMessage = "Role updated successfully!";
     let errorMessage = "Error updating role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async changeRole(req: Request, res: Response) {
@@ -84,7 +84,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.changeRole(id, role);
     let successMessage = "Role updated successfully!";
     let errorMessage = "Error updating role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteRole(req: Request, res: Response) {
@@ -92,7 +92,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.deleteRole(id);
     let successMessage = "Role deleted successfully!";
     let errorMessage = "Error deleting role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreRole(req: Request, res: Response) {
@@ -100,7 +100,7 @@ class RoleController extends BaseController<RoleService> {
     let operation = () => this.service.restoreRole(id);
     let successMessage = "Role restored successfully!";
     let errorMessage = "Error restoring role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async searchRoles(req: Request, res: Response) {
@@ -111,7 +111,7 @@ class RoleController extends BaseController<RoleService> {
         this.service.searchRoles(searchTerm, page, pageSize, id);
       let successMessage = "Search results retrieved successfully!";
       let errorMessage = "Error retrieving search results:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 }

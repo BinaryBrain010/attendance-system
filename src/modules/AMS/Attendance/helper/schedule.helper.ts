@@ -10,8 +10,39 @@ import {
   ScheduleStatus,
 } from "@prisma/client";
 import { startOfDay } from "date-fns";
+import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import AttendanceService from "../services/attendnace.service";
 import { getCurrentTimeInPST } from "../../../../helper/date.helper";
+
+// Pakistan timezone constant
+const PAKISTAN_TIMEZONE = 'Asia/Karachi';
+
+// Helper function to check if a date is Sunday in Pakistan timezone
+function isSunday(date: Date): boolean {
+  const pakistanDate = toZonedTime(date, PAKISTAN_TIMEZONE);
+  // getDay() returns 0 for Sunday, 1 for Monday, etc.
+  return pakistanDate.getDay() === 0;
+}
+
+// Helper function to get start of day in Pakistan timezone, then convert to UTC for database query
+function getStartOfDayPakistan(date: Date): Date {
+  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'yyyy'));
+  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'MM')) - 1;
+  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'dd'));
+  const pakistanMidnight = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  pakistanMidnight.setUTCHours(pakistanMidnight.getUTCHours() - 5);
+  return pakistanMidnight;
+}
+
+// Helper function to get end of day in Pakistan timezone, then convert to UTC for database query
+function getEndOfDayPakistan(date: Date): Date {
+  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'yyyy'));
+  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'MM')) - 1;
+  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'dd'));
+  const pakistanEndOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+  pakistanEndOfDay.setUTCHours(pakistanEndOfDay.getUTCHours() - 5);
+  return pakistanEndOfDay;
+}
 
 class AttendanceSchedulerHelper {
   private service: AttendanceScheduleService = new AttendanceScheduleService();
@@ -38,7 +69,7 @@ class AttendanceSchedulerHelper {
 
   private async absentMarking() {
     const now = getCurrentTimeInPST();
-    const todayDate = startOfDay(now); // Start of the day ensures it's for the current day
+    const todayDate = getStartOfDayPakistan(now); // Start of the day in Pakistan timezone
 
     try {
       // Check if the time is between 11:55 PM and 12:00 AM
@@ -56,11 +87,19 @@ class AttendanceSchedulerHelper {
 
           const data = await this.service.getNonMarkedEmployees();
           try {
+            // Check if today is Sunday in Pakistan timezone
+            const isTodaySunday = isSunday(now);
+            const statusToMark = isTodaySunday ? AttendanceStatus.HOLIDAYS : AttendanceStatus.ABSENT;
+            const logMessage = isTodaySunday 
+              ? "Holidays (Sundays) marked successfully!" 
+              : "Absents marked successfully!";
+            const parentType = isTodaySunday ? ScheduleParent.LEAVE : ScheduleParent.ABSENT;
+
             data.forEach(async (employeeId: string) => {
               if (employeeId) {
                 const attendance: Attendance = {
                   employeeId,
-                  status: AttendanceStatus.ABSENT,
+                  status: statusToMark,
                   date: todayDate, // Use today's start of the day
                   createdAt: now, // Keep creation time as now
                 };
@@ -70,8 +109,8 @@ class AttendanceSchedulerHelper {
             });
 
             const scheduleReport: AttendanceScheduler = {
-              log: "Absents marked successfully!",
-              parent: ScheduleParent.ABSENT,
+              log: logMessage,
+              parent: parentType,
               status: ScheduleStatus.SUCCESS,
               employeeIds: data,
               runTime: now,
@@ -81,9 +120,15 @@ class AttendanceSchedulerHelper {
               scheduleReport
             );
           } catch (err: any) {
+            const isTodaySunday = isSunday(now);
+            const logMessage = isTodaySunday 
+              ? "Holidays (Sundays) marking failed!" 
+              : "Absents marking failed!";
+            const parentType = isTodaySunday ? ScheduleParent.LEAVE : ScheduleParent.ABSENT;
+            
             const scheduleReport: AttendanceScheduler = {
-              log: "Absents marking failed!",
-              parent: ScheduleParent.ABSENT,
+              log: logMessage,
+              parent: parentType,
               status: ScheduleStatus.FAIL,
               employeeIds: [],
               runTime: now,
@@ -101,9 +146,15 @@ class AttendanceSchedulerHelper {
         console.log("Skipping because the status is:", absentsMarked);
       }
     } catch (error) {
+      const isTodaySunday = isSunday(now);
+      const logMessage = isTodaySunday 
+        ? "Holidays (Sundays) marking failed!" 
+        : "Absents marking failed!";
+      const parentType = isTodaySunday ? ScheduleParent.LEAVE : ScheduleParent.ABSENT;
+      
       const scheduleReport: AttendanceScheduler = {
-        log: "Absents marking failed!",
-        parent: ScheduleParent.ABSENT,
+        log: logMessage,
+        parent: parentType,
         status: ScheduleStatus.SKIP,
         employeeIds: [],
         runTime: now,
@@ -117,7 +168,7 @@ class AttendanceSchedulerHelper {
 
   private async markNonCheckedOutComments() {
     const now = getCurrentTimeInPST();
-    const todayDate = startOfDay(now);
+    const todayDate = getStartOfDayPakistan(now); // Start of the day in Pakistan timezone
     const hour = now.getHours();
     const minutes = now.getMinutes();
     // Ensure the scheduler runs only between 11:50 PM and 11:55 PM
@@ -155,13 +206,14 @@ class AttendanceSchedulerHelper {
       }
 
       // Update attendance records with comment
+      const todayEnd = getEndOfDayPakistan(now);
       for (const employeeId of nonCheckedOutEmployeeIds) {
         const attendance = await prisma.attendance.findFirst({
           where: {
             employeeId,
             date: {
               gte: todayDate,
-              lte: new Date(todayDate.getTime() + 24 * 60 * 60 * 1000 - 1),
+              lte: todayEnd,
             },
             checkOut: null,
             status: "PRESENT",

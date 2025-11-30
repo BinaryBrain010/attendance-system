@@ -1,25 +1,39 @@
 import { Request, Response } from 'express';
+import { AppError } from '../errors/app.error';
+import { ApiResponse } from '../utils/response.util';
+import logger from '../logger/logger';
 
 abstract class BaseController<T> {
   protected abstract service: T;
 
-  protected async handleRequest(
-    operation: () => Promise<any>,
-    successMessage: string,
-    errorMessage: string,
-    res: Response
+  protected async handleRequest<T>(
+    operation: () => Promise<T>,
+    res: Response,
+    options?: {
+      successMessage?: string;
+      statusCode?: number;
+    }
   ) {
     try {
       const result = await operation();
-      console.log(successMessage);
-      res.status(200).json(result);
+      if (options?.successMessage) {
+        logger.info(options.successMessage);
+      }
+      return ApiResponse.success(res, result, options?.successMessage, options?.statusCode || 200);
     } catch (error) {
-      console.error(errorMessage, error);
-      res.status(500).json({ error: errorMessage });
+      this.handleError(error, res);
     }
-  } 
+  }
 
-  
+  protected handleError(error: unknown, res: Response) {
+    if (error instanceof AppError) {
+      logger.warn(`AppError: ${error.message}`, { statusCode: error.statusCode });
+      return ApiResponse.error(res, error.message, error.statusCode);
+    }
+    
+    logger.error('Unexpected error:', error);
+    return ApiResponse.error(res, 'Internal server error', 500);
+  }
 }
 
 export default BaseController;

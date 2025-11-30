@@ -11,7 +11,7 @@ class UserGroupController extends BaseController<UserGroupService> {
     let operation = () => this.service.getAllUserGroups();
     let successMessage = "User groups retrieved successfully!";
     let errorMessage = "Error retrieving user groups:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getUserGroupById(res: Response, req: Request) {
@@ -21,7 +21,7 @@ class UserGroupController extends BaseController<UserGroupService> {
       let operation = () => this.service.getById(id);
       let successMessage = "User group retrieved successfully!";
       let errorMessage = "Error retrieving user group:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     // }
   }
 
@@ -30,7 +30,7 @@ class UserGroupController extends BaseController<UserGroupService> {
     let operation = () => this.service.getByUserId(id);
     let successMessage = "User group retrieved successfully!";
     let errorMessage = "Error retrieving user group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createUserGroup(req: Request, res: Response) {
@@ -38,7 +38,7 @@ class UserGroupController extends BaseController<UserGroupService> {
     let operation = () => this.service.createUserGroup(userGroupData);
     let successMessage = "User group created successfully!";
     let errorMessage = "Error creating user group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateUserGroup(req: Request, res: Response) {
@@ -46,7 +46,7 @@ class UserGroupController extends BaseController<UserGroupService> {
     let operation = () => this.service.updateUserGroup(id, data);
     let successMessage = "User group updated successfully!";
     let errorMessage = "Error updating user group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteUserGroup(req: Request, res: Response) {
@@ -54,7 +54,7 @@ class UserGroupController extends BaseController<UserGroupService> {
     let operation = () => this.service.deleteUserGroup(id);
     let successMessage = "User group deleted successfully!";
     let errorMessage = "Error deleting user group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreUserGroup(req: Request, res: Response) {
@@ -62,7 +62,7 @@ class UserGroupController extends BaseController<UserGroupService> {
     let operation = () => this.service.restoreUserGroup(id);
     let successMessage = "User group restored successfully!";
     let errorMessage = "Error restoring user group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 }
 

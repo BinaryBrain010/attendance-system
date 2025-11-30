@@ -13,7 +13,7 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.getUserGroup(id);
       const successMessage = "User groups retrieved successfully!";
       const errorMessage = "Error retrieving user groups:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -23,7 +23,7 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.getUserRole(id);
       const successMessage = "User role retrieved successfully!";
       const errorMessage = "Error retrieving user role:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -45,7 +45,7 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.getPermission(id, feature);
       const successMessage = "Role permission retrieved successfully!";
       const errorMessage = "Error retrieving role permission:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -69,7 +69,7 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.checkPermission(id, feature);
       const successMessage = "Permission checked successfully!";
       const errorMessage = "Error checking permission:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -81,7 +81,7 @@ class AccessController extends BaseController<AccessService> {
       const operation = () => this.service.checkPermissions(id, features);
       const successMessage = "Permission checked successfully!";
       const errorMessage = "Error checking permission:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 }

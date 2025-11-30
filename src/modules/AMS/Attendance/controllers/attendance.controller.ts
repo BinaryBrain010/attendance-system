@@ -13,69 +13,52 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async getAllAttendances(req: Request, res: Response) {
     const operation = () => this.service.getAllattendances();
-    const successMessage = "Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getAttendances(req: Request, res: Response) {
     const { page, pageSize } = req.body;
     const operation = () => this.service.getAttendances(page, pageSize);
-    const successMessage = "Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getEmployeeAttendance(req: Request, res: Response) {
     const { employeeId, from, to } = req.body;
     const operation = () =>
       this.service.getEmployeeAttendance(employeeId, from, to);
-    const successMessage = "Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getDated(req: Request, res: Response) {
     const { from, to } = req.body;
     const operation = () => this.service.getDatedAttendance(from, to);
-    const successMessage = "Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getDeletedAttendances(req: Request, res: Response) {
     const { page, pageSize } = req.body;
     const operation = () => this.service.getDeletedAttendances(page, pageSize);
-    const successMessage = "Deleted Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving deleted Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Deleted Attendances retrieved successfully!" });
   }
 
   async searchAttendances(req: Request, res: Response) {
     const { searchTerm, page, pageSize } = req.body;
     const operation = () =>
       this.service.searchAttendance(searchTerm, page, pageSize);
-    const successMessage = "Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async faceAttendance(req: Request, res: Response) {
     const { image } = req.body;
     const operation = () => this.service.faceAttendance(image);
-    const successMessage = "Attendances retrieved successfully!";
-    const errorMessage = "Error retrieving Attendances:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getSpecificTypeAttendances(req: Request, res: Response) {
     const { type, employeeId } = req.body;
     const operation = () =>
       this.service.getSpecifcAttendances(type, employeeId);
-    const successMessage = `Total Attendances count retrieved successfully for type: ${type}!`;
-    const errorMessage = `Error retrieving total Attendances count for type: ${type}:`;
-
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: `Total Attendances count retrieved successfully for type: ${type}!` });
   }
 
   async downloadExcelAttendance(req: Request, res: Response) {
@@ -161,18 +144,14 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async getTotalAttendances(req: Request, res: Response) {
     const operation = () => this.service.getTotalAttendances();
-    const successMessage = "Total Attendances count retrieved successfully!";
-    const errorMessage = "Error retrieving total Attendances count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Total Attendances count retrieved successfully!" });
   }
 
   async createAttendance(req: Request, res: Response) {
     const AttendanceData: Attendance = req.body;
 
     const operation = () => this.service.createAttendance(AttendanceData);
-    const successMessage = "Attendance created successfully!";
-    const errorMessage = "Error creating Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance created successfully!" });
   }
 
   async checkAttendance(req: Request, res: Response) {
@@ -214,33 +193,25 @@ class AttendanceController extends BaseController<AttendanceService> {
   async updateAttendance(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateAttendance(id, data);
-    const successMessage = "Attendance updated successfully!";
-    const errorMessage = "Error updating Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance updated successfully!" });
   }
 
   async deleteAttendance(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendance(id);
-    const successMessage = "Attendance deleted successfully!";
-    const errorMessage = "Error deleting Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance deleted successfully!" });
   }
 
   async getAttendanceById(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.getAttendanceById(id);
-    const successMessage = "Attendance retrieved successfully!";
-    const errorMessage = "Error retrieving Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance retrieved successfully!" });
   }
 
   async restoreAttendance(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.restoreAttendance(id);
-    const successMessage = "Attendance restored successfully!";
-    const errorMessage = "Error restoring Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance restored successfully!" });
   }
 
   async importAttendance(req: Request, res: Response) {
@@ -259,9 +230,7 @@ class AttendanceController extends BaseController<AttendanceService> {
 
     const operation = () =>
       this.service.importAttendance(employeeId, month, file);
-    const successMessage = "Attendance imported successfully!";
-    const errorMessage = "Error importing Attendance:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage: "Attendance imported successfully!" });
   }
 }
 

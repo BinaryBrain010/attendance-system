@@ -11,7 +11,7 @@ class UserRoleController extends BaseController<UserRoleService> {
     let operation = () => this.service.getAllUserRoles();
     let successMessage = "User roles retrieved successfully!";
     let errorMessage = "Error retrieving user roles:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getUserRoleById(req: Request, res: Response) {
@@ -21,7 +21,7 @@ class UserRoleController extends BaseController<UserRoleService> {
       let operation = () => this.service.getById(id);
       let successMessage = "User role retrieved successfully!";
       let errorMessage = "Error retrieving user role:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     // }
   }
 
@@ -32,7 +32,7 @@ class UserRoleController extends BaseController<UserRoleService> {
     let operation = () => this.service.getByUserId(id);
     let successMessage = "User role retrieved successfully!";
     let errorMessage = "Error retrieving user role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createUserRole(req: Request, res: Response) {
@@ -40,7 +40,7 @@ class UserRoleController extends BaseController<UserRoleService> {
     let operation = () => this.service.createUserRole(userRoleData);
     let successMessage = "User role created successfully!";
     let errorMessage = "Error creating user role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateUserRole(req: Request, res: Response) {
@@ -48,7 +48,7 @@ class UserRoleController extends BaseController<UserRoleService> {
     let operation = () => this.service.updateUserRole(id, data);
     let successMessage = "User role updated successfully!";
     let errorMessage = "Error updating user role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteUserRole(req: Request, res: Response) {
@@ -56,7 +56,7 @@ class UserRoleController extends BaseController<UserRoleService> {
     let operation = () => this.service.deleteUserRole(id);
     let successMessage = "User role deleted successfully!";
     let errorMessage = "Error deleting user role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreUserRole(req: Request, res: Response) {
@@ -64,7 +64,7 @@ class UserRoleController extends BaseController<UserRoleService> {
     let operation = () => this.service.restoreUserRole(id);
     let successMessage = "User role restored successfully!";
     let errorMessage = "Error restoring user role:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 }
 

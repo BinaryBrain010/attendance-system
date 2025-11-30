@@ -1,10 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import { AppFeature } from "@prisma/client";
 import { createFeaturePermission } from "../types/access";
-
-const prisma = new PrismaClient({
-  // log: ["query"],
-});
+import { prisma } from "../../../../core/database/prisma.client";
 
 const accessModel = prisma.$extends({
   model: {

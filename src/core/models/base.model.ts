@@ -1,17 +1,15 @@
-import { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { getCurrentTimeInPST } from "../../helper/date.helper";
+import { prisma as basePrisma } from "../database/prisma.client";
 // import { tableNames } from "../static/staticData";
-const basePrisma = new PrismaClient({
-  // log: ["query"],
-});
 
 const prisma = basePrisma.$extends({
   model: {
     $allModels: {
       async gpSoftDelete(this: any, id: string) {
         const existingItem = await this.findUnique({ where: { id } });
-        if (existingItem.isDeleted === null) {
+        if (!existingItem || existingItem.isDeleted === null) {
+          if (!existingItem) return;
           await this.update({
             where: { id },
             data: { isDeleted:new Date() },

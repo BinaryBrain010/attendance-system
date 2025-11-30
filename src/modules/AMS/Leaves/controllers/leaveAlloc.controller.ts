@@ -10,7 +10,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.getAllLeaveAllocations();
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveAllocations(req: Request, res: Response) {
@@ -18,7 +18,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.getLeaveAllocations(page, pageSize);
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveAllocationsByEmployeeId(req: Request, res: Response) {
@@ -26,7 +26,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.getLeaveAllocationsByEmployeeId(employeeId);
     const successMessage = "Leave allocations for the employee retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations for the employee:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getDeletedLeaveAllocations(req: Request, res: Response) {
@@ -34,7 +34,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.getDeletedLeaveAllocations(page, pageSize);
     const successMessage = "Deleted leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving deleted leave allocations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async searchLeaveAllocations(req: Request, res: Response) {
@@ -42,14 +42,14 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.searchLeaveAllocations(searchTerm, page, pageSize);
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getTotalLeaveAllocations(req: Request, res: Response) {
     const operation = () => this.service.getTotalLeaveAllocations();
     const successMessage = "Total leave allocations count retrieved successfully!";
     const errorMessage = "Error retrieving total leave allocations count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createLeaveAllocation(req: Request, res: Response) {
@@ -57,7 +57,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.createLeaveAllocation(leaveAllocData);
     const successMessage = "Leave allocation created successfully!";
     const errorMessage = "Error creating leave allocation:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateLeaveAllocation(req: Request, res: Response) {
@@ -65,7 +65,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.updateLeaveAllocation(id, data);
     const successMessage = "Leave allocation updated successfully!";
     const errorMessage = "Error updating leave allocation:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteLeaveAllocation(req: Request, res: Response) {
@@ -73,7 +73,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.deleteLeaveAllocation(id);
     const successMessage = "Leave allocation deleted successfully!";
     const errorMessage = "Error deleting leave allocation:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreLeaveAllocation(req: Request, res: Response) {
@@ -81,7 +81,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.restoreLeaveAllocation(allocId);
     const successMessage = "Leave allocation restored successfully!";
     const errorMessage = "Error restoring leave allocation:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveAllocationById(req: Request, res: Response) {
@@ -89,7 +89,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.getLeaveAllocationById(allocId);
     const successMessage = "Leave allocation retrieved successfully!";
     const errorMessage = "Error retrieving leave allocation:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveAllocationByEmployeeId(req: Request, res: Response) {
@@ -97,7 +97,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const operation = () => this.service.getLeaveAllocationByEmployeeId(employeeId);
     const successMessage = "Leave allocation retrieved successfully!";
     const errorMessage = "Error retrieving leave allocation:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 }
 

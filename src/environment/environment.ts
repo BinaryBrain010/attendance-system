@@ -1,6 +1,3 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-export const secretKey = process.env.JWT_SECRET as string;
-export const code = process.env.CODE as string;
+// This file is kept for backward compatibility
+// New code should import from env.schema.ts
+export { secretKey, code, environment } from './env.schema';

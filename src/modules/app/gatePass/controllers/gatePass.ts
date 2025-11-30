@@ -13,14 +13,14 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.getAllGatePass();
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getTotal(req: Request, res: Response) {
     const operation = () => this.service.getTotal();
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getGatePass(req: Request, res: Response) {
@@ -28,7 +28,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.getGatePass(page, pageSize);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getDeletedGatePass(req: Request, res: Response) {
@@ -36,7 +36,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.getDeletedGatePass(page, pageSize);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getDatedGatePass(req: Request, res: Response) {
@@ -45,7 +45,7 @@ class GatePassController extends BaseController<GatePassService> {
       this.service.getDateFiltered(page, pageSize, from, to);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getStatusGatePass(req: Request, res: Response) {
@@ -54,14 +54,14 @@ class GatePassController extends BaseController<GatePassService> {
       this.service.getStatusFilterd(page, pageSize, status);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getTotalGatePass(req: Request, res: Response) {
     const operation = () => this.service.getTotalGatePass();
     const successMessage = "Total GatePass count retrieved successfully!";
     const errorMessage = "Error retrieving total GatePass count:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createGatePass(req: Request, res: Response) {
@@ -69,14 +69,14 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.createGatePass(GatePass, GatePassItem);
     const successMessage = "GatePass created successfully!";
     const errorMessage = "Error creating GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async gatePassReport(req: Request, res: Response) {
     const operation = () => this.service.getGatePassesReport();
     const successMessage = "GatePass report created successfully!";
     const errorMessage = "Error creating GatePass report:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async gatePassPDF(req: Request, res: any) {
@@ -111,7 +111,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.updateGatePass(id, GatePass,GatePassItem);
     const successMessage = "GatePass updated successfully!";
     const errorMessage = "Error updating GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteGatePass(req: Request, res: Response) {
@@ -119,7 +119,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.deleteGatePass(id);
     const successMessage = "GatePass deleted successfully!";
     const errorMessage = "Error deleting GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getGatePassById(req: Request, res: Response) {
@@ -127,7 +127,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.getGatePassById(id);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getGatePassByCustomerId(req: Request, res: Response) {
@@ -135,7 +135,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.getGatePassByCustomer(id);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getGatePassByItemId(req: Request, res: Response) {
@@ -143,7 +143,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.getGatePassByItem(id);
     const successMessage = "GatePass retrieved successfully!";
     const errorMessage = "Error retrieving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreGatePass(req: Request, res: Response) {
@@ -151,7 +151,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.restoreGatePass(id);
     const successMessage = "GatePass restored successfully!";
     const errorMessage = "Error restoring GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async approveGatePass(req: Request, res: Response) {
@@ -159,7 +159,7 @@ class GatePassController extends BaseController<GatePassService> {
     const operation = () => this.service.approveGatePass(id);
     const successMessage = "GatePass approved successfully!";
     const errorMessage = "Error approving GatePass:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 }
 

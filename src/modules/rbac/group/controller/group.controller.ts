@@ -12,7 +12,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.getAllGroups();
     let successMessage = "Groups retrieved successfully!";
     let errorMessage = "Error retrieving groups:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getGroups(req: Request, res: Response) {
@@ -22,7 +22,7 @@ class GroupController extends BaseController<GroupService> {
       let operation = () => this.service.getGroups(page, pageSize, id);
       let successMessage = "Groups retrieved successfully!";
       let errorMessage = "Error retrieving Groups:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
   }
 
@@ -31,7 +31,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.getDetailedGroupById(id);
     let successMessage = "Group retrieved successfully!";
     let errorMessage = "Error retrieving Group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getTotalGroups(req: Request, res: Response) {
@@ -40,7 +40,7 @@ class GroupController extends BaseController<GroupService> {
       let operation = () => this.service.totalGroups();
       let successMessage = "Groups retrieved successfully!";
       let errorMessage = "Error retrieving groups:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     // }
   }
 
@@ -49,7 +49,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.createGroup(groupData);
     let successMessage = "Group created successfully!";
     let errorMessage = "Error creating group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateGroup(req: Request, res: Response) {
@@ -57,7 +57,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.updateGroup(id, data);
     let successMessage = "Group updated successfully!";
     let errorMessage = "Error updating group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteGroup(req: Request, res: Response) {
@@ -65,7 +65,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.deleteGroup(id);
     let successMessage = "Group deleted successfully!";
     let errorMessage = "Error deleting group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreGroup(req: Request, res: Response) {
@@ -73,7 +73,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.restoreGroup(id);
     let successMessage = "Group restored successfully!";
     let errorMessage = "Error restoring group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getGroupById(req: Request, res: Response) {
@@ -83,7 +83,7 @@ class GroupController extends BaseController<GroupService> {
       let operation = () => this.service.getById(id);
       let successMessage = "Group retrieved successfully!";
       let errorMessage = "Error retrieving group:";
-      this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     // }
   }
 
@@ -92,7 +92,7 @@ class GroupController extends BaseController<GroupService> {
     let operation = () => this.service.getByName(name);
     let successMessage = "Group retrieved successfully!";
     let errorMessage = "Error retrieving group:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async searchGroups(req: Request, res: Response) {
@@ -103,7 +103,7 @@ class GroupController extends BaseController<GroupService> {
         this.service.searchGroups(searchTerm, page, pageSize);
       let successMessage = "Search results retrieved successfully!";
       let errorMessage = "Error retrieving search results:";
-      await this.handleRequest(operation, successMessage, errorMessage, res);
+      await this.handleRequest(operation, res, { successMessage });
     }
 //   }
 }

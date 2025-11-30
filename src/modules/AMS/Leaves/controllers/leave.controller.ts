@@ -10,7 +10,7 @@ class LeaveController extends BaseController<LeaveService> {
     const operation = () => this.service.getAllLeaveConfigurations();
     const successMessage = "Leave configurations retrieved successfully!";
     const errorMessage = "Error retrieving leave configurations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveConfigurations(req: Request, res: Response) {
@@ -18,7 +18,7 @@ class LeaveController extends BaseController<LeaveService> {
     const operation = () => this.service.getLeaveConfigurations(page, pageSize);
     const successMessage = "Leave configurations retrieved successfully!";
     const errorMessage = "Error retrieving leave configurations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async createLeaveConfiguration(req: Request, res: Response) {
@@ -27,7 +27,7 @@ class LeaveController extends BaseController<LeaveService> {
       this.service.createLeaveConfiguration(leaveConfigData);
     const successMessage = "Leave configuration created successfully!";
     const errorMessage = "Error creating leave configuration:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async updateLeaveConfiguration(req: Request, res: Response) {
@@ -36,7 +36,7 @@ class LeaveController extends BaseController<LeaveService> {
       this.service.updateLeaveConfiguration(id, leaveConfigData);
     const successMessage = "Leave configuration updated successfully!";
     const errorMessage = "Error updating leave configuration:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async deleteLeaveConfiguration(req: Request, res: Response) {
@@ -44,7 +44,7 @@ class LeaveController extends BaseController<LeaveService> {
     const operation = () => this.service.deleteLeaveConfiguration(id);
     const successMessage = "Leave configuration deleted successfully!";
     const errorMessage = "Error deleting leave configuration:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async restoreLeaveConfiguration(req: Request, res: Response) {
@@ -52,7 +52,7 @@ class LeaveController extends BaseController<LeaveService> {
     const operation = () => this.service.restoreLeaveConfiguration(id);
     const successMessage = "Leave configuration restored successfully!";
     const errorMessage = "Error restoring leave configuration:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getLeaveConfigurationById(req: Request, res: Response) {
@@ -61,7 +61,7 @@ class LeaveController extends BaseController<LeaveService> {
       this.service.getLeaveConfigurationById(id);
     const successMessage = "Leave configuration retrieved successfully!";
     const errorMessage = "Error retrieving leave configuration:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getDeletedLeaveConfigurations(req: Request, res: Response) {
@@ -71,7 +71,7 @@ class LeaveController extends BaseController<LeaveService> {
     const successMessage =
       "Deleted leave configurations retrieved successfully!";
     const errorMessage = "Error retrieving deleted leave configurations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async searchLeaveConfigurations(req: Request, res: Response) {
@@ -80,7 +80,7 @@ class LeaveController extends BaseController<LeaveService> {
       this.service.searchLeaveConfigurations(searchTerm, page, pageSize);
     const successMessage = "Leave configurations retrieved successfully!";
     const errorMessage = "Error searching leave configurations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 
   async getTotalLeaveConfigurations(req: Request, res: Response) {
@@ -88,7 +88,7 @@ class LeaveController extends BaseController<LeaveService> {
     const successMessage =
       "Total count of leave configurations retrieved successfully!";
     const errorMessage = "Error retrieving total count of leave configurations:";
-    this.handleRequest(operation, successMessage, errorMessage, res);
+    await this.handleRequest(operation, res, { successMessage });
   }
 }
 

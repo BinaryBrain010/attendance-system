@@ -1,6 +1,8 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
+import compression from "compression";
+import http from "http";
 import CustomerRoutes from "../../modules/app/customer/routes/customer.routes";
 const cookieParser = require("cookie-parser");
 
@@ -23,6 +25,12 @@ import AppFeatureRoutes from "../../modules/rbac/Features/routes/feature.routes"
 import UserRoleRoutes from "../../modules/rbac/user/routes/userRole.routes";
 import FeaturePermissionRoutes from "../../modules/rbac/Features/routes/featurePermission.routes";
 import TokenCleanHelper from '../../helper/schedule.helper';
+import { apiLimiter } from '../../middleware/rateLimiter.middleware';
+import logger from '../logger/logger';
+import { environment } from '../../environment/env.schema';
+import { AppError } from '../errors/app.error';
+import swaggerUi from 'swagger-ui-express';
+import swaggerFactory from '../swagger/swagger.factory';
 
 //AMS
 import AttendanceReqRoutes from "../../modules/AMS/Attendance/routes/attendaceReq.routes";
@@ -33,6 +41,7 @@ import LeaveRoutes from "../../modules/AMS/Leaves/routes/leave.routes";
 
 class App {
   private app: Express;
+  private server: http.Server | null = null;
   private helper: typeof routesHelper;
 
   constructor() {
@@ -47,21 +56,80 @@ class App {
   }
 
   private accessControl() {
-    this.app.use(cors({ origin: true }));
-    this.app.use(cookieParser());
-    this.app.use((req: Request, res: Response, next: NextFunction) => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With, application/json");
-      next();
-    });
+    this.app.use(cors({ 
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (environment.allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          logger.warn(`CORS blocked origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With']
+    }));
     
+    this.app.use(cookieParser());
   }
 
   private initializeMiddleware() {
+    // Enable compression for all responses (gzip/deflate)
+    // This significantly reduces response size and improves latency
+    this.app.use(compression({
+      filter: (req: Request, res: Response) => {
+        // Don't compress responses if request explicitly asks for no compression
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        // Use compression filter function
+        return compression.filter(req, res);
+      },
+      level: 6, // Compression level (1-9, 6 is a good balance)
+      threshold: 1024, // Only compress responses larger than 1KB
+    }));
+
+    // Initialize Swagger
+    this.initializeSwagger();
+    
+    // Apply general API rate limiting
+    this.app.use('/api', apiLimiter);
+    
     this.app.use(bodyParser.json({ limit: '50mb' }));;
     this.app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
     this.app.use('/uploads', express.static(path.join(__dirname, '..','..',  'assets', 'uploads')));
+  }
+
+  private initializeSwagger() {
+    try {
+      const swaggerSpec = swaggerFactory.generateSpec();
+      
+      // Swagger UI options
+      const swaggerUiOptions = {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'Gate Pass API Documentation',
+        swaggerOptions: {
+          persistAuthorization: true,
+          displayRequestDuration: true,
+        },
+      };
+
+      // Swagger JSON endpoint
+      this.app.get('/api-docs.json', (req: Request, res: Response) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(swaggerSpec);
+      });
+
+      // Swagger UI endpoint
+      this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+      
+      logger.info('Swagger documentation available at /api-docs');
+    } catch (error) {
+      logger.error('Failed to initialize Swagger:', error);
+    }
   }
 
   private initializeRoutes(): void {
@@ -81,7 +149,6 @@ class App {
       UserRoleRoutes,
       FeaturePermissionRoutes,
       AccessRoutes,
-      UserGroupRoutes,
       AppFeatureRoutes,
 
       //AMS
@@ -92,13 +159,27 @@ class App {
     ];
     
     const openRoutes: any[] = [AuthRoutes];
-    const nowInPST = new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-    const today = new Date(nowInPST);
+    
+    // Health check endpoint with timezone info
     this.app.get("/", (req: Request, res: Response) => {
-      res.json({ message: `App is running ` ,
-        format:`${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
-        time:`${new Date()}`,
-        PAKTIME:`${today}`});
+      const now = new Date();
+      const pakistanTime = now.toLocaleString("en-US", { 
+        timeZone: "Asia/Karachi",
+        dateStyle: 'full',
+        timeStyle: 'long'
+      });
+      const utcTime = now.toISOString();
+      
+      res.json({ 
+        message: `App is running`,
+        serverTimezone: process.env.TZ || 'Asia/Karachi',
+        systemTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        currentTime: {
+          utc: utcTime,
+          pakistan: pakistanTime,
+          timestamp: now.getTime()
+        }
+      });
     });
 
     this.helper.initializeRoutes(this.app, true, routes);
@@ -109,10 +190,59 @@ class App {
   }
 
   private async startServer(): Promise<void> {
-    const port = process.env.PORT || 3001;
-    this.app.listen(port, () => {
-      console.log(`path:${path.join(__dirname, '..','..',  'assets', 'uploads')}`);
-      console.log(`Server is running on port ${port}`);
+    const port = environment.port;
+    
+    // Set timezone to Pakistan (Asia/Karachi) for the Node.js process
+    process.env.TZ = 'Asia/Karachi';
+    
+    // Create HTTP server with optimized settings
+    this.server = http.createServer(this.app);
+    
+    // Optimize HTTP server for better performance
+    // Enable keep-alive to reuse connections
+    this.server.keepAliveTimeout = 65000; // 65 seconds (slightly longer than default)
+    this.server.headersTimeout = 66000; // Must be > keepAliveTimeout
+    this.server.maxHeadersCount = 2000; // Increase max headers
+    
+    // Handle server errors
+    this.server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.syscall !== 'listen') {
+        throw error;
+      }
+      
+      const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port;
+      
+      switch (error.code) {
+        case 'EACCES':
+          logger.error(`${bind} requires elevated privileges`);
+          process.exit(1);
+          break;
+        case 'EADDRINUSE':
+          logger.error(`${bind} is already in use`);
+          process.exit(1);
+          break;
+        default:
+          throw error;
+      }
+    });
+    
+    this.server.listen(port, () => {
+      logger.info(`Server is running on port ${port}`);
+      logger.info(`Environment: ${environment.nodeEnv}`);
+      logger.info(`Timezone: ${process.env.TZ || 'Asia/Karachi'}`);
+      logger.info(`Uploads path: ${path.join(__dirname, '..','..',  'assets', 'uploads')}`);
+      logger.info(`Compression: Enabled`);
+      logger.info(`Keep-Alive: Enabled (${this.server?.keepAliveTimeout}ms)`);
+    });
+    
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM signal received: closing HTTP server');
+      if (this.server) {
+        this.server.close(() => {
+          logger.info('HTTP server closed');
+        });
+      }
     });
   }
 
@@ -122,8 +252,63 @@ class App {
     res: Response,
     next: NextFunction
   ) {
-    console.error(err.stack);
-    res.status(500).send("Something went wrong!");
+    logger.error('Error occurred:', {
+      message: err.message,
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+    });
+    
+    // Handle CORS errors
+    if (err.message === 'Not allowed by CORS') {
+      return res.status(403).json({
+        success: false,
+        message: 'CORS: Origin not allowed',
+        statusCode: 403
+      });
+    }
+    
+    // Handle known AppError instances
+    if ('statusCode' in err && 'isOperational' in err) {
+      const appError = err as AppError;
+      return res.status(appError.statusCode).json({
+        success: false,
+        message: appError.message,
+        statusCode: appError.statusCode
+      });
+    }
+    
+    // Handle Prisma errors
+    if (err.name === 'PrismaClientKnownRequestError') {
+      const prismaError = err as { code?: string; meta?: unknown };
+      if (prismaError.code === 'P2002') {
+        return res.status(409).json({
+          success: false,
+          message: 'A record with this value already exists',
+          statusCode: 409
+        });
+      }
+      if (prismaError.code === 'P2025') {
+        return res.status(404).json({
+          success: false,
+          message: 'Record not found',
+          statusCode: 404
+        });
+      }
+    }
+    
+    // Default error response
+    const statusCode = (err as { statusCode?: number }).statusCode || 500;
+    const message = environment.nodeEnv === 'production' 
+      ? 'Internal server error' 
+      : err.message;
+    
+    res.status(statusCode).json({
+      success: false,
+      message,
+      ...(environment.nodeEnv !== 'production' && { stack: err.stack }),
+      statusCode
+    });
   }
 }
 

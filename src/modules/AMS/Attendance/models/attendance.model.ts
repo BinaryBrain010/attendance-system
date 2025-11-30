@@ -1,5 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { Attendance } from "../types/Attendance";
 import {
   formatTime,
@@ -8,6 +9,44 @@ import {
 
 import { AttendanceStatus, Employee } from "@prisma/client";
 import { convertToPST } from "../helper/date.helper";
+
+// Pakistan timezone constant
+const PAKISTAN_TIMEZONE = 'Asia/Karachi';
+
+// Helper function to get start of day in Pakistan timezone, then convert to UTC for database query
+function getStartOfDayPakistan(date: Date): Date {
+  // Get the date components in Pakistan timezone
+  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'yyyy'));
+  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'MM')) - 1; // Month is 0-indexed
+  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'dd'));
+  
+  // Create a date object representing 00:00:00 in Pakistan timezone
+  // We create it as if it were UTC, then adjust
+  const pakistanMidnight = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  
+  // Pakistan is UTC+5, so 00:00:00 PKT = 19:00:00 previous day UTC
+  // We need to subtract 5 hours from the UTC representation
+  pakistanMidnight.setUTCHours(pakistanMidnight.getUTCHours() - 5);
+  
+  return pakistanMidnight;
+}
+
+// Helper function to get end of day in Pakistan timezone, then convert to UTC for database query
+function getEndOfDayPakistan(date: Date): Date {
+  // Get the date components in Pakistan timezone
+  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'yyyy'));
+  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'MM')) - 1; // Month is 0-indexed
+  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'dd'));
+  
+  // Create a date object representing 23:59:59.999 in Pakistan timezone
+  const pakistanEndOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+  
+  // Pakistan is UTC+5, so 23:59:59.999 PKT = 18:59:59.999 same day UTC
+  // We need to subtract 5 hours from the UTC representation
+  pakistanEndOfDay.setUTCHours(pakistanEndOfDay.getUTCHours() - 5);
+  
+  return pakistanEndOfDay;
+}
 // import { FaceComparisonService } from "../../Face-api/services/face-api.service";
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -37,11 +76,10 @@ const attendanceModel = prisma.$extends({
         status: AttendanceStatus,
         date?: Date
       ) {
-        // Convert current time to Pakistan Standard Time
-        // const nowInPST = new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+        // Use Pakistan timezone for date filtering
         const targetDate = date ? new Date(date) : new Date();
-        const todayStart = startOfDay(targetDate);
-        const todayEnd = endOfDay(targetDate);
+        const todayStart = getStartOfDayPakistan(targetDate);
+        const todayEnd = getEndOfDayPakistan(targetDate);
 
         const employee: Employee = await prisma.employee.gpFindById(employeeId);
         const existingAttendance: any = await prisma.attendance.findFirst({
@@ -163,94 +201,139 @@ const attendanceModel = prisma.$extends({
       
       // Method to mark attendance
       async markAttendance(attendanceData: Attendance) {
-        // Convert current time to Pakistan Standard Time
-        const nowInPST = new Date().toLocaleString('en-US', {
-          timeZone: 'Asia/Karachi',
-        });
-        const targetDate = attendanceData.date
-          ? new Date(attendanceData.date)
-          : new Date();
-        const todayStart = startOfDay(targetDate);
-        const todayEnd = endOfDay(targetDate);
-      
-        const employee = await prisma.employee.findUnique({
-          where: { id: attendanceData.employeeId },
-        });
-      
-        if (!employee) {
-          return {
-            success: false,
-            message: `Employee with ID ${attendanceData.employeeId} not found`,
-          };
-        }
-      
-        const existingAttendance = await prisma.attendance.findFirst({
-          where: {
-            employeeId: attendanceData.employeeId,
-            date: {
-              gte: todayStart, // Start of today in PST
-              lt: todayEnd, // Start of tomorrow in PST
-            },
-          },
-        });
-      
-        if (existingAttendance) {
-          // If attendance already exists, mark it as a checkout
-          if ((existingAttendance.status === "PRESENT" || existingAttendance.status === "LATE") && existingAttendance.checkIn && !existingAttendance.checkOut) {
-            const updatedAttendance = await prisma.attendance.update({
-              where: { id: existingAttendance.id },
-              data: {
-                checkOut: new Date(), // Checkout time is the current time
-                comment:
-                  attendanceData.comment ||
-                  ''
-              },
-            });
+        // Use database transaction to prevent race conditions
+        return await prisma.$transaction(async (tx) => {
+          // Use Pakistan timezone for date filtering
+          const targetDate = attendanceData.date
+            ? new Date(attendanceData.date)
+            : new Date();
+          const todayStart = getStartOfDayPakistan(targetDate);
+          const todayEnd = getEndOfDayPakistan(targetDate);
+        
+          const employee = await tx.employee.findUnique({
+            where: { id: attendanceData.employeeId },
+          });
+        
+          if (!employee) {
             return {
-              success: true,
-              message: `Check-out marked successfully for ${employee.name} ${employee.surname}!`,
-              data: updatedAttendance,
+              success: false,
+              message: `Employee with ID ${attendanceData.employeeId} not found`,
             };
           }
-      
-          // If checkOut already exists
+        
+          // Normalize the date to start of day in Pakistan timezone for consistent storage
+          // This ensures the date field always represents the day in Pakistan timezone
+          const normalizedDate = getStartOfDayPakistan(targetDate);
+          
+          // Check for existing attendance within the same day (Pakistan timezone)
+          const existingAttendance = await tx.attendance.findFirst({
+            where: {
+              employeeId: attendanceData.employeeId,
+              date: {
+                gte: todayStart,
+                lt: todayEnd,
+              },
+              isDeleted: null, // Only check non-deleted records
+            },
+          });
+        
+          if (existingAttendance) {
+            // If attendance already exists, mark it as a checkout
+            if ((existingAttendance.status === "PRESENT" || existingAttendance.status === "LATE") && existingAttendance.checkIn && !existingAttendance.checkOut) {
+              const updatedAttendance = await tx.attendance.update({
+                where: { id: existingAttendance.id },
+                data: {
+                  checkOut: new Date(), // Checkout time is the current time
+                  comment:
+                    attendanceData.comment ||
+                    existingAttendance.comment ||
+                    ''
+                },
+              });
+              return {
+                success: true,
+                message: `Check-out marked successfully for ${employee.name} ${employee.surname}!`,
+                data: updatedAttendance,
+              };
+            }
+        
+            // If checkOut already exists, update the attendance if needed
+            if (attendanceData.status && attendanceData.status !== existingAttendance.status) {
+              const updatedAttendance = await tx.attendance.update({
+                where: { id: existingAttendance.id },
+                data: {
+                  status: attendanceData.status,
+                  checkIn: attendanceData.checkIn || existingAttendance.checkIn,
+                  checkOut: attendanceData.checkOut || existingAttendance.checkOut,
+                  comment: attendanceData.comment || existingAttendance.comment || '',
+                  location: attendanceData.location || existingAttendance.location,
+                },
+              });
+              return {
+                success: true,
+                message: `Attendance updated successfully for ${employee.name} ${employee.surname}!`,
+                data: updatedAttendance,
+              };
+            }
+        
+            // If checkOut already exists and no changes needed
+            return {
+              success: true,
+              message: `Attendance already marked, including check-out for ${employee.name} ${employee.surname}`,
+              data: existingAttendance,
+            };
+          }
+        
+          // If no existing attendance, proceed to create with normalized date
+          const newAttendance = await tx.attendance.create({
+            data: {
+              ...attendanceData,
+              date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
+              checkIn: attendanceData.checkIn || new Date(),
+              comment: attendanceData.comment || '',
+            },
+          });
+        
           return {
             success: true,
-            message: `Attendance already marked, including check-out for ${employee.name} ${employee.surname}`,
+            message: `Attendance marked successfully for ${employee.name} ${employee.surname}!`,
+            data: newAttendance,
           };
-        }
-      
-        // If no existing attendance, proceed to create
-        const newAttendance = await prisma.attendance.create({
-          data: {
-            ...attendanceData,
-            comment:
-              attendanceData.comment ||
-             ''
-          },
         });
-      
-        return {
-          success: true,
-          message: `Attendance marked successfully for ${employee.name} ${employee.surname}!`,
-          data: newAttendance,
-        };
       },
 
       async gpFindEmployeeAttendance(
         this: any,
         employeeId: string,
-        from: Date,
-        to: Date
+        from: Date | string | null,
+        to: Date | string | null
       ) {
-        // Calculate start and end of today
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        const today = new Date();
+        // Convert input dates to Date objects if they're strings
+        const fromDate = from ? (typeof from === 'string' ? new Date(from) : from) : null;
+        const toDate = to ? (typeof to === 'string' ? new Date(to) : to) : null;
 
-        const todayStart = from ? startOfDay(from) : startOfMonth;
-        const todayEnd = to ? endOfDay(to) : today;
-        // console.log(todayStart, todayEnd);
+        let todayStart: Date;
+        let todayEnd: Date;
+
+        if (fromDate) {
+          // Get start of day in Pakistan timezone for the given date
+          todayStart = getStartOfDayPakistan(fromDate);
+        } else {
+          // If no from date, use start of current month in Pakistan timezone
+          const now = new Date();
+          const nowInPakistan = toZonedTime(now, PAKISTAN_TIMEZONE);
+          const startOfMonth = new Date(nowInPakistan.getFullYear(), nowInPakistan.getMonth(), 1);
+          todayStart = getStartOfDayPakistan(startOfMonth);
+        }
+
+        if (toDate) {
+          // Get end of day in Pakistan timezone for the given date
+          todayEnd = getEndOfDayPakistan(toDate);
+        } else {
+          // If no to date, use end of today in Pakistan timezone
+          const now = new Date();
+          todayEnd = getEndOfDayPakistan(now);
+        }
 
         // Fetch full attendance details with employee data
         // const data = await prisma.$queryRaw`
@@ -307,15 +390,36 @@ ORDER BY
         return data;
       },
 
-      async gpFindDatedMany(this: any, from: Date, to: Date) {
-        // Calculate start and end of today
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        const today = new Date();
+      async gpFindDatedMany(this: any, from: Date | string | null, to: Date | string | null) {
+        // Convert input dates to Date objects if they're strings
+        const fromDate = from ? (typeof from === 'string' ? new Date(from) : from) : null;
+        const toDate = to ? (typeof to === 'string' ? new Date(to) : to) : null;
 
-        const todayStart = from ? startOfDay(from) : from;
-        const todayEnd = to ? endOfDay(to) : today;
-        console.log(todayStart, todayEnd);
+        let todayStart: Date;
+        let todayEnd: Date;
+
+        if (fromDate) {
+          // Get start of day in Pakistan timezone for the given date
+          todayStart = getStartOfDayPakistan(fromDate);
+        } else {
+          // If no from date, use start of current month in Pakistan timezone
+          const now = new Date();
+          const nowInPakistan = toZonedTime(now, PAKISTAN_TIMEZONE);
+          const startOfMonth = new Date(nowInPakistan.getFullYear(), nowInPakistan.getMonth(), 1);
+          todayStart = getStartOfDayPakistan(startOfMonth);
+        }
+
+        if (toDate) {
+          // Get end of day in Pakistan timezone for the given date
+          todayEnd = getEndOfDayPakistan(toDate);
+        } else {
+          // If no to date, use end of today in Pakistan timezone
+          const now = new Date();
+          todayEnd = getEndOfDayPakistan(now);
+        }
+
+        console.log('Date filter - From:', todayStart.toISOString(), 'To:', todayEnd.toISOString());
+        console.log('Date filter (Pakistan time) - From:', formatInTimeZone(todayStart, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), 'To:', formatInTimeZone(todayEnd, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
 
         // Fetch full attendance details with employee data
         const data = await prisma.$queryRaw`
@@ -341,10 +445,13 @@ ORDER BY
         return data;
       },
       async gpFindMany(this: any) {
-        // Calculate start and end of today
-        const todayStart = startOfDay(new Date());
-        const todayEnd = endOfDay(new Date());
-        // console.log(todayStart, todayEnd);
+        // Get current date and calculate start/end of today in Pakistan timezone
+        const now = new Date();
+        const todayStart = getStartOfDayPakistan(now);
+        const todayEnd = getEndOfDayPakistan(now);
+
+        console.log('Today filter (UTC) - From:', todayStart.toISOString(), 'To:', todayEnd.toISOString());
+        console.log('Today filter (Pakistan time) - From:', formatInTimeZone(todayStart, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), 'To:', formatInTimeZone(todayEnd, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
 
         // Fetch full attendance details with employee data
         const data = await prisma.$queryRaw`
@@ -364,7 +471,7 @@ ORDER BY
             AND a."date" >= ${todayStart.toISOString()}::timestamp
             AND a."date" <= ${todayEnd.toISOString()}::timestamp
             ORDER BY 
-    a."date" ASC
+            a."date" ASC
         `;
 
         return data;
