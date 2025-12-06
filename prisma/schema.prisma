@@ -57,6 +57,7 @@ model GatePass {
   location      String
   vehicleNo     String
   storeIncharge String
+  signature     String?
   createdAt     DateTime?
   updatedAt     DateTime?
   isDeleted     DateTime?

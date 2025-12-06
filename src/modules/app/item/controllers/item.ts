@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import itemService from "../services/item.service";
 import { Item } from "../../../../types/schema";
+import { NotFoundError } from "../../../../core/errors/app.error";
 
 class ItemController extends BaseController<itemService> {
   protected service = new itemService();
@@ -89,6 +90,27 @@ class ItemController extends BaseController<itemService> {
     const operation = () => this.service.restoreItem(id);
     const successMessage = "Item restored successfully!";
     const errorMessage = "Error restoring Item:";
+    await this.handleRequest(operation, res, { successMessage });
+  }
+
+  async getBySerialNo(req: Request, res: Response) {
+    const { serialNo } = req.body;
+    if (!serialNo) {
+      return res.status(400).json({
+        success: false,
+        message: "Serial number is required",
+      });
+    }
+    
+    const operation = async () => {
+      const result = await this.service.getBySerialNo(serialNo);
+      if (!result) {
+        throw new NotFoundError("No gate pass found for the provided serial number");
+      }
+      return result;
+    };
+    
+    const successMessage = "Gate pass details retrieved successfully!";
     await this.handleRequest(operation, res, { successMessage });
   }
 }

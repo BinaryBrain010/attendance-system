@@ -259,11 +259,20 @@ class UserController extends BaseController<UserService> {
         await prisma.loggedInUsers.gpCreate(data);
       }
 
-      if (employee) {
-        return res.json({ token,employee});
+      // Get allowed permissions for the user
+      let permissions: string[] = [];
+      try {
+        permissions = await this.accessService.getAllowedFeaturesForUser(user.id || "");
+      } catch (error) {
+        console.error("Error fetching user permissions during login:", error);
+        // Continue with empty permissions array if there's an error
       }
 
-      return res.json({ token });
+      if (employee) {
+        return res.json({ token, employee, permissions });
+      }
+
+      return res.json({ token, permissions });
     } else {
       return res
         .status(401)

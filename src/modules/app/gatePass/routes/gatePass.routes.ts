@@ -348,6 +348,11 @@ class GatePassRoutes {
      *               id:
      *                 type: string
      *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *                 description: Gate pass ID
+     *               signature:
+     *                 type: string
+     *                 example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+     *                 description: Base64 encoded signature image (optional)
      *     responses:
      *       200:
      *         description: Gate pass approved successfully

@@ -9,6 +9,7 @@ const cookieParser = require("cookie-parser");
 import GatePassRoutes from "../../modules/app/gatePass/routes/gatePass.routes";
 import GatePassItemRoutes from "../../modules/app/gatePassItem/routes/gatePassItem.routes";
 import ItemRoutes from "../../modules/app/item/routes/item.routes";
+import StatsRoutes from "../../modules/app/stats/routes/stats.routes";
 import AuthRoutes from "../../Auth/routes/auth.routes";
 
 import path from "path";
@@ -24,6 +25,7 @@ import UserGroupRoutes from "../../modules/rbac/group/routes/userGroup.routes";
 import AppFeatureRoutes from "../../modules/rbac/Features/routes/feature.routes";
 import UserRoleRoutes from "../../modules/rbac/user/routes/userRole.routes";
 import FeaturePermissionRoutes from "../../modules/rbac/Features/routes/featurePermission.routes";
+import WebhookRoutes from "../../modules/rbac/Access/routes/webhook.routes";
 import TokenCleanHelper from '../../helper/schedule.helper';
 import { apiLimiter } from '../../middleware/rateLimiter.middleware';
 import logger from '../logger/logger';
@@ -139,6 +141,7 @@ class App {
       GatePassRoutes,
       GatePassItemRoutes,
       ItemRoutes,
+      StatsRoutes,
 
       //Rbac
       GroupRoutes,
@@ -158,7 +161,7 @@ class App {
       AttendanceRoutes
     ];
     
-    const openRoutes: any[] = [AuthRoutes];
+    const openRoutes: any[] = [AuthRoutes, WebhookRoutes];
     
     // Health check endpoint with timezone info
     this.app.get("/", (req: Request, res: Response) => {

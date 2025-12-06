@@ -364,6 +364,54 @@ class ItemRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/restore', this.controller.restoreItem.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /item/getBySerialNo:
+     *   post:
+     *     summary: Get gate pass and product details by serial number
+     *     tags: [Items]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - serialNo
+     *             properties:
+     *               serialNo:
+     *                 type: string
+     *                 example: "SN123456"
+     *                 description: Serial number to search for
+     *     responses:
+     *       200:
+     *         description: Gate pass and product details retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         description: No gate pass found for the provided serial number
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: false
+     *                 message:
+     *                   type: string
+     *                   example: "No gate pass found for the provided serial number"
+     */
+    this.router.post('/getBySerialNo', this.controller.getBySerialNo.bind(this.controller));
   }
 
   public getRouter(): Router {

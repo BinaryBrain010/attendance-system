@@ -265,6 +265,7 @@ AND g.status = ${status};
       g.location,
       g."vehicleNo",
       g."storeIncharge",
+      g.signature,
       (
           SELECT json_agg(
               json_build_object(
@@ -308,6 +309,7 @@ AND g.status = ${status};
     g.location,
     g."vehicleNo",
     g."storeIncharge",
+    g.signature,
     (
         SELECT json_agg(
             json_build_object(
@@ -348,6 +350,7 @@ WHERE
     g.location,
     g."vehicleNo",
     g."storeIncharge",
+    g.signature,
     COALESCE(
         (
             SELECT json_agg(
@@ -431,7 +434,7 @@ WHERE
           throw error;
         }
       },
-      async gpApprovePass(id: string) {
+      async gpApprovePass(id: string, signature?: string | null) {
         try {
             const gatePassItems = await prisma.gatePassItem.findMany({
                 where: { gatePassId: id },
@@ -483,10 +486,15 @@ WHERE
                 }
             }
     
-            // Update gate pass status after all items have been processed
+            // Update gate pass status and signature after all items have been processed
+            const updateData: { status: Status; signature?: string | null } = { status: Status.APPROVED };
+            if (signature !== undefined) {
+                updateData.signature = signature;
+            }
+            
             await prisma.gatePass.update({
                 where: { id },
-                data: { status: "approved" },
+                data: updateData,
             });
     
             return {

@@ -29,6 +29,7 @@ export interface Customer {
     location: string;
     vehicleNo: string;
     storeIncharge: string;
+    signature?: string | null;
     createdAt?: Date | null;
     updatedAt?: Date | null;
     isDeleted?: Date | null;

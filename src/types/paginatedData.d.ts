@@ -23,5 +23,6 @@ export type DetailedGatePass = {
     location: string;
     vehicleNo: string;
     storeIncharge: string;
+    signature: string | null;
     items: Item[];
 };

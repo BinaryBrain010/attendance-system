@@ -50,13 +50,32 @@ class AuthRoutes {
      *         content:
      *           application/json:
      *             schema:
-     *               $ref: '#/components/schemas/Success'
+     *               type: object
+     *               properties:
+     *                 token:
+     *                   type: string
+     *                   description: JWT authentication token
+     *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+     *                 permissions:
+     *                   type: array
+     *                   items:
+     *                     type: string
+     *                   description: Array of allowed feature permissions for the user
+     *                   example: ["user.create.*", "user.read.*", "gatePass.approve.*"]
+     *                 employee:
+     *                   type: object
+     *                   description: Employee data (only present for Attendance App platform)
+     *                   nullable: true
      *       401:
-     *         description: Invalid credentials
+     *         description: Invalid credentials or insufficient permissions
      *         content:
      *           application/json:
      *             schema:
-     *               $ref: '#/components/schemas/Error'
+     *               type: object
+     *               properties:
+     *                 message:
+     *                   type: string
+     *                   example: "Invalid username or password"
      *       429:
      *         description: Too many login attempts
      *         content:

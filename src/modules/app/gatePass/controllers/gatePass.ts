@@ -84,22 +84,20 @@ class GatePassController extends BaseController<GatePassService> {
 
     try {
       const data: DetailedGatePass = await this.service.getGatePassById(id);
-      const pdfDoc = this.pdfUtility.generateGatePassPDF(data);
+      const pdfBuffer = await this.pdfUtility.generateGatePassPDF(data);
 
-      pdfDoc.getBuffer((buffer: Buffer) => {
-        if (buffer) {
-          res.writeHead(200, {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename=${encodeURIComponent(
-              data.customername
-            )}.pdf`,
-            "Content-Length": buffer.length,
-          });
-          res.end(buffer);
-        } else {
-          res.status(500).json({ error: "Error generating PDF buffer" });
-        }
-      });
+      if (pdfBuffer) {
+        res.writeHead(200, {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename=${encodeURIComponent(
+            data.customername
+          )}.pdf`,
+          "Content-Length": pdfBuffer.length,
+        });
+        res.end(pdfBuffer);
+      } else {
+        res.status(500).json({ error: "Error generating PDF buffer" });
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -155,8 +153,8 @@ class GatePassController extends BaseController<GatePassService> {
   }
 
   async approveGatePass(req: Request, res: Response) {
-    const { id } = req.body;
-    const operation = () => this.service.approveGatePass(id);
+    const { id, signature } = req.body;
+    const operation = () => this.service.approveGatePass(id, signature);
     const successMessage = "GatePass approved successfully!";
     const errorMessage = "Error approving GatePass:";
     await this.handleRequest(operation, res, { successMessage });

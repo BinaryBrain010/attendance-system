@@ -1,6 +1,6 @@
 import ItemModel from "../models/item.model";
 import { Item } from "../../../../types/schema";
-import { paginatedData } from "../../../../types/paginatedData";
+import { paginatedData, DetailedGatePass } from "../../../../types/paginatedData";
 
 class ItemService {
   async getAllItem(): Promise<Item[]> {
@@ -50,6 +50,10 @@ class ItemService {
   ): Promise<paginatedData> {
     const columns: string[] = ["name", "description"];
     return await ItemModel.item.gpSearch(searchTerm, columns, page, pageSize);
+  }
+
+  async getBySerialNo(serialNo: string): Promise<DetailedGatePass | null> {
+    return await ItemModel.item.findBySerialNo(serialNo);
   }
 }
 

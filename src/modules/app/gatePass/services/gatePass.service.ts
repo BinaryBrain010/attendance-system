@@ -61,8 +61,8 @@ class GatePassService {
     return await gatePassModel.gatePass.gpCount();
   }
 
-  async approveGatePass(GatePassId: string) {
-   return await gatePassModel.gatePass.gpApprovePass(GatePassId);
+  async approveGatePass(GatePassId: string, signature?: string | null) {
+   return await gatePassModel.gatePass.gpApprovePass(GatePassId, signature);
   }
 
   async getTotalGatePass(): Promise<number> {

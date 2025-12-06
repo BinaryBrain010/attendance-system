@@ -11,11 +11,6 @@ export const fonts = {
         italics: 'ARIALI.TTF',
         bolditalics: 'ARIALBI.TTF'
     },
-    Roboto: {
-        normal: 'Roboto-Regular.ttf',
-        bold: 'Roboto-Bold.ttf',
-        italics: 'Roboto-Italic.ttf',
-    },
     Helvetica: {
         normal: 'Helvetica',
         bold: 'Helvetica-Bold',
