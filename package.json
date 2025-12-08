@@ -11,6 +11,8 @@
     "start-server": "node server.js",
     "seed": "node seeder.js",
     "force-seed": "node seeder.js --force",
+    "update-employee-codes": "ts-node updateEmployeeCodes.ts",
+    "preview-employee-codes": "ts-node updateEmployeeCodes.ts --preview",
     "tsc": "tsc -w"
   },
   "author": "ahad",
