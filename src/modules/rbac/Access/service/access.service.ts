@@ -1,5 +1,6 @@
 import accessModel from "../models/access.model";
 import featurePermissionModel from "../../Features/models/featurePermission.model";
+import featureModel from "../../Features/models/feature.model";
 import { ParentType } from "@prisma/client";
 
 class AccessService {
@@ -25,10 +26,10 @@ class AccessService {
 
   async getAllowedFeaturesForUser(userId: string): Promise<string[]> {
     try {
-      // Special admin user - return all features (or handle separately)
+      // God mode user - return all features
       if (userId === "58c55d6a-910c-46f8-a422-4604bea6cd15") {
-        // For admin, you might want to return all features or a special marker
-        // For now, we'll still aggregate permissions normally
+        const allFeatures = await featureModel.appFeature.gpFindMany();
+        return allFeatures.map((feature) => feature.name).sort();
       }
 
       const allowedFeaturesSet = new Set<string>();

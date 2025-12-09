@@ -53,23 +53,54 @@ class EmployeeRoutes {
      * @swagger
      * /employee/get:
      *   get:
-     *     summary: Get all employees
+     *     summary: Get all employees with pagination, sorting, and filtering
      *     tags: [Employees]
      *     security:
      *       - bearerAuth: []
      *     parameters:
      *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           default: 1
+     *         description: Page number for pagination
+     *       - in: query
+     *         name: pageSize
+     *         schema:
+     *           type: integer
+     *           default: 10
+     *         description: Number of items per page
+     *       - in: query
+     *         name: sortBy
+     *         schema:
+     *           type: string
+     *           enum: [name, surname, code, designation, department, createdAt, updatedAt, joiningDate]
+     *           default: createdAt
+     *         description: Field to sort by
+     *       - in: query
+     *         name: sortOrder
+     *         schema:
+     *           type: string
+     *           enum: [asc, desc]
+     *           default: desc
+     *         description: Sort order (ascending or descending)
+     *       - in: query
      *         name: filter
      *         schema:
      *           type: string
-     *         description: Optional filter parameter
+     *         description: Optional filter parameter for status (e.g., "RESIGNED", "ACTIVE")
+     *       - in: query
+     *         name: search
+     *         schema:
+     *           type: string
+     *         description: Optional search term to filter by name, surname, code, designation, or department
      *     responses:
      *       200:
      *         description: Employees retrieved successfully
      *         content:
      *           application/json:
      *             schema:
-     *               $ref: '#/components/schemas/Success'
+     *               $ref: '#/components/schemas/PaginatedResponse'
      *       401:
      *         $ref: '#/components/responses/401'
      */

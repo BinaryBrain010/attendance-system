@@ -276,6 +276,102 @@ const employeeModel = prisma.$extends({
       async gpFindMany(this: any, args?: any) {
         return await this.findMany(args);
       },
+
+      async gpPgFindManyWithSortAndFilter(
+        this: any,
+        page: number,
+        pageSize: number,
+        sortBy: string,
+        sortOrder: 'asc' | 'desc',
+        filter?: string,
+        search?: string
+      ) {
+        const skip = (page - 1) * pageSize;
+        
+        // Build where clause
+        const where: any = {
+          isDeleted: null,
+        };
+
+        // Add status filter if provided
+        if (filter) {
+          where.status = filter;
+        }
+
+        // Add search filter if provided
+        if (search) {
+          where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { surname: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search, mode: 'insensitive' } },
+            { designation: { contains: search, mode: 'insensitive' } },
+            { department: { contains: search, mode: 'insensitive' } },
+          ];
+        }
+
+        // Validate and set sortBy field
+        const validSortFields = [
+          'name',
+          'surname',
+          'code',
+          'designation',
+          'department',
+          'createdAt',
+          'updatedAt',
+          'joiningDate',
+          'status',
+        ];
+        const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+        const order = sortOrder === 'asc' ? 'asc' : 'desc';
+
+        // Build orderBy clause
+        const orderBy: any = {};
+        orderBy[sortField] = order;
+
+        // Select clause to exclude faceDescriptor and other unnecessary fields
+        const select = {
+          id: true,
+          name: true,
+          surname: true,
+          address: true,
+          joiningDate: true,
+          bloodGroup: true,
+          dob: true,
+          cnic: true,
+          contactNo: true,
+          emergencyContactNo: true,
+          designation: true,
+          department: true,
+          martialStatus: true,
+          noOfChildrens: true,
+          filePaths: true,
+          notes: true,
+          company: true,
+          image: true,
+          code: true,
+          status: true,
+          resignationDate: true,
+          createdAt: true,
+          updatedAt: true,
+          // faceDescriptor is excluded by not including it in select
+        };
+
+        // Execute query with pagination, sorting, and filtering
+        const [data, totalSize] = await Promise.all([
+          this.findMany({
+            where,
+            select,
+            take: pageSize,
+            skip: skip,
+            orderBy,
+          }),
+          this.count({
+            where,
+          }),
+        ]);
+
+        return { data, totalSize };
+      },
     },
   },
 });

@@ -262,12 +262,15 @@ class UserController extends BaseController<UserService> {
       // Get allowed permissions for the user
       let permissions: string[] = [];
       try {
-        permissions = await this.accessService.getAllowedFeaturesForUser(user.id || "");
+        const userPermissions = await this.accessService.getAllowedFeaturesForUser(user.id || "");
+        permissions = Array.isArray(userPermissions) ? userPermissions : [];
       } catch (error) {
         console.error("Error fetching user permissions during login:", error);
         // Continue with empty permissions array if there's an error
+        permissions = [];
       }
 
+      // Always include permissions array in response
       if (employee) {
         return res.json({ token, employee, permissions });
       }

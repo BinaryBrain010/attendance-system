@@ -12,6 +12,24 @@ class EmployeeService {
     return await employeeModel.employee.gpPgFindMany(page, pageSize);
   }
 
+  async getEmployeesWithPagination(
+    page: number,
+    pageSize: number,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+    filter?: string,
+    search?: string
+  ): Promise<paginatedData> {
+    return await employeeModel.employee.gpPgFindManyWithSortAndFilter(
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+      filter,
+      search
+    );
+  }
+
   async getFilterEmployees(): Promise<any[]> {
     return await employeeModel.employee.gpFindFilterMany();
   }

@@ -11,16 +11,22 @@ class EmployeeController extends BaseController<EmployeeService> {
   private excelUtility = new EmployeeExcelUtility();
 
   async getAllEmployees(req: Request, res: Response) {
-    const param = req.query.filter as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+    const filter = req.query.filter as string;
+    const search = req.query.search as string;
 
     const operation = async () => {
-      if (param) {
-        console.log(`Query parameter provided: ${param}`);
-        return await this.service.getFilterEmployees();
-      } else {
-        console.log("No query parameter provided.");
-        return await this.service.getAllEmployees();
-      }
+      return await this.service.getEmployeesWithPagination(
+        page,
+        pageSize,
+        sortBy,
+        sortOrder,
+        filter,
+        search
+      );
     };
 
     await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
