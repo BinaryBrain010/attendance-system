@@ -253,9 +253,9 @@ export const features: AppFeature[] = [
 { name: "leaveConfig.update.*", parentFeatureId: "leaveConfig.*", label: "Update" },
 { name: "leaveConfig.restore.*", parentFeatureId: "leaveConfig.*", label: "Restore" },
 
-// faceRegistration
-{ name: "faceRegistration.*", label: "Face Registration (Nav)" },
-{ name: "faceRegistration.extract.*", parentFeatureId: "faceRegistration.*", label: "Extract Face Descripter" },
+// faceRegistration - Hidden for now
+// { name: "faceRegistration.*", label: "Face Registration (Nav)" },
+// { name: "faceRegistration.extract.*", parentFeatureId: "faceRegistration.*", label: "Extract Face Descripter" },
 
 
 
