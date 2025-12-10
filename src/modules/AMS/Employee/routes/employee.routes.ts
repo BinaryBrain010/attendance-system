@@ -88,7 +88,7 @@ class EmployeeRoutes {
      *         name: filter
      *         schema:
      *           type: string
-     *         description: Optional filter parameter for status (e.g., "RESIGNED", "ACTIVE")
+     *         description: Optional filter parameter. If set to "true", returns only id, code, and name fields. Otherwise, filters by status (e.g., "RESIGNED", "ACTIVE")
      *       - in: query
      *         name: search
      *         schema:

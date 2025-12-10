@@ -293,8 +293,11 @@ const employeeModel = prisma.$extends({
           isDeleted: null,
         };
 
-        // Add status filter if provided
-        if (filter) {
+        // Check if filter is "true" for limited field selection
+        const isFilterMode = filter === "true";
+
+        // Add status filter if provided and not in filter mode
+        if (filter && !isFilterMode) {
           where.status = filter;
         }
 
@@ -328,33 +331,40 @@ const employeeModel = prisma.$extends({
         const orderBy: any = {};
         orderBy[sortField] = order;
 
-        // Select clause to exclude faceDescriptor and other unnecessary fields
-        const select = {
-          id: true,
-          name: true,
-          surname: true,
-          address: true,
-          joiningDate: true,
-          bloodGroup: true,
-          dob: true,
-          cnic: true,
-          contactNo: true,
-          emergencyContactNo: true,
-          designation: true,
-          department: true,
-          martialStatus: true,
-          noOfChildrens: true,
-          filePaths: true,
-          notes: true,
-          company: true,
-          image: true,
-          code: true,
-          status: true,
-          resignationDate: true,
-          createdAt: true,
-          updatedAt: true,
-          // faceDescriptor is excluded by not including it in select
-        };
+        // Select clause - limited fields if filter=true, otherwise full fields
+        const select = isFilterMode
+          ? {
+              id: true,
+              name: true,
+              surname: true,
+              code: true,
+            }
+          : {
+              id: true,
+              name: true,
+              surname: true,
+              address: true,
+              joiningDate: true,
+              bloodGroup: true,
+              dob: true,
+              cnic: true,
+              contactNo: true,
+              emergencyContactNo: true,
+              designation: true,
+              department: true,
+              martialStatus: true,
+              noOfChildrens: true,
+              filePaths: true,
+              notes: true,
+              company: true,
+              image: true,
+              code: true,
+              status: true,
+              resignationDate: true,
+              createdAt: true,
+              updatedAt: true,
+              // faceDescriptor is excluded by not including it in select
+            };
 
         // Execute query with pagination, sorting, and filtering
         const [data, totalSize] = await Promise.all([
