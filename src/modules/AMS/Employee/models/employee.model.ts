@@ -1,7 +1,14 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, Company } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
 import path from "path";
 import fs from "fs";
+
+// Company prefix mapping for employee codes
+const companyPrefixMap: Record<Company, string> = {
+  SOLARMAX: "SOL",
+  POWERHIGHWAY: "PWH",
+  OKASHASMART: "OK",
+};
 
 const employeeModel = prisma.$extends({
   model: {
@@ -256,22 +263,102 @@ const employeeModel = prisma.$extends({
       },
 
       async gpCreate(data: any) {
-        // console.log(data);
-        const { userId, ...remainingData } = data;
-        // console.log(remainingData);
-        const createdData = await prisma.employee.gpCreate(remainingData);
+        const { userId, code, ...remainingData } = data;
+        
+        // If code is not provided, generate it automatically
+        let employeeCode = code;
+        let needsCodeGeneration = false;
+        
+        if (!employeeCode && remainingData.company && remainingData.joiningDate) {
+          needsCodeGeneration = true;
+          // Use temporary code to avoid unique constraint issues
+          // We'll update it with the correct code after creation
+          employeeCode = `TEMP-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        }
+
+        // Create employee with provided or temporary code
+        const employeeData = {
+          ...remainingData,
+          code: employeeCode,
+        };
+        
+        const createdData = await prisma.employee.gpCreate(employeeData);
+
+        // If code needs to be auto-generated, calculate and update it
+        if (needsCodeGeneration && remainingData.company && remainingData.joiningDate) {
+          const finalCode = await this.generateEmployeeCode(
+            remainingData.company,
+            remainingData.joiningDate,
+            createdData[0].id
+          );
+          
+          // Update with final code
+          await prisma.employee.update({
+            where: { id: createdData[0].id },
+            data: { code: finalCode },
+          });
+          createdData[0].code = finalCode;
+        }
 
         if (userId) {
           try {
-            const data = prisma.user.gpFindById(userId);
-            const newUserData = { ...data, employeeId: createdData[0].id };
-            prisma.user.gpUpdate(userId, newUserData);
+            const userData = await prisma.user.gpFindById(userId);
+            const newUserData = { ...userData, employeeId: createdData[0].id };
+            await prisma.user.gpUpdate(userId, newUserData);
           } catch (err: any) {
             console.log(userId);
           }
         }
 
         return createdData;
+      },
+
+      /**
+       * Generate employee code based on company and joining date sequence
+       * Follows the same convention as updateEmployeeCodes.ts
+       * Sequence numbers are assigned globally based on joining date across all companies
+       */
+      async generateEmployeeCode(
+        company: Company,
+        joiningDate: Date,
+        employeeId: string
+      ): Promise<string> {
+        // Get all employees ordered by joining date (oldest first), then by id
+        // This includes the newly created employee
+        const employees = await prisma.employee.findMany({
+          where: {
+            isDeleted: null,
+          },
+          orderBy: [
+            {
+              joiningDate: "asc",
+            },
+            {
+              id: "asc",
+            },
+          ],
+          select: {
+            id: true,
+            joiningDate: true,
+          },
+        });
+
+        // Find the position of this employee in the sorted list
+        let position = 0;
+        for (let i = 0; i < employees.length; i++) {
+          if (employees[i].id === employeeId) {
+            position = i + 1;
+            break;
+          }
+        }
+
+        // If employee not found (shouldn't happen), use length + 1
+        if (position === 0) {
+          position = employees.length;
+        }
+
+        const prefix = companyPrefixMap[company];
+        return `${prefix}-${position}`;
       },
       async gpFindMany(this: any, args?: any) {
         return await this.findMany(args);
