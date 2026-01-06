@@ -37,6 +37,28 @@ class UserController extends BaseController<UserService> {
     }
   }
 
+  async getAllUsersWithFilters(req: Request, res: Response) {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+    const filter = req.query.filter as string;
+    const search = req.query.search as string;
+
+    const operation = async () => {
+      return await this.service.getUsersWithPagination(
+        page,
+        pageSize,
+        sortBy,
+        sortOrder,
+        filter,
+        search
+      );
+    };
+
+    await this.handleRequest(operation, res, { successMessage: "Users retrieved successfully!" });
+  }
+
   async totalUsers(req: Request, res: Response) {
     const id = AuthHelper.getUserIdFromHeader(req);
     if (id) {

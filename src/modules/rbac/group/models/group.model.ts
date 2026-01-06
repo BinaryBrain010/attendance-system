@@ -162,6 +162,75 @@ const groupModel = prisma.$extends({
   
           return Group[0];
         },
+
+        async gpPgFindManyWithSortAndFilter(
+          this: any,
+          page: number,
+          pageSize: number,
+          sortBy: string,
+          sortOrder: 'asc' | 'desc',
+          filter?: string,
+          search?: string
+        ) {
+          const skip = (page - 1) * pageSize;
+          
+          // Build where clause
+          const where: any = {
+            isDeleted: null,
+          };
+
+          // Check if filter is "true" for limited field selection
+          const isFilterMode = filter === "true";
+
+          // Add search filter if provided
+          if (search) {
+            where.OR = [
+              { name: { contains: search, mode: 'insensitive' } },
+            ];
+          }
+
+          // Validate and set sortBy field
+          const validSortFields = [
+            'name',
+            'createdAt',
+            'updatedAt',
+          ];
+          const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+          const order = sortOrder === 'asc' ? 'asc' : 'desc';
+
+          // Build orderBy clause
+          const orderBy: any = {};
+          orderBy[sortField] = order;
+
+          // Select clause - limited fields if filter=true, otherwise full fields
+          const select = isFilterMode
+            ? {
+                id: true,
+                name: true,
+              }
+            : {
+                id: true,
+                name: true,
+                createdAt: true,
+                updatedAt: true,
+              };
+
+          // Execute query with pagination, sorting, and filtering
+          const [data, totalSize] = await Promise.all([
+            this.findMany({
+              where,
+              select,
+              take: pageSize,
+              skip: skip,
+              orderBy,
+            }),
+            this.count({
+              where,
+            }),
+          ]);
+
+          return { data, totalSize };
+        },
       },
     },
   });

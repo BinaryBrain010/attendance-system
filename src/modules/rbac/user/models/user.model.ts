@@ -408,6 +408,80 @@ WHERE "User".id = ${id}
         return { data, totalSize };
       },
 
+      async gpPgFindManyWithSortAndFilter(
+        this: any,
+        page: number,
+        pageSize: number,
+        sortBy: string,
+        sortOrder: 'asc' | 'desc',
+        filter?: string,
+        search?: string
+      ) {
+        const skip = (page - 1) * pageSize;
+        const excludedId = "58c55d6a-910c-46f8-a422-4604bea6cd15";
+        
+        // Build where clause
+        const where: any = {
+          isDeleted: null,
+          id: {
+            not: excludedId,
+          },
+        };
+
+        // Check if filter is "true" for limited field selection
+        const isFilterMode = filter === "true";
+
+        // Add search filter if provided
+        if (search) {
+          where.OR = [
+            { username: { contains: search, mode: 'insensitive' } },
+          ];
+        }
+
+        // Validate and set sortBy field
+        const validSortFields = [
+          'username',
+          'createdAt',
+          'updatedAt',
+        ];
+        const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+        const order = sortOrder === 'asc' ? 'asc' : 'desc';
+
+        // Build orderBy clause
+        const orderBy: any = {};
+        orderBy[sortField] = order;
+
+        // Select clause - limited fields if filter=true, otherwise full fields
+        const select = isFilterMode
+          ? {
+              id: true,
+              username: true,
+            }
+          : {
+              id: true,
+              username: true,
+              createdAt: true,
+              updatedAt: true,
+              employeeId: true,
+            };
+
+        // Execute query with pagination, sorting, and filtering
+        const [data, totalSize] = await Promise.all([
+          this.findMany({
+            where,
+            select,
+            take: pageSize,
+            skip: skip,
+            orderBy,
+          }),
+          this.count({
+            where,
+          }),
+        ]);
+
+        return { data, totalSize };
+      },
+
       async gpNonAssociatedUsers() {
         const excludedId = "58c55d6a-910c-46f8-a422-4604bea6cd15";
         const data = prisma.user.findMany({

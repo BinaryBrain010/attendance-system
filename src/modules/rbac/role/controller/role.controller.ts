@@ -14,6 +14,28 @@ class RoleController extends BaseController<RoleService> {
     await this.handleRequest(operation, res, { successMessage });
   }
 
+  async getAllRolesWithFilters(req: Request, res: Response) {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
+    const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+    const filter = req.query.filter as string;
+    const search = req.query.search as string;
+
+    const operation = async () => {
+      return await this.service.getRolesWithPagination(
+        page,
+        pageSize,
+        sortBy,
+        sortOrder,
+        filter,
+        search
+      );
+    };
+
+    await this.handleRequest(operation, res, { successMessage: "Roles retrieved successfully!" });
+  }
+
   async getRoles(req: Request, res: Response) {
     let id = AuthHelper.getUserIdFromHeader(req);
     if (id) {

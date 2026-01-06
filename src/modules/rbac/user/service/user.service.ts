@@ -20,6 +20,24 @@ return await userModel.user.gpNonAssociatedUsers();
     return await userModel.user.gpPgFindMany(page, pageSize, userId);
   }
 
+  async getUsersWithPagination(
+    page: number,
+    pageSize: number,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+    filter?: string,
+    search?: string
+  ): Promise<paginatedData> {
+    return await userModel.user.gpPgFindManyWithSortAndFilter(
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+      filter,
+      search
+    );
+  }
+
   async createUsers(userData: UserData): Promise<UserData | UserData[]> {
     return await userModel.user.gpCreate(userData);
   }

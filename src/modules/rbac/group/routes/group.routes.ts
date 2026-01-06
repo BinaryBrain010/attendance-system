@@ -16,21 +16,58 @@ class GroupRoutes {
      * @swagger
      * /group/get:
      *   get:
-     *     summary: Get all groups
+     *     summary: Get all groups with pagination, sorting, and filtering
      *     tags: [Groups]
      *     security:
      *       - bearerAuth: []
+     *     parameters:
+     *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           default: 1
+     *         description: Page number for pagination
+     *       - in: query
+     *         name: pageSize
+     *         schema:
+     *           type: integer
+     *           default: 10
+     *         description: Number of items per page
+     *       - in: query
+     *         name: sortBy
+     *         schema:
+     *           type: string
+     *           enum: [name, createdAt, updatedAt]
+     *           default: createdAt
+     *         description: Field to sort by
+     *       - in: query
+     *         name: sortOrder
+     *         schema:
+     *           type: string
+     *           enum: [asc, desc]
+     *           default: desc
+     *         description: Sort order (ascending or descending)
+     *       - in: query
+     *         name: filter
+     *         schema:
+     *           type: string
+     *         description: Optional filter parameter. If set to "true", returns only id and name fields
+     *       - in: query
+     *         name: search
+     *         schema:
+     *           type: string
+     *         description: Optional search term to filter by name
      *     responses:
      *       200:
      *         description: Groups retrieved successfully
      *         content:
      *           application/json:
      *             schema:
-     *               $ref: '#/components/schemas/Success'
+     *               $ref: '#/components/schemas/PaginatedResponse'
      *       401:
      *         $ref: '#/components/responses/401'
      */
-    this.router.get('/get', this.controller.getAllGroups.bind(this.controller));
+    this.router.get('/get', this.controller.getAllGroupsWithFilters.bind(this.controller));
     
     /**
      * @swagger

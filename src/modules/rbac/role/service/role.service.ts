@@ -15,6 +15,24 @@ class RoleService {
     return await roleModel.role.gpPgFindMany(page, pageSize);
   }
 
+  async getRolesWithPagination(
+    page: number,
+    pageSize: number,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+    filter?: string,
+    search?: string
+  ): Promise<paginatedData> {
+    return await roleModel.role.gpPgFindManyWithSortAndFilter(
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+      filter,
+      search
+    );
+  }
+
   async createRole(roleData: createRole): Promise<Role | Role[]> {
     return await roleModel.role.gpCreate(roleData);
   }

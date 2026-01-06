@@ -16,6 +16,24 @@ class GroupService {
     return await groupModel.group.gpPgFindMany(page, pageSize);
   }
 
+  async getGroupsWithPagination(
+    page: number,
+    pageSize: number,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+    filter?: string,
+    search?: string
+  ): Promise<paginatedData> {
+    return await groupModel.group.gpPgFindManyWithSortAndFilter(
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+      filter,
+      search
+    );
+  }
+
   async createGroup(groupData: createGroup): Promise<Group | Group[]> {
     return await groupModel.group.gpCreate(groupData);
   }
