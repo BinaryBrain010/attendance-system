@@ -213,12 +213,63 @@ const employeeModel = prisma.$extends({
         return finalData;
       },
       async gpUpdate(updateId: string, data: any) {
-        const { userId, ...remainingData } = data;
+        const { userId, updatedByUserId, ...remainingData } = data;
+
+        // Get current state before update for audit trail
+        const currentEmployee = await prisma.employee.findUnique({
+          where: { id: updateId },
+        }) as any;
+
+        if (!currentEmployee) {
+          throw new Error(`Employee with ID ${updateId} not found.`);
+        }
+
+        // Prepare previous update record
+        const previousUpdate = {
+          data: {
+            name: currentEmployee.name,
+            surname: currentEmployee.surname,
+            address: currentEmployee.address,
+            dob: currentEmployee.dob,
+            cnic: currentEmployee.cnic,
+            joiningDate: currentEmployee.joiningDate,
+            bloodGroup: currentEmployee.bloodGroup,
+            contactNo: currentEmployee.contactNo,
+            emergencyContactNo: currentEmployee.emergencyContactNo,
+            designation: currentEmployee.designation,
+            department: currentEmployee.department,
+            martialStatus: currentEmployee.martialStatus,
+            noOfChildrens: currentEmployee.noOfChildrens,
+            filePaths: currentEmployee.filePaths,
+            notes: currentEmployee.notes,
+            status: currentEmployee.status,
+            resignationDate: currentEmployee.resignationDate,
+            company: currentEmployee.company,
+            image: currentEmployee.image,
+            code: currentEmployee.code,
+          },
+          updatedBy: currentEmployee.updatedBy || null,
+          updatedAt: currentEmployee.updatedAt || new Date(),
+        };
+
+        // Get existing previousUpdates array or initialize empty array
+        const existingPreviousUpdates = (currentEmployee.previousUpdates as any[]) || [];
+
+        // Add current state to previousUpdates and keep only last 3
+        const updatedPreviousUpdates = [previousUpdate, ...existingPreviousUpdates].slice(0, 3);
+
+        // Prepare update data with audit trail
+        const updateData: any = {
+          ...remainingData,
+          updatedAt: new Date(),
+          updatedBy: updatedByUserId || null,
+          previousUpdates: updatedPreviousUpdates,
+        };
 
         // Update the employee data
         const updatedData = await prisma.employee.update({
           where: { id: updateId },
-          data: remainingData,
+          data: updateData as any,
         });
 
         // Fetch the current user associated with the employee
@@ -263,7 +314,7 @@ const employeeModel = prisma.$extends({
       },
 
       async gpCreate(data: any) {
-        const { userId, code, ...remainingData } = data;
+        const { userId, code, createdByUserId, ...remainingData } = data;
         
         // If code is not provided, generate it automatically
         let employeeCode = code;
@@ -276,10 +327,12 @@ const employeeModel = prisma.$extends({
           employeeCode = `TEMP-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
         }
 
-        // Create employee with provided or temporary code
+        // Create employee with provided or temporary code and audit trail
         const employeeData = {
           ...remainingData,
           code: employeeCode,
+          createdBy: createdByUserId || null,
+          previousUpdates: [],
         };
         
         const createdData = await prisma.employee.gpCreate(employeeData);
@@ -292,10 +345,17 @@ const employeeModel = prisma.$extends({
             createdData[0].id
           );
           
-          // Update with final code
+          // Update with final code (preserve audit trail)
+          const currentEmployee = await prisma.employee.findUnique({
+            where: { id: createdData[0].id },
+          }) as any;
+          
           await prisma.employee.update({
             where: { id: createdData[0].id },
-            data: { code: finalCode },
+            data: { 
+              code: finalCode,
+              previousUpdates: currentEmployee?.previousUpdates || [],
+            } as any,
           });
           createdData[0].code = finalCode;
         }

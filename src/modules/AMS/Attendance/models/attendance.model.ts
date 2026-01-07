@@ -200,24 +200,27 @@ const attendanceModel = prisma.$extends({
       },
       
       // Method to mark attendance
-      async markAttendance(attendanceData: Attendance) {
+      async markAttendance(attendanceData: Attendance & { createdByUserId?: string; updatedByUserId?: string }) {
         // Use database transaction to prevent race conditions
         return await prisma.$transaction(async (tx) => {
+          // Extract audit trail fields
+          const { createdByUserId, updatedByUserId, ...attendanceFields } = attendanceData as any;
+          
           // Use Pakistan timezone for date filtering
-          const targetDate = attendanceData.date
-            ? new Date(attendanceData.date)
+          const targetDate = attendanceFields.date
+            ? new Date(attendanceFields.date)
             : new Date();
           const todayStart = getStartOfDayPakistan(targetDate);
           const todayEnd = getEndOfDayPakistan(targetDate);
         
           const employee = await tx.employee.findUnique({
-            where: { id: attendanceData.employeeId },
+            where: { id: attendanceFields.employeeId },
           });
         
           if (!employee) {
             return {
               success: false,
-              message: `Employee with ID ${attendanceData.employeeId} not found`,
+              message: `Employee with ID ${attendanceFields.employeeId} not found`,
             };
           }
         
@@ -228,7 +231,7 @@ const attendanceModel = prisma.$extends({
           // Check for existing attendance within the same day (Pakistan timezone)
           const existingAttendance = await tx.attendance.findFirst({
             where: {
-              employeeId: attendanceData.employeeId,
+              employeeId: attendanceFields.employeeId,
               date: {
                 gte: todayStart,
                 lt: todayEnd,
@@ -238,6 +241,27 @@ const attendanceModel = prisma.$extends({
           });
         
           if (existingAttendance) {
+            // Prepare previous update record for audit trail
+            const existingAttendanceWithAudit = existingAttendance as any;
+            const previousUpdate = {
+              data: {
+                status: existingAttendance.status,
+                checkIn: existingAttendance.checkIn,
+                checkOut: existingAttendance.checkOut,
+                comment: existingAttendance.comment,
+                location: existingAttendance.location,
+                date: existingAttendance.date,
+              },
+              updatedBy: existingAttendanceWithAudit.updatedBy || null,
+              updatedAt: existingAttendance.updatedAt || new Date(),
+            };
+
+            // Get existing previousUpdates array or initialize empty array
+            const existingPreviousUpdates = (existingAttendanceWithAudit.previousUpdates as any[]) || [];
+
+            // Add current state to previousUpdates and keep only last 3
+            const updatedPreviousUpdates = [previousUpdate, ...existingPreviousUpdates].slice(0, 3);
+
             // If attendance already exists, mark it as a checkout
             if ((existingAttendance.status === "PRESENT" || existingAttendance.status === "LATE") && existingAttendance.checkIn && !existingAttendance.checkOut) {
               const updatedAttendance = await tx.attendance.update({
@@ -245,10 +269,13 @@ const attendanceModel = prisma.$extends({
                 data: {
                   checkOut: new Date(), // Checkout time is the current time
                   comment:
-                    attendanceData.comment ||
+                    attendanceFields.comment ||
                     existingAttendance.comment ||
-                    ''
-                },
+                    '',
+                  updatedBy: updatedByUserId || null,
+                  updatedAt: new Date(),
+                  previousUpdates: updatedPreviousUpdates,
+                } as any,
               });
               return {
                 success: true,
@@ -258,16 +285,19 @@ const attendanceModel = prisma.$extends({
             }
         
             // If checkOut already exists, update the attendance if needed
-            if (attendanceData.status && attendanceData.status !== existingAttendance.status) {
+            if (attendanceFields.status && attendanceFields.status !== existingAttendance.status) {
               const updatedAttendance = await tx.attendance.update({
                 where: { id: existingAttendance.id },
                 data: {
-                  status: attendanceData.status,
-                  checkIn: attendanceData.checkIn || existingAttendance.checkIn,
-                  checkOut: attendanceData.checkOut || existingAttendance.checkOut,
-                  comment: attendanceData.comment || existingAttendance.comment || '',
-                  location: attendanceData.location || existingAttendance.location,
-                },
+                  status: attendanceFields.status,
+                  checkIn: attendanceFields.checkIn || existingAttendance.checkIn,
+                  checkOut: attendanceFields.checkOut || existingAttendance.checkOut,
+                  comment: attendanceFields.comment || existingAttendance.comment || '',
+                  location: attendanceFields.location || existingAttendance.location,
+                  updatedBy: updatedByUserId || null,
+                  updatedAt: new Date(),
+                  previousUpdates: updatedPreviousUpdates,
+                } as any,
               });
               return {
                 success: true,
@@ -287,11 +317,13 @@ const attendanceModel = prisma.$extends({
           // If no existing attendance, proceed to create with normalized date
           const newAttendance = await tx.attendance.create({
             data: {
-              ...attendanceData,
+              ...attendanceFields,
               date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
-              checkIn: attendanceData.checkIn || new Date(),
-              comment: attendanceData.comment || '',
-            },
+              checkIn: attendanceFields.checkIn || new Date(),
+              comment: attendanceFields.comment || '',
+              createdBy: createdByUserId || null,
+              previousUpdates: [],
+            } as any,
           });
         
           return {
@@ -507,7 +539,83 @@ ORDER BY
             message: 'No matching face found'
           };
         }
-      }
+      },
+
+      async gpCreate(this: any, createdData: any) {
+        if (!Array.isArray(createdData)) {
+          createdData = [createdData];
+        }
+
+        const createdItems = [];
+
+        for (const data of createdData) {
+          const { createdByUserId, ...remainingData } = data;
+          
+          let newData = {
+            ...remainingData,
+            createdAt: new Date(),
+            createdBy: createdByUserId || null,
+            previousUpdates: [],
+          };
+
+          const createdItem = await this.create({
+            data: newData as any,
+          });
+
+          createdItems.push(createdItem);
+        }
+
+        return createdItems;
+      },
+
+      async gpUpdate(this: any, updateId: string, data: any) {
+        const { updatedByUserId, ...remainingData } = data;
+
+        // Get current state before update for audit trail
+        const currentAttendance = await prisma.attendance.findUnique({
+          where: { id: updateId },
+        }) as any;
+
+        if (!currentAttendance) {
+          throw new Error(`Attendance with ID ${updateId} not found.`);
+        }
+
+        // Prepare previous update record
+        const previousUpdate = {
+          data: {
+            status: currentAttendance.status,
+            checkIn: currentAttendance.checkIn,
+            checkOut: currentAttendance.checkOut,
+            comment: currentAttendance.comment,
+            location: currentAttendance.location,
+            date: currentAttendance.date,
+          },
+          updatedBy: currentAttendance.updatedBy || null,
+          updatedAt: currentAttendance.updatedAt || new Date(),
+        };
+
+        // Get existing previousUpdates array or initialize empty array
+        const existingPreviousUpdates = (currentAttendance.previousUpdates as any[]) || [];
+
+        // Add current state to previousUpdates and keep only last 3
+        const updatedPreviousUpdates = [previousUpdate, ...existingPreviousUpdates].slice(0, 3);
+
+        // Prepare update data with audit trail
+        const updateData: any = {
+          ...remainingData,
+          updatedAt: new Date(),
+          updatedBy: updatedByUserId || null,
+          previousUpdates: updatedPreviousUpdates,
+        };
+
+        // Update the attendance data
+        const updatedData = await prisma.attendance.update({
+          where: { id: updateId },
+          data: updateData as any,
+        });
+
+        return updatedData;
+      },
       
       
     },

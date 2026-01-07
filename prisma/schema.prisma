@@ -233,6 +233,9 @@ model Employee {
   createdAt DateTime?
   updatedAt DateTime?
   isDeleted DateTime?
+  createdBy String?   @db.VarChar(36)
+  updatedBy String?   @db.VarChar(36)
+  previousUpdates Json? @db.JsonB
 
   user              User?
   attendances       Attendance[]
@@ -262,6 +265,9 @@ model Attendance {
   createdAt  DateTime?
   updatedAt  DateTime?
   isDeleted  DateTime?
+  createdBy  String?          @db.VarChar(36)
+  updatedBy  String?          @db.VarChar(36)
+  previousUpdates Json?       @db.JsonB
 }
 
 enum AttendanceStatus {

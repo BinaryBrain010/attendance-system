@@ -149,8 +149,9 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async createAttendance(req: Request, res: Response) {
     const AttendanceData: Attendance = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.createAttendance(AttendanceData);
+    const operation = () => this.service.createAttendance({ ...AttendanceData, createdByUserId: userId });
     await this.handleRequest(operation, res, { successMessage: "Attendance created successfully!" });
   }
 
@@ -175,9 +176,14 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async markAttendance(req: Request, res: Response) {
     const attendanceData: Attendance = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
 
     try {
-      const result = await this.service.markAttendance(attendanceData);
+      const result = await this.service.markAttendance({ 
+        ...attendanceData, 
+        createdByUserId: userId,
+        updatedByUserId: userId 
+      });
       if (!result.success) {
         return res.status(400).json({ message: result.message });
       }
@@ -192,7 +198,9 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async updateAttendance(req: Request, res: Response) {
     const { id, data } = req.body;
-    const operation = () => this.service.updateAttendance(id, data);
+    const userId = (req as Request & { userId?: string }).userId;
+
+    const operation = () => this.service.updateAttendance(id, { ...data, updatedByUserId: userId });
     await this.handleRequest(operation, res, { successMessage: "Attendance updated successfully!" });
   }
 

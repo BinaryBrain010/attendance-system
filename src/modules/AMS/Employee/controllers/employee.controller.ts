@@ -196,14 +196,17 @@ class EmployeeController extends BaseController<EmployeeService> {
 
   async createEmployee(req: Request, res: Response) {
     const employeeData: Employee = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.createEmployee(employeeData);
+    const operation = () => this.service.createEmployee({ ...employeeData, createdByUserId: userId });
     await this.handleRequest(operation, res, { successMessage: "Employee created successfully!" });
   }
 
   async updateEmployee(req: Request, res: Response) {
     const { id, data } = req.body;
-    const operation = () => this.service.updateEmployee(id, data);
+    const userId = (req as Request & { userId?: string }).userId;
+
+    const operation = () => this.service.updateEmployee(id, { ...data, updatedByUserId: userId });
     await this.handleRequest(operation, res, { successMessage: "Employee updated successfully!" });
   }
 
