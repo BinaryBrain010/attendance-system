@@ -118,6 +118,10 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     });
     return employees;
   }
+
+  async getHistoryById(employeeId: string, filter?: boolean, date?: string): Promise<any> {
+    return await employeeModel.employee.getHistoryById(employeeId, filter, date);
+  }
 }
 
 export default EmployeeService;

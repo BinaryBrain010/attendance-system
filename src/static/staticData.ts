@@ -207,6 +207,7 @@ export const features: AppFeature[] = [
   { name: "employee.delete.*", parentFeatureId: "employee.*", label: "Delete" },
   { name: "employee.pdf.*", parentFeatureId: "employee.*", label: "Print" },
   { name: "employee.excel.*", parentFeatureId: "employee.*", label: "Excel" },
+  { name: "employee.viewPreviousUpdate.*", parentFeatureId: "employee.*", label: "View Previous Update" },
 
 
   //attendance
@@ -218,12 +219,16 @@ export const features: AppFeature[] = [
 { name: "attendance.manualAttendance.*", parentFeatureId: "attendance.*", label: "Manual Attendance" },
 { name: "attendance.filter.*", parentFeatureId: "attendance.*", label: "Filter Attendance" },
 { name: "attendance.update.*", parentFeatureId: "attendance.*", label: "Update Attendance" },
+{ name: "attendance.read.*", parentFeatureId: "attendance.*", label: "Read Attendance" },
+{ name: "attendance.export.*", parentFeatureId: "attendance.*", label: "Export Attendance" },
 { name: "attendance.excelImport.*", parentFeatureId: "attendance.*", label: "Excel Import" },
+{ name: "attendance.viewPreviousUpdate.*", parentFeatureId: "attendance.*", label: "View Previous Update" },
 // attedanceReq
 { name: "attendanceReq.*", label: "Attendance Req (Nav)" },
 { name: "attendanceReq.create.*", parentFeatureId: "attendanceReq.*", label: "Create" },
 { name: "attendanceReq.read.*", parentFeatureId: "attendanceReq.*", label: "Read" },
 { name: "attendanceReq.update.*", parentFeatureId: "attendanceReq.*", label: "Update" },
+{ name: "attendanceReq.delete.*", parentFeatureId: "attendanceReq.*", label: "Delete" },
 { name: "attendanceReq.restore.*", parentFeatureId: "attendanceReq.*", label: "Restore" },
 
 //leave
@@ -244,6 +249,7 @@ export const features: AppFeature[] = [
 { name: "leaveAlloc.create.*", parentFeatureId: "leaveAlloc.*", label: "Create" },
 { name: "leaveAlloc.read.*", parentFeatureId: "leaveAlloc.*", label: "Read" },
 { name: "leaveAlloc.update.*", parentFeatureId: "leaveAlloc.*", label: "Update" },
+{ name: "leaveAlloc.delete.*", parentFeatureId: "leaveAlloc.*", label: "Delete" },
 { name: "leaveAlloc.restore.*", parentFeatureId: "leaveAlloc.*", label: "Restore" },
 
 //leave Config
@@ -251,6 +257,7 @@ export const features: AppFeature[] = [
 { name: "leaveConfig.create.*", parentFeatureId: "leaveConfig.*", label: "Create" },
 { name: "leaveConfig.read.*", parentFeatureId: "leaveConfig.*", label: "Read" },
 { name: "leaveConfig.update.*", parentFeatureId: "leaveConfig.*", label: "Update" },
+{ name: "leaveConfig.delete.*", parentFeatureId: "leaveConfig.*", label: "Delete" },
 { name: "leaveConfig.restore.*", parentFeatureId: "leaveConfig.*", label: "Restore" },
 
 // faceRegistration - Hidden for now

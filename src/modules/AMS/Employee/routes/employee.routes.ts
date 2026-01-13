@@ -665,6 +665,51 @@ class EmployeeRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/filesDel',this.controller.deleteFiles.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /employee/getHistoryById:
+     *   post:
+     *     summary: Get employee update history by ID
+     *     tags: [Employees]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - id
+     *             properties:
+     *               id:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *               filter:
+     *                 type: boolean
+     *                 description: If true, returns array of dates. If false, returns complete previousUpdates array.
+     *                 example: true
+     *               date:
+     *                 type: string
+     *                 format: date
+     *                 description: Optional. If filter is true and date is provided, returns record for that specific date.
+     *                 example: "2024-01-15"
+     *     responses:
+     *       200:
+     *         description: Employee history retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         $ref: '#/components/responses/404'
+     */
+    this.router.post('/getHistoryById', this.controller.getHistoryById.bind(this.controller));
   }
 
   public getRouter(): Router {

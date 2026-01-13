@@ -13,6 +13,32 @@ import { convertToPST } from "../helper/date.helper";
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
 
+// Admin user ID constant
+const ADMIN_USER_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
+
+// Helper function to get username from userId
+async function getUpdatedByName(updatedBy: string | null): Promise<string | null> {
+  if (!updatedBy) {
+    return null;
+  }
+  
+  if (updatedBy === ADMIN_USER_ID) {
+    return "Admin";
+  }
+  
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: updatedBy },
+      select: { username: true },
+    });
+    
+    return user?.username || null;
+  } catch (error) {
+    console.error(`Error fetching username for userId ${updatedBy}:`, error);
+    return null;
+  }
+}
+
 // Helper function to get start of day in Pakistan timezone, then convert to UTC for database query
 function getStartOfDayPakistan(date: Date): Date {
   // Get the date components in Pakistan timezone
@@ -256,7 +282,7 @@ const attendanceModel = prisma.$extends({
               updatedAt: existingAttendance.updatedAt || new Date(),
             };
 
-            // Get existing previousUpdates array or initialize empty array
+            // Get existing previousUpdates  array or initialize empty array
             const existingPreviousUpdates = (existingAttendanceWithAudit.previousUpdates as any[]) || [];
 
             // Add current state to previousUpdates and keep only last 3
@@ -615,6 +641,57 @@ ORDER BY
         });
 
         return updatedData;
+      },
+
+      async getHistoryById(this: any, attendanceId: string, filter?: boolean, date?: string) {
+        const attendance = await prisma.attendance.findUnique({
+          where: { id: attendanceId },
+        }) as any;
+
+        if (!attendance) {
+          throw new Error(`Attendance with ID ${attendanceId} not found.`);
+        }
+
+        const previousUpdates = (attendance.previousUpdates as any[]) || [];
+
+        // Add updatedByName to each update record
+        const previousUpdatesWithNames = await Promise.all(
+          previousUpdates.map(async (update: any) => {
+            const updatedByName = await getUpdatedByName(update.updatedBy || null);
+            return {
+              ...update,
+              updatedByName: updatedByName,
+            };
+          })
+        );
+
+        // If filter is not true, return complete previousUpdates array with names
+        if (!filter) {
+          return previousUpdatesWithNames;
+        }
+
+        // If filter is true and date is provided, return record for that specific date
+        if (filter && date) {
+          const targetDate = new Date(date);
+          // Normalize dates to compare only date part (ignore time)
+          const targetDateStr = targetDate.toISOString().split('T')[0];
+          
+          const record = previousUpdatesWithNames.find((update: any) => {
+            if (!update.updatedAt) return false;
+            const updateDate = new Date(update.updatedAt);
+            const updateDateStr = updateDate.toISOString().split('T')[0];
+            return updateDateStr === targetDateStr;
+          });
+
+          return record || null;
+        }
+
+        // If filter is true but no date provided, return array of dates
+        const dates = previousUpdatesWithNames
+          .map((update: any) => update.updatedAt)
+          .filter((date: any) => date !== null && date !== undefined);
+
+        return dates;
       },
       
       

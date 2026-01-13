@@ -10,6 +10,32 @@ const companyPrefixMap: Record<Company, string> = {
   OKASHASMART: "OK",
 };
 
+// Admin user ID constant
+const ADMIN_USER_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
+
+// Helper function to get username from userId
+async function getUpdatedByName(updatedBy: string | null): Promise<string | null> {
+  if (!updatedBy) {
+    return null;
+  }
+  
+  if (updatedBy === ADMIN_USER_ID) {
+    return "Admin";
+  }
+  
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: updatedBy },
+      select: { username: true },
+    });
+    
+    return user?.username || null;
+  } catch (error) {
+    console.error(`Error fetching username for userId ${updatedBy}:`, error);
+    return null;
+  }
+}
+
 const employeeModel = prisma.$extends({
   model: {
     employee: {
@@ -195,11 +221,15 @@ const employeeModel = prisma.$extends({
           },
         });
 
+        // Get the username of the person who updated this employee
+        const updatedByName = await getUpdatedByName(data?.updatedBy || null);
+
         if (user) {
           const finalData = {
             ...data,
             userId: user.id,
             username: user.username,
+            updatedByName: updatedByName,
           };
           return finalData;
         }
@@ -208,6 +238,7 @@ const employeeModel = prisma.$extends({
           ...data,
           userId: null,
           username: null,
+          updatedByName: updatedByName,
         };
 
         return finalData;
@@ -510,6 +541,7 @@ const employeeModel = prisma.$extends({
               resignationDate: true,
               createdAt: true,
               updatedAt: true,
+              updatedBy: true,
               // faceDescriptor is excluded by not including it in select
             };
 
@@ -527,7 +559,72 @@ const employeeModel = prisma.$extends({
           }),
         ]);
 
-        return { data, totalSize };
+        // Fetch usernames for all updatedBy fields
+        const dataWithUpdatedByName = await Promise.all(
+          data.map(async (employee: any) => {
+            const updatedByName = await getUpdatedByName(employee.updatedBy || null);
+            return {
+              ...employee,
+              updatedByName: updatedByName,
+            };
+          })
+        );
+
+        return { data: dataWithUpdatedByName, totalSize };
+      },
+
+      async getHistoryById(this: any, employeeId: string, filter?: boolean, date?: string) {
+        const employee = await prisma.employee.findUnique({
+          where: { id: employeeId },
+          select: {
+            previousUpdates: true,
+          },
+        });
+
+        if (!employee) {
+          throw new Error(`Employee with ID ${employeeId} not found.`);
+        }
+
+        const previousUpdates = (employee.previousUpdates as any[]) || [];
+
+        // Add updatedByName to each update record
+        const previousUpdatesWithNames = await Promise.all(
+          previousUpdates.map(async (update: any) => {
+            const updatedByName = await getUpdatedByName(update.updatedBy || null);
+            return {
+              ...update,
+              updatedByName: updatedByName,
+            };
+          })
+        );
+
+        // If filter is not true, return complete previousUpdates array with names
+        if (!filter) {
+          return previousUpdatesWithNames;
+        }
+
+        // If filter is true and date is provided, return record for that specific date
+        if (filter && date) {
+          const targetDate = new Date(date);
+          // Normalize dates to compare only date part (ignore time)
+          const targetDateStr = targetDate.toISOString().split('T')[0];
+          
+          const record = previousUpdatesWithNames.find((update: any) => {
+            if (!update.updatedAt) return false;
+            const updateDate = new Date(update.updatedAt);
+            const updateDateStr = updateDate.toISOString().split('T')[0];
+            return updateDateStr === targetDateStr;
+          });
+
+          return record || null;
+        }
+
+        // If filter is true but no date provided, return array of dates
+        const dates = previousUpdatesWithNames
+          .map((update: any) => update.updatedAt)
+          .filter((date: any) => date !== null && date !== undefined);
+
+        return dates;
       },
     },
   },

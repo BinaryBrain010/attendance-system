@@ -240,6 +240,20 @@ class AttendanceController extends BaseController<AttendanceService> {
       this.service.importAttendance(employeeId, month, file);
     await this.handleRequest(operation, res, { successMessage: "Attendance imported successfully!" });
   }
+
+  async getHistoryById(req: Request, res: Response) {
+    const { id, filter, date } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ message: "Attendance ID is required" });
+    }
+
+    // Convert filter to boolean if it's a string
+    const filterBool = filter === true || filter === "true";
+    
+    const operation = () => this.service.getHistoryById(id, filterBool, date);
+    await this.handleRequest(operation, res, { successMessage: "Attendance history retrieved successfully!" });
+  }
 }
 
 export default AttendanceController;

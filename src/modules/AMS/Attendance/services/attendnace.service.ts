@@ -128,6 +128,10 @@ return await attendanceModel.attendance.markFaceAttendance(image);
 
     return await this.createAttendance(attendances);
   }
+
+  async getHistoryById(attendanceId: string, filter?: boolean, date?: string): Promise<any> {
+    return await attendanceModel.attendance.getHistoryById(attendanceId, filter, date);
+  }
   
 }
 

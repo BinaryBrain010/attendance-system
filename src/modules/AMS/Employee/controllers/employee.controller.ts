@@ -238,6 +238,20 @@ class EmployeeController extends BaseController<EmployeeService> {
     const operation = () => this.service.getEmployeesForFaceRecognition();
     await this.handleRequest(operation, res, { successMessage: "Employees for face recognition retrieved successfully!" });
   }
+
+  async getHistoryById(req: Request, res: Response) {
+    const { id, filter, date } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
+
+    // Convert filter to boolean if it's a string
+    const filterBool = filter === true || filter === "true";
+    
+    const operation = () => this.service.getHistoryById(id, filterBool, date);
+    await this.handleRequest(operation, res, { successMessage: "Employee history retrieved successfully!" });
+  }
 }
 
 export default EmployeeController;

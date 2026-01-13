@@ -686,6 +686,90 @@ class AttendanceRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/import', upload.single('file'), this.controller.importAttendance.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /attendance/history:
+     *   post:
+     *     summary: Get attendance update history by ID
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - id
+     *             properties:
+     *               id:
+     *                 type: string
+     *                 description: Attendance ID
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *               filter:
+     *                 type: boolean
+     *                 description: If true, filter results. If false, return all history
+     *                 example: false
+     *               date:
+     *                 type: string
+     *                 format: date
+     *                 description: Specific date to filter history (required if filter is true)
+     *                 example: "2024-01-15"
+     *     responses:
+     *       200:
+     *         description: Attendance history retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: "Attendance history retrieved successfully!"
+     *                 data:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       data:
+     *                         type: object
+     *                         properties:
+     *                           status:
+     *                             type: string
+     *                           checkIn:
+     *                             type: string
+     *                             format: date-time
+     *                           checkOut:
+     *                             type: string
+     *                             format: date-time
+     *                           comment:
+     *                             type: string
+     *                           location:
+     *                             type: string
+     *                           date:
+     *                             type: string
+     *                             format: date-time
+     *                       updatedBy:
+     *                         type: string
+     *                         nullable: true
+     *                       updatedByName:
+     *                         type: string
+     *                         nullable: true
+     *                         description: Username of the person who updated (shows "Admin" for admin user)
+     *                       updatedAt:
+     *                         type: string
+     *                         format: date-time
+     *       400:
+     *         description: Bad request - Attendance ID is required
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/history', this.controller.getHistoryById.bind(this.controller));
   }
 
   public getRouter(): Router {
