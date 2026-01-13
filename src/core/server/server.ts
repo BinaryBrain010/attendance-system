@@ -40,6 +40,7 @@ import AttendanceSchedulerHelper from "../../modules/AMS/Attendance/helper/sched
 import EmployeeRoutes from "../../modules/AMS/Employee/routes/employee.routes";
 import AttendanceRoutes from "../../modules/AMS/Attendance/routes/attendance.routes";
 import LeaveRoutes from "../../modules/AMS/Leaves/routes/leave.routes";
+import HolidayRoutes from "../../modules/AMS/Holiday/routes/holiday.routes";
 
 class App {
   private app: Express;
@@ -158,7 +159,8 @@ class App {
       EmployeeRoutes,
       LeaveRoutes,
       AttendanceReqRoutes,
-      AttendanceRoutes
+      AttendanceRoutes,
+      HolidayRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

@@ -260,6 +260,16 @@ export const features: AppFeature[] = [
 { name: "leaveConfig.delete.*", parentFeatureId: "leaveConfig.*", label: "Delete" },
 { name: "leaveConfig.restore.*", parentFeatureId: "leaveConfig.*", label: "Restore" },
 
+//holiday
+{ name: "holiday.*", label: "Holiday (Nav)" },
+{ name: "holiday.create.*", parentFeatureId: "holiday.*", label: "Create" },
+{ name: "holiday.read.*", parentFeatureId: "holiday.*", label: "Read" },
+{ name: "holiday.update.*", parentFeatureId: "holiday.*", label: "Update" },
+{ name: "holiday.delete.*", parentFeatureId: "holiday.*", label: "Delete" },
+{ name: "holiday.restore.*", parentFeatureId: "holiday.*", label: "Restore" },
+{ name: "holiday.markSundays.*", parentFeatureId: "holiday.*", label: "Mark Sundays" },
+{ name: "holiday.viewPreviousUpdate.*", parentFeatureId: "holiday.*", label: "View Previous Update" },
+
 // faceRegistration - Hidden for now
 // { name: "faceRegistration.*", label: "Face Registration (Nav)" },
 // { name: "faceRegistration.extract.*", parentFeatureId: "faceRegistration.*", label: "Extract Face Descripter" },
