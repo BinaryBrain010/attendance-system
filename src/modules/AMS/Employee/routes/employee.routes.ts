@@ -94,6 +94,25 @@ class EmployeeRoutes {
      *         schema:
      *           type: string
      *         description: Optional search term to filter by name, surname, code, designation, or department
+     *       - in: query
+     *         name: from
+     *         schema:
+     *           type: string
+     *           format: date
+     *         description: Start date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter
+     *       - in: query
+     *         name: to
+     *         schema:
+     *           type: string
+     *           format: date
+     *         description: End date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter
+     *       - in: query
+     *         name: dateField
+     *         schema:
+     *           type: string
+     *           enum: [joiningDate, createdAt, updatedAt]
+     *           default: joiningDate
+     *         description: Date field to filter by when using from/to parameters
      *     responses:
      *       200:
      *         description: Employees retrieved successfully

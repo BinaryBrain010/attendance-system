@@ -17,6 +17,9 @@ class EmployeeController extends BaseController<EmployeeService> {
     const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
     const filter = req.query.filter as string;
     const search = req.query.search as string;
+    const from = req.query.from as string;
+    const to = req.query.to as string;
+    const dateField = (req.query.dateField as string) || 'joiningDate'; // joiningDate, createdAt, or updatedAt
 
     const operation = async () => {
       return await this.service.getEmployeesWithPagination(
@@ -25,7 +28,10 @@ class EmployeeController extends BaseController<EmployeeService> {
         sortBy,
         sortOrder,
         filter,
-        search
+        search,
+        from,
+        to,
+        dateField
       );
     };
 
@@ -198,7 +204,7 @@ class EmployeeController extends BaseController<EmployeeService> {
     const employeeData: Employee = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.createEmployee({ ...employeeData, createdByUserId: userId });
+    const operation = () => this.service.createEmployee({ ...employeeData, createdByUserId: userId } as Employee & { createdByUserId?: string });
     await this.handleRequest(operation, res, { successMessage: "Employee created successfully!" });
   }
 

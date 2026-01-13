@@ -482,7 +482,10 @@ const employeeModel = prisma.$extends({
         sortBy: string,
         sortOrder: 'asc' | 'desc',
         filter?: string,
-        search?: string
+        search?: string,
+        from?: string,
+        to?: string,
+        dateField?: string
       ) {
         const skip = (page - 1) * pageSize;
         
@@ -508,6 +511,35 @@ const employeeModel = prisma.$extends({
             { designation: { contains: search, mode: 'insensitive' } },
             { department: { contains: search, mode: 'insensitive' } },
           ];
+        }
+
+        // Add date range filter if provided
+        // Valid dateField values: joiningDate, createdAt, updatedAt
+        const validDateFields = ['joiningDate', 'createdAt', 'updatedAt'];
+        const selectedDateField: string = (dateField && validDateFields.includes(dateField)) 
+          ? dateField 
+          : 'joiningDate';
+        
+        if (from || to) {
+          const dateFilter: any = {};
+          
+          if (from) {
+            const fromDate = new Date(from);
+            // Set to start of day (00:00:00)
+            fromDate.setHours(0, 0, 0, 0);
+            dateFilter.gte = fromDate;
+          }
+          
+          if (to) {
+            const toDate = new Date(to);
+            // Set to end of day (23:59:59.999)
+            toDate.setHours(23, 59, 59, 999);
+            dateFilter.lte = toDate;
+          }
+          
+          if (Object.keys(dateFilter).length > 0) {
+            where[selectedDateField] = dateFilter;
+          }
         }
 
         // Validate and set sortBy field

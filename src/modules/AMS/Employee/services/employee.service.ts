@@ -18,7 +18,10 @@ class EmployeeService {
     sortBy: string,
     sortOrder: 'asc' | 'desc',
     filter?: string,
-    search?: string
+    search?: string,
+    from?: string,
+    to?: string,
+    dateField?: string
   ): Promise<paginatedData> {
     return await employeeModel.employee.gpPgFindManyWithSortAndFilter(
       page,
@@ -26,7 +29,10 @@ class EmployeeService {
       sortBy,
       sortOrder,
       filter,
-      search
+      search,
+      from,
+      to,
+      dateField
     );
   }
 
