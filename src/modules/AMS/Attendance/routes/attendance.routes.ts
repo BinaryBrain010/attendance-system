@@ -306,6 +306,7 @@ class AttendanceRoutes {
      *     tags: [Attendance]
      *     security:
      *       - bearerAuth: []
+     *     description: Mark attendance for an employee. If status is ON_LEAVE and createLeaveRequest is true, a leave request will be automatically created and approved.
      *     requestBody:
      *       required: true
      *       content:
@@ -314,7 +315,6 @@ class AttendanceRoutes {
      *             type: object
      *             required:
      *               - employeeId
-     *               - date
      *             properties:
      *               employeeId:
      *                 type: string
@@ -322,15 +322,37 @@ class AttendanceRoutes {
      *               date:
      *                 type: string
      *                 format: date
-     *               checkIn:
-     *                 type: string
-     *                 format: time
-     *               checkOut:
-     *                 type: string
-     *                 format: time
+     *                 example: "2024-01-20"
      *               status:
      *                 type: string
-     *                 enum: [present, absent, late, half_day]
+     *                 enum: [PRESENT, ABSENT, LATE, ON_LEAVE, HALF_DAY, HOLIDAYS]
+     *                 example: PRESENT
+     *               checkIn:
+     *                 type: string
+     *                 format: date-time
+     *                 example: "2024-01-20T09:00:00Z"
+     *               checkOut:
+     *                 type: string
+     *                 format: date-time
+     *                 example: "2024-01-20T17:00:00Z"
+     *               comment:
+     *                 type: string
+     *                 example: "On time"
+     *               location:
+     *                 type: string
+     *                 example: "Office"
+     *               createLeaveRequest:
+     *                 type: boolean
+     *                 description: If true and status is ON_LEAVE, automatically creates and approves a leave request
+     *                 example: true
+     *               leaveType:
+     *                 type: string
+     *                 description: Type of leave (CASUAL, MATERNITY, SICK, etc.) - only used if createLeaveRequest is true and status is ON_LEAVE
+     *                 example: "CASUAL"
+     *               leaveReason:
+     *                 type: string
+     *                 description: Reason for leave - only used if createLeaveRequest is true and status is ON_LEAVE
+     *                 example: "Personal work"
      *     responses:
      *       201:
      *         description: Attendance marked successfully
@@ -351,6 +373,85 @@ class AttendanceRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/markAttendance', this.controller.markAttendance.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /attendance/bulkMarkLeave:
+     *   post:
+     *     summary: Mark leave for multiple selected employees
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Marks attendance as ON_LEAVE for multiple selected employees on a specific date. Optionally creates leave requests for each employee.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - employeeIds
+     *               - date
+     *             properties:
+     *               employeeIds:
+     *                 type: array
+     *                 items:
+     *                   type: string
+     *                 description: Array of employee IDs to mark leave for
+     *                 example: ["emp-id-1", "emp-id-2", "emp-id-3"]
+     *               date:
+     *                 type: string
+     *                 format: date
+     *                 description: Date for which to mark leave
+     *                 example: "2024-01-20"
+     *               leaveType:
+     *                 type: string
+     *                 description: Type of leave (CASUAL, MATERNITY, SICK, etc.) - only used if createLeaveRequest is true
+     *                 example: "CASUAL"
+     *               reason:
+     *                 type: string
+     *                 description: Reason for leave
+     *                 example: "Team event"
+     *               createLeaveRequest:
+     *                 type: boolean
+     *                 description: If true, automatically creates and approves leave requests for each employee
+     *                 default: false
+     *                 example: true
+     *     responses:
+     *       200:
+     *         description: Bulk leave marking completed successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                 message:
+     *                   type: string
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     success:
+     *                       type: boolean
+     *                     message:
+     *                       type: string
+     *                     total:
+     *                       type: integer
+     *                     successful:
+     *                       type: integer
+     *                     failed:
+     *                       type: integer
+     *                     results:
+     *                       type: array
+     *                       items:
+     *                         type: object
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/bulkMarkLeave', this.controller.bulkMarkLeave.bind(this.controller));
     
     /**
      * @swagger

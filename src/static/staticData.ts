@@ -182,6 +182,7 @@ export const features: AppFeature[] = [
   { name: "employee.*", label: "Employee (Nav)" },
   { name: "employee.create.*", parentFeatureId: "employee.*", label: "Create" },
   { name: "employee.read.*", parentFeatureId: "employee.*", label: "Read" },
+  { name: "employee.user.read.*", parentFeatureId: "employee.read.*", label: "View Employee Linked User" },
   { name: "employee.update.*", parentFeatureId: "employee.*", label: "Update" },
   { name: "employee.restore.*", parentFeatureId: "employee.*", label: "Restore" },
   {
@@ -219,6 +220,7 @@ export const features: AppFeature[] = [
 { name: "attendance.manualAttendance.*", parentFeatureId: "attendance.*", label: "Manual Attendance" },
 { name: "attendance.filter.*", parentFeatureId: "attendance.*", label: "Filter Attendance" },
 { name: "attendance.update.*", parentFeatureId: "attendance.*", label: "Update Attendance" },
+{ name: "attendance.update.direct.*", parentFeatureId: "attendance.update.*", label: "Update Attendance Directly (No Approval Required)" },
 { name: "attendance.read.*", parentFeatureId: "attendance.*", label: "Read Attendance" },
 { name: "attendance.export.*", parentFeatureId: "attendance.*", label: "Export Attendance" },
 { name: "attendance.excelImport.*", parentFeatureId: "attendance.*", label: "Excel Import" },
@@ -230,6 +232,7 @@ export const features: AppFeature[] = [
 { name: "attendanceReq.update.*", parentFeatureId: "attendanceReq.*", label: "Update" },
 { name: "attendanceReq.delete.*", parentFeatureId: "attendanceReq.*", label: "Delete" },
 { name: "attendanceReq.restore.*", parentFeatureId: "attendanceReq.*", label: "Restore" },
+{ name: "attendance.request.approve.*", parentFeatureId: "attendanceReq.*", label: "Approve/Reject Attendance Requests" },
 
 //leave
 { name: "leave.*", label: "Leave (Nav)" },

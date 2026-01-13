@@ -452,6 +452,64 @@ class EmployeeRoutes {
     
     /**
      * @swagger
+     * /employee/getLinkedUser:
+     *   post:
+     *     summary: Get employee's linked user account
+     *     tags: [Employees]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Retrieves the user account linked to the specified employee. Requires 'employee.user.read.*' permission.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - id
+     *             properties:
+     *               id:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *                 description: Employee ID
+     *     responses:
+     *       200:
+     *         description: Employee linked user retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                 message:
+     *                   type: string
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     id:
+     *                       type: string
+     *                       description: User ID
+     *                     username:
+     *                       type: string
+     *                       description: Username
+     *                     createdAt:
+     *                       type: string
+     *                       format: date-time
+     *                     updatedAt:
+     *                       type: string
+     *                       format: date-time
+     *       400:
+     *         description: Bad request - Employee ID is required
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         description: Employee or linked user not found
+     */
+    this.router.post('/getLinkedUser', this.controller.getEmployeeLinkedUser.bind(this.controller));
+    
+    /**
+     * @swagger
      * /employee/restore:
      *   post:
      *     summary: Restore a deleted employee

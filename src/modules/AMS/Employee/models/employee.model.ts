@@ -2,6 +2,7 @@ import { Prisma, Company } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcrypt";
 
 // Company prefix mapping for employee codes
 const companyPrefixMap: Record<Company, string> = {
@@ -33,6 +34,58 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
   } catch (error) {
     console.error(`Error fetching username for userId ${updatedBy}:`, error);
     return null;
+  }
+}
+
+// Helper function to generate username from employee name and surname
+function generateUsername(name: string, surname: string): string {
+  // Convert to lowercase, replace spaces with underscores
+  const firstName = name.toLowerCase().trim().replace(/\s+/g, '_');
+  const lastName = surname.toLowerCase().trim().replace(/\s+/g, '_');
+  return `${firstName}_${lastName}@phw`;
+}
+
+// Helper function to create user for employee
+async function createUserForEmployee(employeeId: string, name: string, surname: string, contactNo: string): Promise<any> {
+  try {
+    // Generate username
+    const username = generateUsername(name, surname);
+    
+    // Check if username already exists (handle duplicates)
+    let finalUsername = username;
+    let counter = 1;
+    while (true) {
+      const existingUser = await prisma.user.findUnique({
+        where: { username: finalUsername },
+      });
+      
+      if (!existingUser) {
+        break; // Username is available
+      }
+      
+      // If username exists, append number
+      const baseUsername = username.replace('@phw', '');
+      finalUsername = `${baseUsername}${counter}@phw`;
+      counter++;
+    }
+    
+    // Hash password (use contactNo as password)
+    const hashedPassword = await bcrypt.hash(contactNo, 10);
+    
+    // Create user
+    const createdUser = await prisma.user.create({
+      data: {
+        username: finalUsername,
+        password: hashedPassword,
+        employeeId: employeeId,
+        createdAt: new Date(),
+      },
+    });
+    
+    return createdUser;
+  } catch (error: any) {
+    console.error(`Error creating user for employee ${employeeId}:`, error);
+    throw error;
   }
 }
 
@@ -243,6 +296,27 @@ const employeeModel = prisma.$extends({
 
         return finalData;
       },
+
+      async gpGetLinkedUser(this: any, employeeId: string): Promise<any> {
+        const user = await prisma.user.findUnique({
+          where: {
+            employeeId: employeeId,
+            isDeleted: null,
+          },
+          select: {
+            id: true,
+            username: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+        if (!user) {
+          return null;
+        }
+
+        return user;
+      },
       async gpUpdate(updateId: string, data: any) {
         const { userId, updatedByUserId, ...remainingData } = data;
 
@@ -310,34 +384,56 @@ const employeeModel = prisma.$extends({
           },
         });
 
-        if (currentUser) {
-          // If the `userId` matches the current user's ID, no need to update the user association
-          if (currentUser.id === userId) {
-            return updatedData;
+        // If userId is provided, handle user association
+        if (userId) {
+          if (currentUser) {
+            // If the `userId` matches the current user's ID, no need to update the user association
+            if (currentUser.id === userId) {
+              return updatedData;
+            }
+
+            // Otherwise, remove the `employeeId` from the current user
+            await prisma.user.update({
+              where: { id: currentUser.id },
+              data: { employeeId: null }, // Remove the employee association
+            });
           }
 
-          // Otherwise, remove the `employeeId` from the current user
-          await prisma.user.update({
-            where: { id: currentUser.id },
-            data: { employeeId: null }, // Remove the employee association
-          });
-        }
-
-        if (userId) {
           // Associate the new userId with the employee
           const newUser = await prisma.user.findUnique({
             where: { id: userId },
           });
 
           if (newUser) {
-            const newUserData = { ...newUser, employeeId: updateId };
             await prisma.user.update({
               where: { id: userId },
-              data: newUserData,
+              data: { employeeId: updateId },
             });
           } else {
             // If the new userId doesn't exist, optionally handle this case (e.g., throw an error)
             throw new Error(`User with ID ${userId} does not exist.`);
+          }
+        } else {
+          // If no userId provided, check if user exists - if not, create one automatically
+          if (!currentUser) {
+            try {
+              // Get updated employee data to create user
+              const updatedEmployee = await prisma.employee.findUnique({
+                where: { id: updateId },
+              }) as any;
+
+              if (updatedEmployee && updatedEmployee.name && updatedEmployee.surname && updatedEmployee.contactNo) {
+                await createUserForEmployee(
+                  updateId,
+                  updatedEmployee.name,
+                  updatedEmployee.surname,
+                  updatedEmployee.contactNo
+                );
+              }
+            } catch (err: any) {
+              console.error(`Error auto-creating user for employee ${updateId}:`, err);
+              // Don't throw error, just log it - employee update should still succeed
+            }
           }
         }
 
@@ -405,13 +501,30 @@ const employeeModel = prisma.$extends({
           createdData[0].code = finalCode;
         }
 
-        if (userId) {
+        // Automatically create user for employee if not provided
+        if (!userId) {
+          try {
+            const employee = createdData[0];
+            if (employee.name && employee.surname && employee.contactNo) {
+              await createUserForEmployee(
+                employee.id,
+                employee.name,
+                employee.surname,
+                employee.contactNo
+              );
+            }
+          } catch (err: any) {
+            console.error(`Error auto-creating user for employee ${createdData[0].id}:`, err);
+            // Don't throw error, just log it - employee creation should still succeed
+          }
+        } else {
+          // If userId is provided, associate existing user with employee
           try {
             const userData = await prisma.user.gpFindById(userId);
             const newUserData = { ...userData, employeeId: createdData[0].id };
             await prisma.user.gpUpdate(userId, newUserData);
           } catch (err: any) {
-            console.log(userId);
+            console.error(`Error associating user ${userId} with employee:`, err);
           }
         }
 

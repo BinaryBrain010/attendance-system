@@ -13,6 +13,7 @@
     "force-seed": "node seeder.js --force",
     "update-employee-codes": "ts-node updateEmployeeCodes.ts",
     "preview-employee-codes": "ts-node updateEmployeeCodes.ts --preview",
+    "delete-orphaned-users": "ts-node deleteOrphanedUsers.ts",
     "tsc": "tsc -w"
   },
   "author": "ahad",

@@ -351,6 +351,62 @@ class LeaveAllocRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/getByEmployeeId', this.controller.getLeaveAllocationByEmployeeId.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /leave/leave-allocations/assignToAll:
+     *   post:
+     *     summary: Assign leave configuration to all employees
+     *     tags: [Leaves]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Assigns a leave configuration (e.g., Maternity Leave - 15 days) to all active employees at once
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - leaveConfigId
+     *               - assignedDays
+     *               - allocationStartDate
+     *             properties:
+     *               leaveConfigId:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *                 description: Leave configuration ID (e.g., Maternity Leave)
+     *               assignedDays:
+     *                 type: integer
+     *                 example: 15
+     *                 description: Number of days to assign
+     *               allocationStartDate:
+     *                 type: string
+     *                 format: date
+     *                 example: "2024-01-01"
+     *                 description: Start date of the allocation period
+     *               allocationEndDate:
+     *                 type: string
+     *                 format: date
+     *                 example: "2024-12-31"
+     *                 description: End date of the allocation period (optional)
+     *               note:
+     *                 type: string
+     *                 example: "Annual maternity leave allocation"
+     *                 description: Optional note for the allocation
+     *     responses:
+     *       200:
+     *         description: Leave configuration assigned to all employees successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/assignToAll', this.controller.assignToAllEmployees.bind(this.controller));
   }
 
   public getRouter(): Router {

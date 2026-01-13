@@ -234,6 +234,20 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Employee retrieved successfully!" });
   }
 
+  async getEmployeeLinkedUser(req: Request, res: Response) {
+    const { id } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Employee ID is required" 
+      });
+    }
+
+    const operation = () => this.service.getEmployeeLinkedUser(id);
+    await this.handleRequest(operation, res, { successMessage: "Employee linked user retrieved successfully!" });
+  }
+
   async restoreEmployee(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.restoreEmployee(id);

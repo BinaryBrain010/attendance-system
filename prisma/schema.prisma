@@ -280,31 +280,44 @@ enum AttendanceStatus {
 }
 
 model LeaveRequest {
-  id         String      @id @default(uuid()) @db.VarChar(36)
-  employee   Employee    @relation(fields: [employeeId], references: [id])
-  employeeId String
-  reason     String?
-  startDate  DateTime
-  endDate    DateTime
-  status     LeaveStatus @default(PENDING)
-  image      String?
-  location   String?
-  createdAt  DateTime?   @default(now())
-  updatedAt  DateTime?   @updatedAt
-  isDeleted  DateTime?
+  id                  String           @id @default(uuid()) @db.VarChar(36)
+  employee            Employee         @relation(fields: [employeeId], references: [id])
+  employeeId          String
+  leaveAllocation     LeaveAllocation? @relation(fields: [leaveAllocationId], references: [id])
+  leaveAllocationId   String?
+  reason              String?
+  startDate           DateTime
+  endDate             DateTime
+  status              LeaveStatus      @default(PENDING)
+  leaveType           String?          @default("CASUAL") @db.VarChar(50)
+  image               String?
+  location            String?
+  createdAt           DateTime?        @default(now())
+  updatedAt           DateTime?        @updatedAt
+  isDeleted           DateTime?
 }
 
 model AttendanceRequest {
-  id         String      @id @default(uuid()) @db.VarChar(36)
-  employee   Employee    @relation(fields: [employeeId], references: [id])
-  employeeId String
-  reason     String?
-  status     LeaveStatus @default(PENDING)
-  image      String? 
-  location   String? 
-  createdAt  DateTime?   @default(now())
-  updatedAt  DateTime?   @updatedAt
-  isDeleted  DateTime?
+  id            String      @id @default(uuid()) @db.VarChar(36)
+  employee      Employee    @relation(fields: [employeeId], references: [id])
+  employeeId    String
+  attendanceId  String?     @db.VarChar(36)
+  reason        String?
+  status        LeaveStatus @default(PENDING)
+  image         String? 
+  location      String? 
+  // Proposed attendance changes
+  proposedStatus    String?
+  proposedCheckIn   DateTime?
+  proposedCheckOut  DateTime?
+  proposedComment   String?
+  proposedLocation  String?
+  proposedDate      DateTime?
+  requestedBy       String?   @db.VarChar(36)
+  approvedBy        String?   @db.VarChar(36)
+  createdAt         DateTime? @default(now())
+  updatedAt         DateTime? @updatedAt
+  isDeleted         DateTime?
 }
 
 enum LeaveStatus {
@@ -332,12 +345,16 @@ model LeaveAllocation {
   leaveConfig         LeaveConfiguration? @relation(fields: [leaveConfigId], references: [id])
   leaveConfigId       String?
   assignedDays        Int
+  usedDays            Int                 @default(0)
+  remainingDays       Int                 @default(0)
   note                String?
   allocationStartDate DateTime
   allocationEndDate   DateTime?
   createdAt           DateTime?           @default(now())
   updatedAt           DateTime?           @updatedAt
   isDeleted           DateTime?
+
+  leaveRequests       LeaveRequest[]
 }
 
 enum ScheduleParent {

@@ -226,11 +226,11 @@ const attendanceModel = prisma.$extends({
       },
       
       // Method to mark attendance
-      async markAttendance(attendanceData: Attendance & { createdByUserId?: string; updatedByUserId?: string }) {
+      async markAttendance(attendanceData: Attendance & { createdByUserId?: string; updatedByUserId?: string; createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string }) {
         // Use database transaction to prevent race conditions
         return await prisma.$transaction(async (tx) => {
-          // Extract audit trail fields
-          const { createdByUserId, updatedByUserId, ...attendanceFields } = attendanceData as any;
+          // Extract audit trail fields and leave-related fields
+          const { createdByUserId, updatedByUserId, createLeaveRequest, leaveType, leaveReason, ...attendanceFields } = attendanceData as any;
           
           // Use Pakistan timezone for date filtering
           const targetDate = attendanceFields.date
@@ -325,6 +325,27 @@ const attendanceModel = prisma.$extends({
                   previousUpdates: updatedPreviousUpdates,
                 } as any,
               });
+
+              // If status changed to ON_LEAVE and createLeaveRequest is true, create a leave request
+              if (attendanceFields.status === 'ON_LEAVE' && createLeaveRequest) {
+                try {
+                  const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+                  
+                  const leaveRequestData: any = {
+                    employeeId: attendanceFields.employeeId,
+                    startDate: normalizedDate,
+                    endDate: normalizedDate,
+                    status: 'APPROVED',
+                    reason: leaveReason || 'Leave marked during attendance update',
+                    leaveType: leaveType || 'CASUAL',
+                  };
+
+                  await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+                } catch (error) {
+                  console.error('Error creating leave request during attendance update:', error);
+                }
+              }
+
               return {
                 success: true,
                 message: `Attendance updated successfully for ${employee.name} ${employee.surname}!`,
@@ -351,6 +372,30 @@ const attendanceModel = prisma.$extends({
               previousUpdates: [],
             } as any,
           });
+
+          // If status is ON_LEAVE and createLeaveRequest is true, create a leave request
+          if (attendanceFields.status === 'ON_LEAVE' && createLeaveRequest) {
+            try {
+              // Import leave request model dynamically to avoid circular dependency
+              const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+              
+              // Create leave request for the same date
+              const leaveRequestData: any = {
+                employeeId: attendanceFields.employeeId,
+                startDate: normalizedDate,
+                endDate: normalizedDate,
+                status: 'APPROVED', // Auto-approve when marked during attendance
+                reason: leaveReason || 'Leave marked during attendance',
+                leaveType: leaveType || 'CASUAL',
+              };
+
+              // Create the leave request (this will automatically link to leave allocation if configured)
+              await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+            } catch (error) {
+              console.error('Error creating leave request during attendance marking:', error);
+              // Don't fail the attendance marking if leave request creation fails
+            }
+          }
         
           return {
             success: true,
@@ -358,6 +403,130 @@ const attendanceModel = prisma.$extends({
             data: newAttendance,
           };
         });
+      },
+
+      // Bulk mark leave for selected employees
+      async bulkMarkLeave(
+        employeeIds: string[],
+        date: Date,
+        leaveType?: string,
+        reason?: string,
+        createLeaveRequest?: boolean,
+        createdByUserId?: string
+      ): Promise<any> {
+        const normalizedDate = getStartOfDayPakistan(date);
+        const dateStart = new Date(normalizedDate);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(normalizedDate);
+        dateEnd.setHours(23, 59, 59, 999);
+
+        const results = [];
+
+        for (const employeeId of employeeIds) {
+          try {
+            // Check if employee exists
+            const employee = await prisma.employee.findUnique({
+              where: { id: employeeId, isDeleted: null },
+            });
+
+            if (!employee) {
+              results.push({
+                employeeId,
+                success: false,
+                message: `Employee not found`,
+              });
+              continue;
+            }
+
+            // Check if attendance already exists
+            const existingAttendance = await prisma.attendance.findFirst({
+              where: {
+                employeeId,
+                date: {
+                  gte: dateStart,
+                  lte: dateEnd,
+                },
+                isDeleted: null,
+              },
+            });
+
+            if (existingAttendance) {
+              // Update existing attendance to ON_LEAVE
+              const updatedAttendance = await prisma.attendance.update({
+                where: { id: existingAttendance.id },
+                data: {
+                  status: AttendanceStatus.ON_LEAVE,
+                  comment: reason || existingAttendance.comment || '',
+                  updatedBy: createdByUserId || null,
+                  updatedAt: new Date(),
+                } as any,
+              });
+
+              results.push({
+                employeeId,
+                employeeName: `${employee.name} ${employee.surname}`,
+                success: true,
+                message: `Leave marked successfully`,
+                data: updatedAttendance,
+              });
+            } else {
+              // Create new attendance record as ON_LEAVE
+              const newAttendance = await prisma.attendance.create({
+                data: {
+                  employeeId,
+                  date: normalizedDate,
+                  status: AttendanceStatus.ON_LEAVE,
+                  comment: reason || '',
+                  createdBy: createdByUserId || null,
+                  createdAt: new Date(),
+                } as any,
+              });
+
+              results.push({
+                employeeId,
+                employeeName: `${employee.name} ${employee.surname}`,
+                success: true,
+                message: `Leave marked successfully`,
+                data: newAttendance,
+              });
+            }
+
+            // If createLeaveRequest is true, create a leave request
+            if (createLeaveRequest) {
+              try {
+                const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+                
+                const leaveRequestData: any = {
+                  employeeId,
+                  startDate: normalizedDate,
+                  endDate: normalizedDate,
+                  status: 'APPROVED',
+                  reason: reason || 'Bulk leave marking',
+                  leaveType: leaveType || 'CASUAL',
+                };
+
+                await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+              } catch (error) {
+                console.error(`Error creating leave request for employee ${employeeId}:`, error);
+              }
+            }
+          } catch (error: any) {
+            results.push({
+              employeeId,
+              success: false,
+              message: error.message || 'Error marking leave',
+            });
+          }
+        }
+
+        return {
+          success: true,
+          message: `Bulk leave marking completed`,
+          total: employeeIds.length,
+          successful: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+          results,
+        };
       },
 
       async gpFindEmployeeAttendance(

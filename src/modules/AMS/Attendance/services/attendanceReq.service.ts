@@ -81,9 +81,10 @@ class LeaveReqService {
   // Update leave request status
   async updateAttendanceRequestStatus(
     requestId: string,
-    status: LeaveStatus
+    status: LeaveStatus,
+    approvedBy?: string
   ): Promise<void> {
-    await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status);
+    await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status, approvedBy);
   }
 
   // Get total number of leave requests

@@ -8,10 +8,12 @@ export enum LeaveStatus {
     id: string;
     employee: Employee; 
     employeeId: string;
+    leaveAllocationId?: string;
     reason?: string;
     startDate: Date;
     endDate: Date;
-    status: LeaveStatus; 
+    status: LeaveStatus;
+    leaveType?: string; // "CASUAL", "MATERNITY", "SICK", etc.
     image?: string; 
     location?: string;
     createdAt?: Date;
@@ -33,10 +35,12 @@ export enum LeaveStatus {
     id: string; 
     employeeId: string;
     leaveConfigId?: string;
-    assignedDays: number; 
+    assignedDays: number;
+    usedDays?: number;
+    remainingDays?: number;
     note?: string; 
-    allocationStartDate: Date; // Added field for allocation start date
-    allocationEndDate?: Date; // Added optional field for allocation end date
+    allocationStartDate: Date;
+    allocationEndDate?: Date;
     createdAt?: Date;
     updatedAt?: Date;
     isDeleted?: Date;

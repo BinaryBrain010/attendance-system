@@ -99,6 +99,29 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const errorMessage = "Error retrieving leave allocation:";
     await this.handleRequest(operation, res, { successMessage });
   }
+
+  async assignToAllEmployees(req: Request, res: Response) {
+    const { leaveConfigId, assignedDays, allocationStartDate, allocationEndDate, note } = req.body;
+    
+    if (!leaveConfigId || !assignedDays || !allocationStartDate) {
+      return res.status(400).json({ 
+        message: "leaveConfigId, assignedDays, and allocationStartDate are required" 
+      });
+    }
+
+    const startDate = new Date(allocationStartDate);
+    const endDate = allocationEndDate ? new Date(allocationEndDate) : undefined;
+
+    const operation = () => this.service.assignToAllEmployees(
+      leaveConfigId,
+      assignedDays,
+      startDate,
+      endDate,
+      note
+    );
+    const successMessage = "Leave configuration assigned to all employees successfully!";
+    await this.handleRequest(operation, res, { successMessage });
+  }
 }
 
 export default LeaveAllocController;

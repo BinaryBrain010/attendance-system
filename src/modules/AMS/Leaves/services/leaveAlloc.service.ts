@@ -89,6 +89,28 @@ class LeaveAllocService {
   async getTotalLeaveAllocations(): Promise<number> {
     return await leaveAllocModel.leaveAllocation.gpCount();
   }
+
+  // Assign leave configuration to all employees
+  async assignToAllEmployees(
+    leaveConfigId: string,
+    assignedDays: number,
+    allocationStartDate: Date,
+    allocationEndDate?: Date,
+    note?: string
+  ): Promise<any[]> {
+    return await leaveAllocModel.leaveAllocation.assignToAllEmployees(
+      leaveConfigId,
+      assignedDays,
+      allocationStartDate,
+      allocationEndDate,
+      note
+    );
+  }
+
+  // Update leave balance for an allocation
+  async updateLeaveBalance(leaveAllocationId: string): Promise<void> {
+    await leaveAllocModel.leaveAllocation.updateLeaveBalance(leaveAllocationId);
+  }
 }
 
 export default LeaveAllocService;

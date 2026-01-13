@@ -94,6 +94,10 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     return await employeeModel.employee.gpFindByCode(code);
   }
 
+  async getEmployeeLinkedUser(employeeId: string): Promise<any> {
+    return await employeeModel.employee.gpGetLinkedUser(employeeId);
+  }
+
   async getTotalEmployees(): Promise<number> {
     return await employeeModel.employee.gpCount();
   }

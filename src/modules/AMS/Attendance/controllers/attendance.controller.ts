@@ -175,7 +175,7 @@ class AttendanceController extends BaseController<AttendanceService> {
   }
 
   async markAttendance(req: Request, res: Response) {
-    const attendanceData: Attendance = req.body;
+    const attendanceData: Attendance & { createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
     try {
@@ -196,12 +196,60 @@ class AttendanceController extends BaseController<AttendanceService> {
     }
   }
 
+  async bulkMarkLeave(req: Request, res: Response) {
+    const { employeeIds, date, leaveType, reason, createLeaveRequest } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
+
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({ message: "employeeIds array is required and must not be empty" });
+    }
+
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
+    }
+
+    const operation = () => this.service.bulkMarkLeave(
+      employeeIds,
+      new Date(date),
+      leaveType,
+      reason,
+      createLeaveRequest,
+      userId
+    );
+    await this.handleRequest(operation, res, { successMessage: "Bulk leave marking completed successfully!" });
+  }
+
   async updateAttendance(req: Request, res: Response) {
     const { id, data } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.updateAttendance(id, { ...data, updatedByUserId: userId });
-    await this.handleRequest(operation, res, { successMessage: "Attendance updated successfully!" });
+    try {
+      const result = await this.service.updateAttendance(id, { ...data, updatedByUserId: userId }, userId);
+      
+      // If result indicates request was created, return appropriate response
+      if (result && result.requiresApproval) {
+        return res.status(202).json({
+          success: true,
+          message: result.message,
+          requiresApproval: true,
+          requestId: result.requestId,
+          data: result.data,
+        });
+      }
+      
+      // Direct update was successful
+      return res.status(200).json({
+        success: true,
+        message: "Attendance updated successfully!",
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("Error updating attendance:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || "Error updating attendance." 
+      });
+    }
   }
 
   async deleteAttendance(req: Request, res: Response) {
