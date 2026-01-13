@@ -258,6 +258,17 @@ class EmployeeController extends BaseController<EmployeeService> {
     const operation = () => this.service.getHistoryById(id, filterBool, date);
     await this.handleRequest(operation, res, { successMessage: "Employee history retrieved successfully!" });
   }
+
+  async getEmployeeStats(req: Request, res: Response) {
+    const { employeeId, from, to } = req.body;
+    
+    if (!employeeId) {
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
+
+    const operation = () => this.service.getEmployeeStats(employeeId, from, to);
+    await this.handleRequest(operation, res, { successMessage: "Employee statistics retrieved successfully!" });
+  }
 }
 
 export default EmployeeController;

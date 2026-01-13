@@ -729,6 +729,72 @@ class EmployeeRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/getHistoryById', this.controller.getHistoryById.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /employee/stats:
+     *   post:
+     *     summary: Get comprehensive statistics for an employee
+     *     tags: [Employees]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Returns detailed statistics including attendance, leave requests, and leave allocations with trends for visualization
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - employeeId
+     *             properties:
+     *               employeeId:
+     *                 type: string
+     *                 description: Employee ID
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *               from:
+     *                 type: string
+     *                 format: date
+     *                 description: Optional start date for statistics (defaults to start of current month)
+     *                 example: "2024-01-01"
+     *               to:
+     *                 type: string
+     *                 format: date
+     *                 description: Optional end date for statistics (defaults to end of current month)
+     *                 example: "2024-12-31"
+     *     responses:
+     *       200:
+     *         description: Employee statistics retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                 message:
+     *                   type: string
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     employee:
+     *                       type: object
+     *                     attendance:
+     *                       type: object
+     *                     leaveRequests:
+     *                       type: object
+     *                     leaveAllocations:
+     *                       type: object
+     *                     leaveTrends:
+     *                       type: object
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         $ref: '#/components/responses/404'
+     */
+    this.router.post('/stats', this.controller.getEmployeeStats.bind(this.controller));
   }
 
   public getRouter(): Router {
