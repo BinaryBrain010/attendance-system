@@ -347,15 +347,22 @@ const employeeModel = prisma.$extends({
       async gpCreate(data: any) {
         const { userId, code, createdByUserId, ...remainingData } = data;
         
-        // If code is not provided, generate it automatically
+        // Always generate code automatically if company and joiningDate are provided
+        // Ignore any provided code unless it's explicitly a valid format (SOL-*, PWH-*, OK-*)
         let employeeCode = code;
         let needsCodeGeneration = false;
         
-        if (!employeeCode && remainingData.company && remainingData.joiningDate) {
-          needsCodeGeneration = true;
-          // Use temporary code to avoid unique constraint issues
-          // We'll update it with the correct code after creation
-          employeeCode = `TEMP-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        // Check if code should be auto-generated
+        // Generate if: no code provided, or code doesn't match expected pattern, or company/joiningDate are provided
+        const isValidCodeFormat = code && /^(SOL|PWH|OK)-\d+$/.test(code);
+        
+        if (remainingData.company && remainingData.joiningDate) {
+          if (!isValidCodeFormat) {
+            needsCodeGeneration = true;
+            // Use temporary code to avoid unique constraint issues
+            // We'll update it with the correct code after creation
+            employeeCode = `TEMP-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+          }
         }
 
         // Create employee with provided or temporary code and audit trail
@@ -370,9 +377,16 @@ const employeeModel = prisma.$extends({
 
         // If code needs to be auto-generated, calculate and update it
         if (needsCodeGeneration && remainingData.company && remainingData.joiningDate) {
+          // Ensure joiningDate is a proper Date object
+          const joiningDate = remainingData.joiningDate instanceof Date 
+            ? remainingData.joiningDate 
+            : new Date(remainingData.joiningDate);
+          
+          console.log(`[Employee Creation] Generating code for company: ${remainingData.company}, joiningDate: ${joiningDate.toISOString()}`);
+          
           const finalCode = await this.generateEmployeeCode(
             remainingData.company,
-            remainingData.joiningDate,
+            joiningDate,
             createdData[0].id
           );
           
@@ -405,51 +419,57 @@ const employeeModel = prisma.$extends({
       },
 
       /**
-       * Generate employee code based on company and joining date sequence
-       * Follows the same convention as updateEmployeeCodes.ts
-       * Sequence numbers are assigned globally based on joining date across all companies
+       * Generate employee code based on company and sequential increment
+       * Finds the maximum existing sequence number and increments it
+       * This ensures continuous sequential numbering regardless of joining date
        */
       async generateEmployeeCode(
         company: Company,
         joiningDate: Date,
         employeeId: string
       ): Promise<string> {
-        // Get all employees ordered by joining date (oldest first), then by id
-        // This includes the newly created employee
+        // Get all employees to find the maximum sequence number
         const employees = await prisma.employee.findMany({
           where: {
             isDeleted: null,
           },
-          orderBy: [
-            {
-              joiningDate: "asc",
-            },
-            {
-              id: "asc",
-            },
-          ],
           select: {
             id: true,
-            joiningDate: true,
+            code: true,
           },
         });
 
-        // Find the position of this employee in the sorted list
-        let position = 0;
-        for (let i = 0; i < employees.length; i++) {
-          if (employees[i].id === employeeId) {
-            position = i + 1;
-            break;
+        // Extract sequence numbers from existing codes
+        // Codes are in format: PREFIX-NUMBER (e.g., SOL-154, PWH-2, OK-3)
+        let maxSequence = 0;
+        const codePattern = /^(SOL|PWH|OK)-(\d+)$/;
+        
+        for (const employee of employees) {
+          if (employee.code) {
+            const match = employee.code.match(codePattern);
+            if (match) {
+              const sequence = parseInt(match[2], 10);
+              if (sequence > maxSequence) {
+                maxSequence = sequence;
+              }
+            }
           }
         }
 
-        // If employee not found (shouldn't happen), use length + 1
-        if (position === 0) {
-          position = employees.length;
+        // Increment to get the next sequence number
+        const nextSequence = maxSequence + 1;
+
+        // Get the company prefix
+        const prefix = companyPrefixMap[company];
+        if (!prefix) {
+          throw new Error(`Invalid company: ${company}. Valid companies are: SOLARMAX, POWERHIGHWAY, OKASHASMART`);
         }
 
-        const prefix = companyPrefixMap[company];
-        return `${prefix}-${position}`;
+        const generatedCode = `${prefix}-${nextSequence}`;
+        console.log(`[Employee Code Generation] Max existing sequence: ${maxSequence}, New code: ${generatedCode} for ${company} employee`);
+        
+        // Return code in format: PREFIX-SEQUENCE (e.g., SOL-155, PWH-156, OK-157)
+        return generatedCode;
       },
       async gpFindMany(this: any, args?: any) {
         return await this.findMany(args);
