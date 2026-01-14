@@ -70,16 +70,39 @@ class GroupController extends BaseController<GroupService> {
     let groupData: createGroup = req.body;
     let operation = () => this.service.createGroup(groupData);
     let successMessage = "Group created successfully!";
-    let errorMessage = "Error creating group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "Group",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Group created: ${groupData.name || 'N/A'}`,
+        metadata: {
+          name: groupData.name
+        }
+      },
+      req
+    });
   }
 
   async updateGroup(req: Request, res: Response) {
     let { id, data } = req.body;
     let operation = () => this.service.updateGroup(id, data);
     let successMessage = "Group updated successfully!";
-    let errorMessage = "Error updating group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Group",
+        entityId: id,
+        description: `Group updated: ${data.name || 'N/A'}`,
+        metadata: {
+          changes: data,
+          groupId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteGroup(req: Request, res: Response) {
@@ -94,8 +117,16 @@ class GroupController extends BaseController<GroupService> {
     let { id } = req.body;
     let operation = () => this.service.restoreGroup(id);
     let successMessage = "Group restored successfully!";
-    let errorMessage = "Error restoring group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Group",
+        entityId: id,
+        description: "Group restored"
+      },
+      req
+    });
   }
 
   async getGroupById(req: Request, res: Response) {

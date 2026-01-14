@@ -28,7 +28,21 @@ class UnitController extends BaseController<UnitService> {
   async createUnit(req: Request, res: Response) {
     const unitData: Unit & { createdByUserId?: string } = req.body;
     const operation = () => this.service.createUnit(unitData);
-    await this.handleRequest(operation, res, { successMessage: "Unit created successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Unit created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "Unit",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Unit created: ${unitData.name || 'N/A'}`,
+        metadata: {
+          name: unitData.name,
+          type: unitData.type,
+          code: unitData.code
+        }
+      },
+      req
+    });
   }
 
   async updateUnit(req: Request, res: Response) {
@@ -37,7 +51,20 @@ class UnitController extends BaseController<UnitService> {
       return res.status(400).json({ message: "Unit ID is required" });
     }
     const operation = () => this.service.updateUnit(id, data);
-    await this.handleRequest(operation, res, { successMessage: "Unit updated successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Unit updated successfully!",
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Unit",
+        entityId: id,
+        description: `Unit updated: ${data.name || 'N/A'}`,
+        metadata: {
+          changes: data,
+          unitId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteUnit(req: Request, res: Response) {
@@ -46,7 +73,16 @@ class UnitController extends BaseController<UnitService> {
       return res.status(400).json({ message: "Unit ID is required" });
     }
     const operation = () => this.service.deleteUnit(id);
-    await this.handleRequest(operation, res, { successMessage: "Unit deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Unit deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "Unit",
+        entityId: id,
+        description: "Unit deleted"
+      },
+      req
+    });
   }
 
   async restoreUnit(req: Request, res: Response) {
@@ -55,7 +91,16 @@ class UnitController extends BaseController<UnitService> {
       return res.status(400).json({ message: "Unit ID is required" });
     }
     const operation = () => this.service.restoreUnit(id);
-    await this.handleRequest(operation, res, { successMessage: "Unit restored successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Unit restored successfully!",
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Unit",
+        entityId: id,
+        description: "Unit restored"
+      },
+      req
+    });
   }
 
   async getUnitById(req: Request, res: Response) {

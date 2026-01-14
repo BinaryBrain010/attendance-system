@@ -20,19 +20,56 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async createAttendanceRequest(req: Request, res: Response) {
     const attendanceRequestData: AttendanceRequest = req.body;
     const operation = () => this.service.createAttendanceRequest(attendanceRequestData);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request created successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "AttendanceRequest",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Attendance request created for employee ${attendanceRequestData.employeeId}`,
+        metadata: {
+          employeeId: attendanceRequestData.employeeId,
+          attendanceId: attendanceRequestData.attendanceId,
+          status: attendanceRequestData.status,
+          reason: attendanceRequestData.reason
+        }
+      },
+      req
+    });
   }
 
   async updateAttendanceRequest(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateAttendanceRequest(id, data);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request updated successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request updated successfully!",
+      logActivity: {
+        action: "UPDATE",
+        entityType: "AttendanceRequest",
+        entityId: id,
+        description: `Attendance request updated`,
+        metadata: {
+          changes: data,
+          requestId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteAttendanceRequest(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendanceRequest(id);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "AttendanceRequest",
+        entityId: id,
+        description: "Attendance request deleted"
+      },
+      req
+    });
   }
 
   async restoreAttendanceRequest(req: Request, res: Response) {
@@ -94,7 +131,21 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
     }
 
     const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request status updated successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request status updated successfully!",
+      logActivity: {
+        action: status === "APPROVED" ? "APPROVE" : status === "REJECTED" ? "REJECT" : "UPDATE",
+        entityType: "AttendanceRequest",
+        entityId: id,
+        description: `Attendance request ${status.toLowerCase()}`,
+        metadata: {
+          requestId: id,
+          status,
+          updatedBy: userId
+        }
+      },
+      req
+    });
   }
 }
 

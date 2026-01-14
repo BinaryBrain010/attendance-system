@@ -28,7 +28,20 @@ class HolidayController extends BaseController<HolidayService> {
   async createHoliday(req: Request, res: Response) {
     const holidayData: Holiday & { createdByUserId?: string } = req.body;
     const operation = () => this.service.createHoliday(holidayData);
-    await this.handleRequest(operation, res, { successMessage: "Holiday created successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Holiday created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "Holiday",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Holiday created: ${holidayData.name || 'N/A'}`,
+        metadata: {
+          name: holidayData.name,
+          date: holidayData.date
+        }
+      },
+      req
+    });
   }
 
   async updateHoliday(req: Request, res: Response) {
@@ -37,7 +50,20 @@ class HolidayController extends BaseController<HolidayService> {
       return res.status(400).json({ message: "Holiday ID is required" });
     }
     const operation = () => this.service.updateHoliday(id, data);
-    await this.handleRequest(operation, res, { successMessage: "Holiday updated successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Holiday updated successfully!",
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Holiday",
+        entityId: id,
+        description: `Holiday updated: ${data.name || 'N/A'}`,
+        metadata: {
+          changes: data,
+          holidayId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteHoliday(req: Request, res: Response) {
@@ -46,7 +72,16 @@ class HolidayController extends BaseController<HolidayService> {
       return res.status(400).json({ message: "Holiday ID is required" });
     }
     const operation = () => this.service.deleteHoliday(id);
-    await this.handleRequest(operation, res, { successMessage: "Holiday deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Holiday deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "Holiday",
+        entityId: id,
+        description: "Holiday deleted"
+      },
+      req
+    });
   }
 
   async restoreHoliday(req: Request, res: Response) {
@@ -55,7 +90,16 @@ class HolidayController extends BaseController<HolidayService> {
       return res.status(400).json({ message: "Holiday ID is required" });
     }
     const operation = () => this.service.restoreHoliday(id);
-    await this.handleRequest(operation, res, { successMessage: "Holiday restored successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Holiday restored successfully!",
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Holiday",
+        entityId: id,
+        description: "Holiday restored"
+      },
+      req
+    });
   }
 
   async getHolidayById(req: Request, res: Response) {
@@ -89,7 +133,19 @@ class HolidayController extends BaseController<HolidayService> {
       return res.status(400).json({ message: "Year is required" });
     }
     const operation = () => this.service.markSundaysForYear(year, createdByUserId);
-    await this.handleRequest(operation, res, { successMessage: "Sundays marked as holidays successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Sundays marked as holidays successfully!",
+      logActivity: {
+        action: "BULK_CREATE",
+        entityType: "Holiday",
+        description: `Sundays marked as holidays for year ${year}`,
+        metadata: {
+          year,
+          action: "markSundays"
+        }
+      },
+      req
+    });
   }
 
   async getHistoryById(req: Request, res: Response) {

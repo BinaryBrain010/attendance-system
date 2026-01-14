@@ -18,8 +18,22 @@ class GroupController extends BaseController<GroupRoleService> {
     let groupData: GroupRole | GroupRole[] = req.body;
     let operation = () => this.service.createGroupRole(groupData);
     let successMessage = "Group created successfully!";
-    let errorMessage = "Error creating group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "GroupRole",
+        entityId: (result: any) => Array.isArray(result) ? result[0]?.id : result?.id || result?.data?.id,
+        description: Array.isArray(groupData) 
+          ? `Bulk group roles created: ${groupData.length} item(s)`
+          : `Group role created`,
+        metadata: {
+          isBulk: Array.isArray(groupData),
+          count: Array.isArray(groupData) ? groupData.length : 1
+        }
+      },
+      req
+    });
   }
 
   async updateGroupRole(req: Request, res: Response) {
@@ -34,16 +48,32 @@ class GroupController extends BaseController<GroupRoleService> {
     let { id } = req.body;
     let operation = () => this.service.deleteGroupRole(id);
     let successMessage = "Group deleted successfully!";
-    let errorMessage = "Error deleting group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "GroupRole",
+        entityId: id,
+        description: "Group role deleted"
+      },
+      req
+    });
   }
 
   async restoreGroupRole(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.restoreGroupRole(id);
     let successMessage = "Group restored successfully!";
-    let errorMessage = "Error restoring group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "GroupRole",
+        entityId: id,
+        description: "Group role restored"
+      },
+      req
+    });
   }
 
   async getGroupRoleById(req: Request, res: Response) {

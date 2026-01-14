@@ -32,7 +32,21 @@ class UnitEmployeeController extends BaseController<UnitEmployeeService> {
       return res.status(400).json({ message: "Employee IDs array is required" });
     }
     const operation = () => this.service.assignEmployeesToUnit(unitId, employeeIds);
-    await this.handleRequest(operation, res, { successMessage: "Employees assigned to unit successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employees assigned to unit successfully!",
+      logActivity: {
+        action: "BULK_UPDATE",
+        entityType: "UnitEmployee",
+        description: `Employees assigned to unit: ${employeeIds.length} employee(s)`,
+        metadata: {
+          unitId,
+          employeeIds,
+          count: employeeIds.length,
+          action: "assign"
+        }
+      },
+      req
+    });
   }
 
   async addEmployeesToUnit(req: Request, res: Response) {
@@ -44,7 +58,21 @@ class UnitEmployeeController extends BaseController<UnitEmployeeService> {
       return res.status(400).json({ message: "Employee IDs array is required" });
     }
     const operation = () => this.service.addEmployeesToUnit(unitId, employeeIds);
-    await this.handleRequest(operation, res, { successMessage: "Employees added to unit successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employees added to unit successfully!",
+      logActivity: {
+        action: "BULK_CREATE",
+        entityType: "UnitEmployee",
+        description: `Employees added to unit: ${employeeIds.length} employee(s)`,
+        metadata: {
+          unitId,
+          employeeIds,
+          count: employeeIds.length,
+          action: "add"
+        }
+      },
+      req
+    });
   }
 
   async removeEmployeesFromUnit(req: Request, res: Response) {
@@ -56,7 +84,21 @@ class UnitEmployeeController extends BaseController<UnitEmployeeService> {
       return res.status(400).json({ message: "Employee IDs array is required" });
     }
     const operation = () => this.service.removeEmployeesFromUnit(unitId, employeeIds);
-    await this.handleRequest(operation, res, { successMessage: "Employees removed from unit successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employees removed from unit successfully!",
+      logActivity: {
+        action: "BULK_DELETE",
+        entityType: "UnitEmployee",
+        description: `Employees removed from unit: ${employeeIds.length} employee(s)`,
+        metadata: {
+          unitId,
+          employeeIds,
+          count: employeeIds.length,
+          action: "remove"
+        }
+      },
+      req
+    });
   }
 
   async removeEmployeeFromUnit(req: Request, res: Response) {
@@ -68,7 +110,19 @@ class UnitEmployeeController extends BaseController<UnitEmployeeService> {
       return res.status(400).json({ message: "Employee ID is required" });
     }
     const operation = () => this.service.removeEmployeeFromUnit(unitId, employeeId);
-    await this.handleRequest(operation, res, { successMessage: "Employee removed from unit successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employee removed from unit successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "UnitEmployee",
+        description: `Employee removed from unit`,
+        metadata: {
+          unitId,
+          employeeId
+        }
+      },
+      req
+    });
   }
 }
 

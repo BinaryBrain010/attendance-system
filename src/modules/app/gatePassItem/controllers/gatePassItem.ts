@@ -32,8 +32,21 @@ class GatePassItemController extends BaseController<GatePassItemService> {
     const GatePassItemData: GatePassItem = req.body;
     const operation = () => this.service.createGatePassItem(GatePassItemData);
     const successMessage = 'GatePassItem created successfully!';
-    const errorMessage = 'Error creating GatePassItem:';
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "GatePassItem",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `GatePassItem created for gate pass: ${GatePassItemData.gatePassId || 'N/A'}`,
+        metadata: {
+          gatePassId: GatePassItemData.gatePassId,
+          itemId: GatePassItemData.itemId,
+          quantity: GatePassItemData.quantity
+        }
+      },
+      req
+    });
   }
 
   async updateGatePassItem(req: Request, res: Response) {
@@ -48,8 +61,16 @@ class GatePassItemController extends BaseController<GatePassItemService> {
     const { id } = req.body;
     const operation = () => this.service.deleteGatePassItem(id);
     const successMessage = 'GatePassItem deleted successfully!';
-    const errorMessage = 'Error deleting GatePassItem:';
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "GatePassItem",
+        entityId: id,
+        description: "GatePassItem deleted"
+      },
+      req
+    });
   }
 
   async getGatePassItemById(req: Request, res: Response) {
@@ -64,8 +85,16 @@ class GatePassItemController extends BaseController<GatePassItemService> {
     const { id } = req.body;
     const operation = () => this.service.restoreGatePassItem(id);
     const successMessage = 'GatePassItem restored successfully!';
-    const errorMessage = 'Error restoring GatePassItem:';
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "GatePassItem",
+        entityId: id,
+        description: "GatePassItem restored"
+      },
+      req
+    });
   }
 }
 

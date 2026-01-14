@@ -3,6 +3,7 @@ import BaseController from "../../../../core/controllers/base.controller";
 import { Attendance } from "../types/Attendance";
 import path from "path";
 import AttendanceService from "../services/attendnace.service";
+import { logActivityFromRequest } from "../../../ActivityLog/helper/activityLog.helper";
 import { AttendanceExcelUtility } from "../../../../excel/attendance";
 import { AttendancePDF } from "../../../../pdf/attendance";
 
@@ -154,8 +155,22 @@ class AttendanceController extends BaseController<AttendanceService> {
     const AttendanceData: Attendance = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.createAttendance({ ...AttendanceData, createdByUserId: userId });
-    await this.handleRequest(operation, res, { successMessage: "Attendance created successfully!" });
+    const operation = () => this.service.createAttendance({ ...AttendanceData, createdByUserId: userId } as any);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "Attendance",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Attendance created for employee ${AttendanceData.employeeId}`,
+        metadata: {
+          employeeId: AttendanceData.employeeId,
+          status: AttendanceData.status,
+          date: AttendanceData.date
+        }
+      },
+      req
+    });
   }
 
   async checkAttendance(req: Request, res: Response) {
@@ -174,8 +189,43 @@ class AttendanceController extends BaseController<AttendanceService> {
       ...attendanceData, 
       createdByUserId: userId,
       updatedByUserId: userId 
+    } as any);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance marked successfully!", 
+      statusCode: 201,
+      logActivity: {
+        action: (result: any) => {
+          // Determine actual action from result message
+          const message = result?.message || "";
+          if (message.includes("Check-out marked")) {
+            return "UPDATE"; // Checkout is an update
+          } else if (message.includes("updated successfully")) {
+            return "UPDATE";
+          } else if (message.includes("already marked") && !message.includes("Check-out")) {
+            return "READ"; // Just viewing existing
+          }
+          return "CREATE"; // New attendance marked
+        },
+        entityType: "Attendance",
+        entityId: (result: any) => {
+          // Extract attendance ID from result
+          if (result?.data?.id) return result.data.id;
+          if (result?.id) return result.id;
+          return attendanceData.id;
+        },
+        description: (result: any) => result?.message || `Attendance marked for employee ${attendanceData.employeeId}`,
+        metadata: (result: any) => ({
+          employeeId: attendanceData.employeeId,
+          status: attendanceData.status,
+          date: attendanceData.date,
+          checkIn: attendanceData.checkIn,
+          checkOut: attendanceData.checkOut,
+          attendanceId: result?.data?.id || result?.id,
+          originalMessage: result?.message
+        })
+      },
+      req
     });
-    await this.handleRequest(operation, res, { successMessage: "Attendance marked successfully!", statusCode: 201 });
   }
 
   async bulkMarkLeave(req: Request, res: Response) {
@@ -198,7 +248,22 @@ class AttendanceController extends BaseController<AttendanceService> {
       createLeaveRequest,
       userId
     );
-    await this.handleRequest(operation, res, { successMessage: "Bulk leave marking completed successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Bulk leave marking completed successfully!",
+      logActivity: {
+        action: "BULK_UPDATE",
+        entityType: "Attendance",
+        description: `Bulk leave marked for ${employeeIds.length} employee(s)`,
+        metadata: {
+          employeeIds,
+          date,
+          leaveType,
+          reason,
+          count: employeeIds.length
+        }
+      },
+      req
+    });
   }
 
   async updateAttendance(req: Request, res: Response) {
@@ -207,6 +272,27 @@ class AttendanceController extends BaseController<AttendanceService> {
 
     try {
       const result = await this.service.updateAttendance(id, { ...data, updatedByUserId: userId }, userId);
+      
+      // Log activity for update
+      try {
+
+        await logActivityFromRequest(
+          req,
+          result && result.requiresApproval ? "REQUEST" : "UPDATE",
+          "Attendance",
+          id,
+          result && result.requiresApproval 
+            ? "Attendance update request created" 
+            : "Attendance updated directly",
+          {
+            changes: data,
+            requiresApproval: result?.requiresApproval || false,
+            requestId: result?.requestId || null
+          }
+        );
+      } catch (logError) {
+        console.error("Error logging activity:", logError);
+      }
       
       // If result indicates request was created, return appropriate response
       if (result && result.requiresApproval) {
@@ -237,7 +323,16 @@ class AttendanceController extends BaseController<AttendanceService> {
   async deleteAttendance(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendance(id);
-    await this.handleRequest(operation, res, { successMessage: "Attendance deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "Attendance",
+        entityId: id,
+        description: "Attendance deleted"
+      },
+      req
+    });
   }
 
   async getAttendanceById(req: Request, res: Response) {

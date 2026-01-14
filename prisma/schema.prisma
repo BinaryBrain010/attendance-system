@@ -94,6 +94,7 @@ model User {
   userRoles       UserRole[]
   employee        Employee?        @relation(fields: [employeeId], references: [id])
   employeeId      String?          @unique
+  activityLogs    ActivityLog[]
 }
 
 model Group {
@@ -497,4 +498,24 @@ model UnitEmployee {
   employee  Employee  @relation(fields: [employeeId], references: [id])
 
   @@unique([unitId, employeeId])
+}
+
+model ActivityLog {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  userId      String?   @db.VarChar(36)
+  action      String    // CREATE, UPDATE, DELETE, READ, APPROVE, REJECT, LOGIN, LOGOUT, etc.
+  entityType  String    // Employee, Attendance, AttendanceRequest, Unit, etc.
+  entityId    String?   @db.VarChar(36)
+  description String?
+  metadata    Json?     @db.JsonB // Additional data about the action
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime? @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
 }

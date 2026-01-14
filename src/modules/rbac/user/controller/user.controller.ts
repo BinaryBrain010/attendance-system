@@ -99,17 +99,43 @@ class UserController extends BaseController<UserService> {
     const userId = AuthHelper.getUserIdFromHeader(req);
     let operation = () => this.service.changePassword(userId, password);
     let successMessage = "password chnaged successfully!";
-    let errorMessage = "Error changing password ";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "User",
+        entityId: userId,
+        description: "User password changed",
+        metadata: {
+          userId,
+          action: "changePassword"
+        }
+      },
+      req
+    });
   }
 
   async changeUserPassword(req: Request, res: Response) {
     let { userId, password } = req.body;
+    const currentUserId = AuthHelper.getUserIdFromHeader(req);
     let operation = () => this.service.changePassword(userId, password);
     await this.service.removeLoggedInUser(userId, "");
     let successMessage = "password changed successfully!";
-    let errorMessage = "Error changing password ";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "User",
+        entityId: userId,
+        description: "User password changed by admin",
+        metadata: {
+          userId,
+          changedBy: currentUserId,
+          action: "changeUserPassword"
+        }
+      },
+      req
+    });
   }
 
   async logoutOfAllDevices(req: Request, res: Response) {
@@ -148,24 +174,56 @@ class UserController extends BaseController<UserService> {
     let userData: UserData = req.body;
     let operation = () => this.service.createUsers(userData);
     let successMessage = "User created successfully!";
-    let errorMessage = "Error creating user:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "User",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `User created: ${userData.username || 'N/A'}`,
+        metadata: {
+          username: userData.username,
+          employeeId: userData.employeeId
+        }
+      },
+      req
+    });
   }
 
   async updateUser(req: Request, res: Response) {
     let { id, data } = req.body;
     let operation = () => this.service.updateUsers(id, data);
     let successMessage = "User updated successfully!";
-    let errorMessage = "Error updating user:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "User",
+        entityId: id,
+        description: `User updated: ${data.username || 'N/A'}`,
+        metadata: {
+          changes: data,
+          userId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteUser(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.deleteUser(id);
     let successMessage = "User deleted successfully!";
-    let errorMessage = "Error deleting user:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "User",
+        entityId: id,
+        description: "User deleted"
+      },
+      req
+    });
   }
 
   async searchUsers(req: Request, res: Response) {
@@ -184,8 +242,16 @@ class UserController extends BaseController<UserService> {
     let { id } = req.body;
     let operation = () => this.service.restoreUser(id);
     let successMessage = "User restored successfully!";
-    let errorMessage = "Error restoring user:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "User",
+        entityId: id,
+        description: "User restored"
+      },
+      req
+    });
   }
 
   async loginUser(req: Request, res: Response) {
@@ -328,6 +394,27 @@ class UserController extends BaseController<UserService> {
         return res.json({ token, employee, permissions, unitIds });
       }
 
+      // Log login activity
+      try {
+        const { logActivityFromRequest } = await import('../../../ActivityLog/helper/activityLog.helper');
+        await logActivityFromRequest(
+          req,
+          "LOGIN",
+          "User",
+          user.id || undefined,
+          `User logged in: ${user.username} (${platform || 'Unknown'})`,
+          {
+            userId: user.id,
+            username: user.username,
+            platform,
+            rememberMe,
+            unitIds
+          }
+        );
+      } catch (logError) {
+        console.error("Error logging login activity:", logError);
+      }
+
       return res.json({ token, permissions, unitIds });
     } else {
       return res
@@ -344,6 +431,24 @@ class UserController extends BaseController<UserService> {
       console.log("user id :", userId);
       if (userId && token) {
         await this.service.removeLoggedInUser(userId, token);
+        
+        // Log logout activity
+        try {
+          const { logActivityFromRequest } = await import('../../../ActivityLog/helper/activityLog.helper');
+          await logActivityFromRequest(
+            req,
+            "LOGOUT",
+            "User",
+            userId,
+            "User logged out",
+            {
+              userId,
+              action: "logout"
+            }
+          );
+        } catch (logError) {
+          console.error("Error logging logout activity:", logError);
+        }
       }
 
       res.json({ message: "User logged out successfully" });

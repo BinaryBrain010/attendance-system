@@ -287,6 +287,11 @@ export const features: AppFeature[] = [
 { name: "employee.read.all.*", parentFeatureId: "employee.read.*", label: "Access All Employees (Supervisor)" },
 { name: "attendance.read.all.*", parentFeatureId: "attendance.read.*", label: "Access All Attendances (Supervisor)" },
 
+//activityLog
+{ name: "activityLog.*", label: "Activity Log (Nav)" },
+{ name: "activityLog.read.*", parentFeatureId: "activityLog.*", label: "Read Activity Logs" },
+{ name: "activityLog.read.own.*", parentFeatureId: "activityLog.read.*", label: "Read Own Activity Logs" },
+
 // faceRegistration - Hidden for now
 // { name: "faceRegistration.*", label: "Face Registration (Nav)" },
 // { name: "faceRegistration.extract.*", parentFeatureId: "faceRegistration.*", label: "Extract Face Descripter" },

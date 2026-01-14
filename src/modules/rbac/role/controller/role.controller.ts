@@ -88,16 +88,39 @@ class RoleController extends BaseController<RoleService> {
     let roleData: createRole = req.body;
     let operation = () => this.service.createRole(roleData);
     let successMessage = "Role created successfully!";
-    let errorMessage = "Error creating role:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "Role",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Role created: ${roleData.name || 'N/A'}`,
+        metadata: {
+          name: roleData.name
+        }
+      },
+      req
+    });
   }
 
   async updateRole(req: Request, res: Response) {
     let { id, data } = req.body;
     let operation = () => this.service.updateRole(id, data);
     let successMessage = "Role updated successfully!";
-    let errorMessage = "Error updating role:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Role",
+        entityId: id,
+        description: `Role updated: ${data.name || 'N/A'}`,
+        metadata: {
+          changes: data,
+          roleId: id
+        }
+      },
+      req
+    });
   }
 
   async changeRole(req: Request, res: Response) {
@@ -105,24 +128,51 @@ class RoleController extends BaseController<RoleService> {
     const id = AuthHelper.getUserIdFromHeader(req);
     let operation = () => this.service.changeRole(id, role);
     let successMessage = "Role updated successfully!";
-    let errorMessage = "Error updating role:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "UserRole",
+        description: `User role changed`,
+        metadata: {
+          userId: id,
+          newRole: role
+        }
+      },
+      req
+    });
   }
 
   async deleteRole(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.deleteRole(id);
     let successMessage = "Role deleted successfully!";
-    let errorMessage = "Error deleting role:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "Role",
+        entityId: id,
+        description: "Role deleted"
+      },
+      req
+    });
   }
 
   async restoreRole(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.restoreRole(id);
     let successMessage = "Role restored successfully!";
-    let errorMessage = "Error restoring role:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Role",
+        entityId: id,
+        description: "Role restored"
+      },
+      req
+    });
   }
 
   async searchRoles(req: Request, res: Response) {

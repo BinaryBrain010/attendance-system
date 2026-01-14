@@ -49,24 +49,56 @@ class CustomerController extends BaseController<CustomerService> {
     const customerData: Customer = req.body;
     const operation = () => this.service.createCustomer(customerData);
     const successMessage = "Customer created successfully!";
-    const errorMessage = "Error creating customer:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "Customer",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Customer created: ${customerData.name || 'N/A'}`,
+        metadata: {
+          name: customerData.name,
+          contactNo: customerData.contactNo
+        }
+      },
+      req
+    });
   }
 
   async updateCustomer(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateCustomer(id, data);
     const successMessage = "Customer updated successfully!";
-    const errorMessage = "Error updating customer:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Customer",
+        entityId: id,
+        description: `Customer updated: ${data.name || 'N/A'}`,
+        metadata: {
+          changes: data,
+          customerId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteCustomer(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteCustomer(id);
     const successMessage = "Customer deleted successfully!";
-    const errorMessage = "Error deleting customer:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "Customer",
+        entityId: id,
+        description: "Customer deleted"
+      },
+      req
+    });
   }
 
   async getCustomerById(req: Request, res: Response) {
@@ -88,8 +120,16 @@ class CustomerController extends BaseController<CustomerService> {
     const { id } = req.body;
     const operation = () => this.service.restoreCustomer(id);
     const successMessage = "Customer restored successfully!";
-    const errorMessage = "Error restoring customer:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Customer",
+        entityId: id,
+        description: "Customer restored"
+      },
+      req
+    });
   }
 }
 

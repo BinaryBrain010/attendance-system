@@ -37,32 +37,74 @@ class UserGroupController extends BaseController<UserGroupService> {
     let userGroupData: UserGroup | UserGroup[] = req.body;
     let operation = () => this.service.createUserGroup(userGroupData);
     let successMessage = "User group created successfully!";
-    let errorMessage = "Error creating user group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "UserGroup",
+        entityId: (result: any) => Array.isArray(result) ? result[0]?.id : result?.id || result?.data?.id,
+        description: Array.isArray(userGroupData) 
+          ? `Bulk user groups created: ${userGroupData.length} item(s)`
+          : `User group created`,
+        metadata: {
+          isBulk: Array.isArray(userGroupData),
+          count: Array.isArray(userGroupData) ? userGroupData.length : 1
+        }
+      },
+      req
+    });
   }
 
   async updateUserGroup(req: Request, res: Response) {
     let { id, data } = req.body;
     let operation = () => this.service.updateUserGroup(id, data);
     let successMessage = "User group updated successfully!";
-    let errorMessage = "Error updating user group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "UserGroup",
+        entityId: id,
+        description: `User group updated`,
+        metadata: {
+          changes: data,
+          userGroupId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteUserGroup(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.deleteUserGroup(id);
     let successMessage = "User group deleted successfully!";
-    let errorMessage = "Error deleting user group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "UserGroup",
+        entityId: id,
+        description: "User group deleted"
+      },
+      req
+    });
   }
 
   async restoreUserGroup(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.restoreUserGroup(id);
     let successMessage = "User group restored successfully!";
-    let errorMessage = "Error restoring user group:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "UserGroup",
+        entityId: id,
+        description: "User group restored"
+      },
+      req
+    });
   }
 }
 

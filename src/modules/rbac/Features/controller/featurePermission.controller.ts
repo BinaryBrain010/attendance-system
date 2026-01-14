@@ -18,16 +18,41 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let permissionData: createFeaturePermission= req.body;
     let operation = () => this.service.createFeaturePermission(permissionData);
     let successMessage = 'Permission created successfully!';
-    let errorMessage = 'Error creating permission:';
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "FeaturePermission",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Feature permission created`,
+        metadata: {
+          featureId: permissionData.featureId,
+          parentType: permissionData.parentType,
+          parentId: permissionData.parentId
+        }
+      },
+      req
+    });
   }
 
   async updateFeaturePermission(req: Request, res: Response) {
     let { id, data } = req.body;
     let operation = () => this.service.updateFeaturePermission(id, data);
     let successMessage = 'Permission updated successfully!';
-    let errorMessage = 'Error updating permission:';
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "FeaturePermission",
+        entityId: id,
+        description: `Feature permission updated`,
+        metadata: {
+          changes: data,
+          permissionId: id
+        }
+      },
+      req
+    });
   }
 
   async getAllowedFeatures(req: Request, res: Response) {
@@ -51,8 +76,16 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
     let {id} = req.body;
     let operation = () => this.service.restoreFeaturePermission(id);
     let successMessage = 'Permission restored successfully!';
-    let errorMessage = 'Error restoring permission:';
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "FeaturePermission",
+        entityId: id,
+        description: "Feature permission restored"
+      },
+      req
+    });
   }
 
   async getFeaturePermissionById(req: Request, res: Response) {

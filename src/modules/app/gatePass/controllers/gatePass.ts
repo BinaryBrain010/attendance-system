@@ -68,8 +68,20 @@ class GatePassController extends BaseController<GatePassService> {
     const { GatePass, GatePassItem } = req.body;
     const operation = () => this.service.createGatePass(GatePass, GatePassItem);
     const successMessage = "GatePass created successfully!";
-    const errorMessage = "Error creating GatePass:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "GatePass",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `GatePass created for customer: ${GatePass?.customerId || 'N/A'}`,
+        metadata: {
+          customerId: GatePass?.customerId,
+          itemsCount: Array.isArray(GatePassItem) ? GatePassItem.length : (GatePassItem ? 1 : 0)
+        }
+      },
+      req
+    });
   }
 
   async gatePassReport(req: Request, res: Response) {
@@ -108,8 +120,21 @@ class GatePassController extends BaseController<GatePassService> {
     const { id, GatePass, GatePassItem } = req.body;
     const operation = () => this.service.updateGatePass(id, GatePass,GatePassItem);
     const successMessage = "GatePass updated successfully!";
-    const errorMessage = "Error updating GatePass:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "GatePass",
+        entityId: id,
+        description: `GatePass updated`,
+        metadata: {
+          changes: GatePass,
+          itemsCount: Array.isArray(GatePassItem) ? GatePassItem.length : (GatePassItem ? 1 : 0),
+          gatePassId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteGatePass(req: Request, res: Response) {
@@ -148,16 +173,37 @@ class GatePassController extends BaseController<GatePassService> {
     const { id } = req.body;
     const operation = () => this.service.restoreGatePass(id);
     const successMessage = "GatePass restored successfully!";
-    const errorMessage = "Error restoring GatePass:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "GatePass",
+        entityId: id,
+        description: "GatePass restored"
+      },
+      req
+    });
   }
 
   async approveGatePass(req: Request, res: Response) {
     const { id, signature } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
     const operation = () => this.service.approveGatePass(id, signature);
-    const successMessage = "GatePass approved successfully!";
-    const errorMessage = "Error approving GatePass:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage: "GatePass approved successfully!",
+      logActivity: {
+        action: "APPROVE",
+        entityType: "GatePass",
+        entityId: id,
+        description: "GatePass approved",
+        metadata: {
+          gatePassId: id,
+          hasSignature: !!signature,
+          approvedBy: userId
+        }
+      },
+      req
+    });
   }
 }
 
