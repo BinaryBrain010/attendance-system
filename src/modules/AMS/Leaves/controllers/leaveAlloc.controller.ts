@@ -7,7 +7,8 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
   protected service = new LeaveAllocService();
 
   async getAllLeaveAllocations(req: Request, res: Response) {
-    const operation = () => this.service.getAllLeaveAllocations();
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAllLeaveAllocations(userId);
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
     await this.handleRequest(operation, res, { successMessage });
@@ -15,7 +16,8 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
 
   async getLeaveAllocations(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getLeaveAllocations(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getLeaveAllocations(page, pageSize, userId);
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
     await this.handleRequest(operation, res, { successMessage });

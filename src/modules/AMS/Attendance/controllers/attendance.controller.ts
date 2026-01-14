@@ -12,13 +12,15 @@ class AttendanceController extends BaseController<AttendanceService> {
   private pdfUtility = new AttendancePDF();
 
   async getAllAttendances(req: Request, res: Response) {
-    const operation = () => this.service.getAllattendances();
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAllattendances(userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getAttendances(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getAttendances(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAttendances(page, pageSize, userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
@@ -31,7 +33,8 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async getDated(req: Request, res: Response) {
     const { from, to } = req.body;
-    const operation = () => this.service.getDatedAttendance(from, to);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getDatedAttendance(from, to, userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
@@ -157,43 +160,22 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async checkAttendance(req: Request, res: Response) {
     const { employeeId, status, date } = req.body;
-    try {
-      const result = await this.service.checkAttendance(
-        employeeId,
-        status,
-        date
-      );
-      return res.status(201).json({
-        message: result.message,
-        success: result.success,
-        status: result.status,
-      });
-    } catch (error) {
-      console.error("Error creating attendance:", error);
-      return res.status(500).json({ message: "Error creating attendance." });
-    }
+    const userId = (req as Request & { userId?: string }).userId;
+    
+    const operation = () => this.service.checkAttendance(employeeId, status, date, userId);
+    await this.handleRequest(operation, res, { successMessage: "Attendance check completed successfully!" });
   }
 
   async markAttendance(req: Request, res: Response) {
     const attendanceData: Attendance & { createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
-    try {
-      const result = await this.service.markAttendance({ 
-        ...attendanceData, 
-        createdByUserId: userId,
-        updatedByUserId: userId 
-      });
-      if (!result.success) {
-        return res.status(400).json({ message: result.message });
-      }
-      return res
-        .status(201)
-        .json({ message: result.message, data: result.data });
-    } catch (error) {
-      console.error("Error creating attendance:", error);
-      return res.status(500).json({ message: "Error creating attendance." });
-    }
+    const operation = () => this.service.markAttendance({ 
+      ...attendanceData, 
+      createdByUserId: userId,
+      updatedByUserId: userId 
+    });
+    await this.handleRequest(operation, res, { successMessage: "Attendance marked successfully!", statusCode: 201 });
   }
 
   async bulkMarkLeave(req: Request, res: Response) {
@@ -301,6 +283,11 @@ class AttendanceController extends BaseController<AttendanceService> {
     
     const operation = () => this.service.getHistoryById(id, filterBool, date);
     await this.handleRequest(operation, res, { successMessage: "Attendance history retrieved successfully!" });
+  }
+
+  async getAttendanceRequestSummary(req: Request, res: Response) {
+    const operation = () => this.service.getAttendanceRequestSummary();
+    await this.handleRequest(operation, res, { successMessage: "Attendance request summary retrieved successfully!" });
   }
 }
 

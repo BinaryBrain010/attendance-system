@@ -7,7 +7,8 @@ class LeaveReqController extends BaseController<LeaveReqService> {
   protected service = new LeaveReqService();
 
   async getAllLeaveRequests(req: Request, res: Response) {
-    const operation = () => this.service.getAllLeaveRequests();
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAllLeaveRequests(userId);
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
     await this.handleRequest(operation, res, { successMessage });
@@ -15,7 +16,8 @@ class LeaveReqController extends BaseController<LeaveReqService> {
 
   async getLeaveRequests(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getLeaveRequests(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getLeaveRequests(page, pageSize, userId);
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
     await this.handleRequest(operation, res, { successMessage });

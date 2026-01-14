@@ -4,16 +4,17 @@ import { paginatedData } from "../../../../types/paginatedData";
 
 class LeaveAllocService {
   // Get all leave allocations
-  async getAllLeaveAllocations(): Promise<LeaveAllocation[]> {
-    return await leaveAllocModel.leaveAllocation.gpFindMany();
+  async getAllLeaveAllocations(userId?: string): Promise<LeaveAllocation[]> {
+    return await leaveAllocModel.leaveAllocation.gpFindMany(userId);
   }
 
   // Paginated retrieval of leave allocations
   async getLeaveAllocations(
     page: number,
-    pageSize: number
+    pageSize: number,
+    userId?: string
   ): Promise<paginatedData> {
-    return await leaveAllocModel.leaveAllocation.gpPgFindMany(page, pageSize);
+    return await leaveAllocModel.leaveAllocation.gpPgFindMany(page, pageSize, userId);
   }
 
 

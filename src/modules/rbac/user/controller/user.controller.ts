@@ -247,7 +247,38 @@ class UserController extends BaseController<UserService> {
     }
 
     if (isAllowded) {
-      let token: string | null = jwt.sign({ userId: user.id }, secretKey, {
+      // Get unit IDs for the user's employee
+      let unitIds: string[] = [];
+      if (user.employeeId) {
+        try {
+          const unitEmployeeModel = (await import("../../AMS/Unit/models/unitEmployee.model")).default;
+          
+          // Get units where employee is assigned (via UnitEmployee)
+          const unitEmployees = await (unitEmployeeModel as any).unitEmployee.getUnitsByEmployeeId(user.employeeId);
+          const unitIdsFromAssignments = unitEmployees ? unitEmployees.map((ue: any) => ue.unitId) : [];
+          
+          // Get units where employee is the attendance manager (via attendanceManagerId)
+          const managedUnits = await prisma.unit.findMany({
+            where: {
+              attendanceManagerId: user.employeeId,
+              isDeleted: null,
+            },
+            select: {
+              id: true,
+            },
+          });
+          const unitIdsFromManagement = managedUnits.map((unit: any) => unit.id);
+          
+          // Combine unit IDs from both sources (remove duplicates)
+          unitIds = [...new Set([...unitIdsFromAssignments, ...unitIdsFromManagement])];
+        } catch (error) {
+          console.error("Error fetching unit IDs during login:", error);
+          // Continue with empty unitIds array if there's an error
+        }
+      }
+
+      // Include unitIds in token payload
+      let token: string | null = jwt.sign({ userId: user.id, unitIds }, secretKey, {
         expiresIn,
       });
 
@@ -292,12 +323,12 @@ class UserController extends BaseController<UserService> {
         permissions = [];
       }
 
-      // Always include permissions array in response
+      // Always include permissions array and unitIds in response
       if (employee) {
-        return res.json({ token, employee, permissions });
+        return res.json({ token, employee, permissions, unitIds });
       }
 
-      return res.json({ token, permissions });
+      return res.json({ token, permissions, unitIds });
     } else {
       return res
         .status(401)

@@ -225,8 +225,8 @@ export const features: AppFeature[] = [
 { name: "attendance.export.*", parentFeatureId: "attendance.*", label: "Export Attendance" },
 { name: "attendance.excelImport.*", parentFeatureId: "attendance.*", label: "Excel Import" },
 { name: "attendance.viewPreviousUpdate.*", parentFeatureId: "attendance.*", label: "View Previous Update" },
-// attedanceReq
-{ name: "attendanceReq.*", label: "Attendance Req (Nav)" },
+// attedanceReq - Not shown in navbar, accessible from Attendance page
+{ name: "attendanceReq.*", label: "Attendance Request" },
 { name: "attendanceReq.create.*", parentFeatureId: "attendanceReq.*", label: "Create" },
 { name: "attendanceReq.read.*", parentFeatureId: "attendanceReq.*", label: "Read" },
 { name: "attendanceReq.update.*", parentFeatureId: "attendanceReq.*", label: "Update" },
@@ -272,6 +272,20 @@ export const features: AppFeature[] = [
 { name: "holiday.restore.*", parentFeatureId: "holiday.*", label: "Restore" },
 { name: "holiday.markSundays.*", parentFeatureId: "holiday.*", label: "Mark Sundays" },
 { name: "holiday.viewPreviousUpdate.*", parentFeatureId: "holiday.*", label: "View Previous Update" },
+
+//unit
+{ name: "unit.*", label: "Unit (Nav)" },
+{ name: "unit.create.*", parentFeatureId: "unit.*", label: "Create" },
+{ name: "unit.read.*", parentFeatureId: "unit.*", label: "Read" },
+{ name: "unit.update.*", parentFeatureId: "unit.*", label: "Update" },
+{ name: "unit.delete.*", parentFeatureId: "unit.*", label: "Delete" },
+{ name: "unit.restore.*", parentFeatureId: "unit.*", label: "Restore" },
+{ name: "unit.viewPreviousUpdate.*", parentFeatureId: "unit.*", label: "View Previous Update" },
+{ name: "unitEmployee.*", parentFeatureId: "unit.*", label: "Unit Employee Management" },
+{ name: "unitEmployee.assign.*", parentFeatureId: "unitEmployee.*", label: "Assign Employees" },
+{ name: "unitEmployee.read.*", parentFeatureId: "unitEmployee.*", label: "View Unit Employees" },
+{ name: "employee.read.all.*", parentFeatureId: "employee.read.*", label: "Access All Employees (Supervisor)" },
+{ name: "attendance.read.all.*", parentFeatureId: "attendance.read.*", label: "Access All Attendances (Supervisor)" },
 
 // faceRegistration - Hidden for now
 // { name: "faceRegistration.*", label: "Face Registration (Nav)" },

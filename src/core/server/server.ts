@@ -41,6 +41,8 @@ import EmployeeRoutes from "../../modules/AMS/Employee/routes/employee.routes";
 import AttendanceRoutes from "../../modules/AMS/Attendance/routes/attendance.routes";
 import LeaveRoutes from "../../modules/AMS/Leaves/routes/leave.routes";
 import HolidayRoutes from "../../modules/AMS/Holiday/routes/holiday.routes";
+import UnitRoutes from "../../modules/AMS/Unit/routes/unit.routes";
+import UnitEmployeeRoutes from "../../modules/AMS/Unit/routes/unitEmployee.routes";
 
 class App {
   private app: Express;
@@ -160,7 +162,9 @@ class App {
       LeaveRoutes,
       AttendanceReqRoutes,
       AttendanceRoutes,
-      HolidayRoutes
+      HolidayRoutes,
+      UnitRoutes,
+      UnitEmployeeRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

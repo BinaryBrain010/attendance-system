@@ -20,6 +20,7 @@ class EmployeeController extends BaseController<EmployeeService> {
     const from = req.query.from as string;
     const to = req.query.to as string;
     const dateField = (req.query.dateField as string) || 'joiningDate'; // joiningDate, createdAt, or updatedAt
+    const userId = (req as Request & { userId?: string }).userId;
 
     const operation = async () => {
       return await this.service.getEmployeesWithPagination(
@@ -31,7 +32,8 @@ class EmployeeController extends BaseController<EmployeeService> {
         search,
         from,
         to,
-        dateField
+        dateField,
+        userId
       );
     };
 

@@ -871,6 +871,53 @@ class AttendanceRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/history', this.controller.getHistoryById.bind(this.controller));
+
+    /**
+     * @swagger
+     * /attendance/requestSummary:
+     *   get:
+     *     summary: Get attendance request summary (counts by status)
+     *     description: Returns counts of attendance requests by status (total, pending, approved, rejected). Useful for displaying badges or buttons on the attendance page.
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Attendance request summary retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: "Attendance request summary retrieved successfully!"
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     total:
+     *                       type: integer
+     *                       description: Total number of attendance requests
+     *                       example: 25
+     *                     pending:
+     *                       type: integer
+     *                       description: Number of pending attendance requests
+     *                       example: 10
+     *                     approved:
+     *                       type: integer
+     *                       description: Number of approved attendance requests
+     *                       example: 12
+     *                     rejected:
+     *                       type: integer
+     *                       description: Number of rejected attendance requests
+     *                       example: 3
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.get('/requestSummary', this.controller.getAttendanceRequestSummary.bind(this.controller));
   }
 
   public getRouter(): Router {

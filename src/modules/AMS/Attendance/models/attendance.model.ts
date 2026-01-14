@@ -100,8 +100,25 @@ const attendanceModel = prisma.$extends({
       async checkAttendance(
         employeeId: string,
         status: AttendanceStatus,
-        date?: Date
+        date?: Date,
+        userId?: string
       ) {
+        // Check unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, check if employee is in the list
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0 || !accessibleEmployeeIds.includes(employeeId)) {
+              const { ForbiddenError } = await import('../../../../core/errors/app.error');
+              throw new ForbiddenError('You don\'t have permission to check attendance for this employee. You can only check attendance for employees in your assigned unit(s).');
+            }
+          }
+        }
+
         // Use Pakistan timezone for date filtering
         const targetDate = date ? new Date(date) : new Date();
         const todayStart = getStartOfDayPakistan(targetDate);
@@ -232,6 +249,22 @@ const attendanceModel = prisma.$extends({
           // Extract audit trail fields and leave-related fields
           const { createdByUserId, updatedByUserId, createLeaveRequest, leaveType, leaveReason, ...attendanceFields } = attendanceData as any;
           
+          // Check unit-based access control if userId is provided
+          if (createdByUserId) {
+            const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+            const accessibleEmployeeIds = await getAccessibleEmployeeIds(createdByUserId, 'attendance');
+            
+            // If null, user has supervisor permission (access all)
+            // If empty array, user has no access
+            // If array with IDs, check if employee is in the list
+            if (accessibleEmployeeIds !== null) {
+              if (accessibleEmployeeIds.length === 0 || !accessibleEmployeeIds.includes(attendanceFields.employeeId)) {
+                const { ForbiddenError } = await import('../../../../core/errors/app.error');
+                throw new ForbiddenError('You don\'t have permission to mark attendance for this employee. You can only mark attendance for employees in your assigned unit(s).');
+              }
+            }
+          }
+          
           // Use Pakistan timezone for date filtering
           const targetDate = attendanceFields.date
             ? new Date(attendanceFields.date)
@@ -244,10 +277,8 @@ const attendanceModel = prisma.$extends({
           });
         
           if (!employee) {
-            return {
-              success: false,
-              message: `Employee with ID ${attendanceFields.employeeId} not found`,
-            };
+            const { NotFoundError } = await import('../../../../core/errors/app.error');
+            throw new NotFoundError(`Employee with ID ${attendanceFields.employeeId}`);
           }
         
           // Normalize the date to start of day in Pakistan timezone for consistent storage
@@ -414,6 +445,41 @@ const attendanceModel = prisma.$extends({
         createLeaveRequest?: boolean,
         createdByUserId?: string
       ): Promise<any> {
+        // Check unit-based access control if userId is provided
+        let accessibleEmployeeIds: string[] | null = null;
+        if (createdByUserId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          accessibleEmployeeIds = await getAccessibleEmployeeIds(createdByUserId, 'attendance');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter employeeIds to only include accessible ones
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return {
+                success: false,
+                message: `You don't have permission to mark attendance. You are not assigned to any units.`,
+                total: 0,
+                successful: 0,
+                failed: 0,
+                results: [],
+              };
+            }
+            // Filter employeeIds to only include accessible ones
+            employeeIds = employeeIds.filter(id => accessibleEmployeeIds!.includes(id));
+            if (employeeIds.length === 0) {
+              return {
+                success: false,
+                message: `None of the selected employees are in your assigned unit(s).`,
+                total: 0,
+                successful: 0,
+                failed: 0,
+                results: [],
+              };
+            }
+          }
+        }
+
         const normalizedDate = getStartOfDayPakistan(date);
         const dateStart = new Date(normalizedDate);
         dateStart.setHours(0, 0, 0, 0);
@@ -617,7 +683,7 @@ ORDER BY
         return data;
       },
 
-      async gpFindDatedMany(this: any, from: Date | string | null, to: Date | string | null) {
+      async gpFindDatedMany(this: any, from: Date | string | null, to: Date | string | null, userId?: string) {
         // Convert input dates to Date objects if they're strings
         const fromDate = from ? (typeof from === 'string' ? new Date(from) : from) : null;
         const toDate = to ? (typeof to === 'string' ? new Date(to) : to) : null;
@@ -648,8 +714,26 @@ ORDER BY
         console.log('Date filter - From:', todayStart.toISOString(), 'To:', todayEnd.toISOString());
         console.log('Date filter (Pakistan time) - From:', formatInTimeZone(todayStart, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), 'To:', formatInTimeZone(todayEnd, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
 
+        // Apply unit-based access control if userId is provided
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all) - no filter needed
+          // If empty array, user has no access - return empty result
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return [];
+            }
+            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+
         // Fetch full attendance details with employee data
-        const data = await prisma.$queryRaw`
+        const data = await prisma.$queryRawUnsafe(`
           SELECT 
             a.*,
             e."name" AS "employeeName",
@@ -658,20 +742,21 @@ ORDER BY
             e."contactNo",
             e."address",
             e."department", 
-            e."code" -- Include additional employee fields if needed
+            e."code"
           FROM "Attendance" a
           LEFT JOIN "Employee" e 
             ON a."employeeId" = e.id
           WHERE a."isDeleted" IS NULL
-            AND a."date" >= ${todayStart.toISOString()}::timestamp
-            AND a."date" <= ${todayEnd.toISOString()}::timestamp
+            AND a."date" >= '${todayStart.toISOString()}'::timestamp
+            AND a."date" <= '${todayEnd.toISOString()}'::timestamp
+            ${employeeFilter}
             ORDER BY 
             a."date" ASC
-        `;
+        `);
 
         return data;
       },
-      async gpFindMany(this: any) {
+      async gpFindMany(this: any, userId?: string) {
         // Get current date and calculate start/end of today in Pakistan timezone
         const now = new Date();
         const todayStart = getStartOfDayPakistan(now);
@@ -680,8 +765,26 @@ ORDER BY
         console.log('Today filter (UTC) - From:', todayStart.toISOString(), 'To:', todayEnd.toISOString());
         console.log('Today filter (Pakistan time) - From:', formatInTimeZone(todayStart, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), 'To:', formatInTimeZone(todayEnd, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
 
+        // Apply unit-based access control if userId is provided
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all) - no filter needed
+          // If empty array, user has no access - return empty result
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return [];
+            }
+            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+
         // Fetch full attendance details with employee data
-        const data = await prisma.$queryRaw`
+        const data = await prisma.$queryRawUnsafe(`
           SELECT 
             a.*,
             e."name" AS "employeeName",
@@ -690,18 +793,72 @@ ORDER BY
             e."contactNo",
             e."address",
             e."department", 
-            e."code" -- Include additional employee fields if needed
+            e."code"
           FROM "Attendance" a
           LEFT JOIN "Employee" e 
             ON a."employeeId" = e.id
           WHERE a."isDeleted" IS NULL
-            AND a."date" >= ${todayStart.toISOString()}::timestamp
-            AND a."date" <= ${todayEnd.toISOString()}::timestamp
+            AND a."date" >= '${todayStart.toISOString()}'::timestamp
+            AND a."date" <= '${todayEnd.toISOString()}'::timestamp
+            ${employeeFilter}
             ORDER BY 
             a."date" ASC
-        `;
+        `);
 
         return data;
+      },
+
+      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string) {
+        const skip = (page - 1) * pageSize;
+        
+        // Apply unit-based access control if userId is provided
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all) - no filter needed
+          // If empty array, user has no access - return empty result
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return { data: [], totalSize: 0 };
+            }
+            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+
+        const data = await prisma.$queryRawUnsafe(`
+          SELECT 
+            a.*,
+            e."name" AS "employeeName",
+            e."surname" AS "employeeSurname",
+            e."designation",
+            e."contactNo",
+            e."address",
+            e."department", 
+            e."code"
+          FROM "Attendance" a
+          LEFT JOIN "Employee" e 
+            ON a."employeeId" = e.id
+          WHERE a."isDeleted" IS NULL
+            ${employeeFilter}
+          ORDER BY a."createdAt" DESC
+          LIMIT ${pageSize}
+          OFFSET ${skip}
+        `) as any[];
+
+        const totalSizeResult = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*)::int AS count
+          FROM "Attendance" a
+          WHERE a."isDeleted" IS NULL
+            ${employeeFilter}
+        `) as any[];
+        
+        const totalSize = totalSizeResult[0]?.count || 0;
+
+        return { data, totalSize };
       },
 
       async markFaceAttendance(this: any, image: string) {

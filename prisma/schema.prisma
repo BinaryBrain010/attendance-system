@@ -244,6 +244,8 @@ model Employee {
   leaveAllocation   LeaveAllocation[]
   shiftAssignments  ShiftAssignment[]
   todos             Todo[]
+  managedUnits      Unit[]              @relation("UnitAttendanceManager")
+  unitEmployees     UnitEmployee[]
 }
 
 enum Company {
@@ -449,4 +451,50 @@ model Holiday {
   createdBy   String?   @db.VarChar(36)
   updatedBy   String?   @db.VarChar(36)
   previousUpdates Json? @db.JsonB
+}
+
+enum UnitType {
+  SERVICE_CENTER
+  BRANCH
+  OUTLET
+  DEPARTMENT
+  STORE
+  WAREHOUSE
+  OFFICE
+  FACTORY
+  OTHER
+}
+
+model Unit {
+  id                  String      @id @default(uuid()) @db.VarChar(36)
+  name                String
+  type                UnitType
+  description         String?
+  address             String?
+  contactNo           String?
+  email               String?
+  attendanceManagerId String?     @db.VarChar(36)
+  createdAt           DateTime?   @default(now())
+  updatedAt           DateTime?   @updatedAt
+  isDeleted           DateTime?
+  createdBy           String?     @db.VarChar(36)
+  updatedBy           String?     @db.VarChar(36)
+  previousUpdates     Json?       @db.JsonB
+
+  attendanceManager   Employee?   @relation("UnitAttendanceManager", fields: [attendanceManagerId], references: [id])
+  employees           UnitEmployee[]
+}
+
+model UnitEmployee {
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  unitId     String    @db.VarChar(36)
+  employeeId String    @db.VarChar(36)
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+  isDeleted  DateTime?
+
+  unit      Unit      @relation(fields: [unitId], references: [id])
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+
+  @@unique([unitId, employeeId])
 }

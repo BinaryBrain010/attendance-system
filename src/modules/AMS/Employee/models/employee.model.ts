@@ -598,7 +598,8 @@ const employeeModel = prisma.$extends({
         search?: string,
         from?: string,
         to?: string,
-        dateField?: string
+        dateField?: string,
+        userId?: string
       ) {
         const skip = (page - 1) * pageSize;
         
@@ -606,6 +607,23 @@ const employeeModel = prisma.$extends({
         const where: any = {
           isDeleted: null,
         };
+
+        // Apply unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              // User has no access, return empty result
+              return { data: [], totalSize: 0 };
+            }
+            where.id = { in: accessibleEmployeeIds };
+          }
+        }
 
         // Check if filter is "true" for limited field selection
         const isFilterMode = filter === "true";

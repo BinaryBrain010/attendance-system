@@ -174,6 +174,82 @@ const leaveReqModel = prisma.$extends({
           } as any,
         });
       },
+
+      async gpFindMany(this: any, userId?: string) {
+        const where: any = {
+          isDeleted: null,
+        };
+
+        // Apply unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return [];
+            }
+            where.employeeId = { in: accessibleEmployeeIds };
+          }
+        }
+
+        return await prisma.leaveRequest.findMany({
+          where,
+          include: {
+            leaveAllocation: {
+              include: {
+                leaveConfig: true,
+              },
+            },
+          } as any,
+        });
+      },
+
+      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string) {
+        const skip = (page - 1) * pageSize;
+        
+        const where: any = {
+          isDeleted: null,
+        };
+
+        // Apply unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return { data: [], totalSize: 0 };
+            }
+            where.employeeId = { in: accessibleEmployeeIds };
+          }
+        }
+
+        const [data, totalSize] = await Promise.all([
+          prisma.leaveRequest.findMany({
+            where,
+            take: pageSize,
+            skip: skip,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              leaveAllocation: {
+                include: {
+                  leaveConfig: true,
+                },
+              },
+            } as any,
+          }),
+          prisma.leaveRequest.count({ where }),
+        ]);
+
+        return { data, totalSize };
+      },
     },
   },
 });

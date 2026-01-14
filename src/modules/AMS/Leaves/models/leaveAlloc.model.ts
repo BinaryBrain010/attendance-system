@@ -190,6 +190,101 @@ const leaveAllocModel = prisma.$extends({
           },
         });
       },
+
+      async gpFindMany(this: any, userId?: string) {
+        const where: any = {
+          isDeleted: null,
+        };
+
+        // Apply unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return [];
+            }
+            where.employeeId = { in: accessibleEmployeeIds };
+          }
+        }
+
+        const allocations = await prisma.leaveAllocation.findMany({
+          where,
+          include: {
+            leaveConfig: true,
+          },
+        });
+
+        // Calculate usedDays and remainingDays for each allocation
+        return await Promise.all(
+          allocations.map(async (alloc) => {
+            const usedDays = await this.calculateUsedDays(alloc.id);
+            const remainingDays = alloc.assignedDays - usedDays;
+            
+            return {
+              ...alloc,
+              usedDays,
+              remainingDays: remainingDays > 0 ? remainingDays : 0,
+            };
+          })
+        );
+      },
+
+      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string) {
+        const skip = (page - 1) * pageSize;
+        
+        const where: any = {
+          isDeleted: null,
+        };
+
+        // Apply unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return { data: [], totalSize: 0 };
+            }
+            where.employeeId = { in: accessibleEmployeeIds };
+          }
+        }
+
+        const allocations = await prisma.leaveAllocation.findMany({
+          where,
+          take: pageSize,
+          skip: skip,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            leaveConfig: true,
+          },
+        });
+
+        // Calculate usedDays and remainingDays for each allocation
+        const data = await Promise.all(
+          allocations.map(async (alloc) => {
+            const usedDays = await this.calculateUsedDays(alloc.id);
+            const remainingDays = alloc.assignedDays - usedDays;
+            
+            return {
+              ...alloc,
+              usedDays,
+              remainingDays: remainingDays > 0 ? remainingDays : 0,
+            };
+          })
+        );
+
+        const totalSize = await prisma.leaveAllocation.count({ where });
+
+        return { data, totalSize };
+      },
     },
   },
 });

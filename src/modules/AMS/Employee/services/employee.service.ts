@@ -23,7 +23,8 @@ class EmployeeService {
     search?: string,
     from?: string,
     to?: string,
-    dateField?: string
+    dateField?: string,
+    userId?: string
   ): Promise<paginatedData> {
     return await employeeModel.employee.gpPgFindManyWithSortAndFilter(
       page,
@@ -34,7 +35,8 @@ class EmployeeService {
       search,
       from,
       to,
-      dateField
+      dateField,
+      userId
     );
   }
 
