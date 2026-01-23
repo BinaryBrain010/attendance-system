@@ -111,13 +111,13 @@ return await attendanceModel.attendance.markFaceAttendance(image);
         requestedBy: userId || null,
       };
 
-      const request = await attendanceRequestModel.attendanceRequest.gpCreate(attendanceRequestData);
+      const request: any = await attendanceRequestModel.attendanceRequest.gpCreate(attendanceRequestData);
       
       return {
         success: false,
         requiresApproval: true,
         message: "Your attendance update has been submitted for approval. You don't have permission to edit attendance directly.",
-        requestId: Array.isArray(request) ? request[0].id : request.id,
+        requestId: Array.isArray(request) ? (request[0]?.id || '') : (request?.id || ''),
         data: request,
       };
     }

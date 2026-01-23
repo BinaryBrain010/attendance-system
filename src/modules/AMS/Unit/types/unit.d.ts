@@ -4,16 +4,17 @@ export interface Unit {
   id?: string;
   name: string;
   type: UnitType;
-  description?: string;
-  address?: string;
-  contactNo?: string;
-  email?: string;
-  attendanceManagerId?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: Date;
-  createdBy?: string;
-  updatedBy?: string;
+  code?: string;
+  description?: string | null;
+  address?: string | null;
+  contactNo?: string | null;
+  email?: string | null;
+  attendanceManagerId?: string | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+  isDeleted?: Date | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   previousUpdates?: any;
 }
 

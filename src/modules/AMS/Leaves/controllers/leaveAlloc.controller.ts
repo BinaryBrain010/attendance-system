@@ -68,7 +68,7 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
         metadata: {
           employeeId: leaveAllocData.employeeId,
           leaveConfigId: leaveAllocData.leaveConfigId,
-          allocatedDays: leaveAllocData.allocatedDays
+          assignedDays: leaveAllocData.assignedDays
         }
       },
       req

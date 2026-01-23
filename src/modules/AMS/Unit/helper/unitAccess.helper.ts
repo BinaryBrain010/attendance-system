@@ -59,7 +59,6 @@ export async function getAccessibleEmployeeIds(
       );
 
     // Get units where employee is the attendance manager (via attendanceManagerId)
-    // @ts-expect-error - Prisma Client needs to be regenerated after schema changes
     const managedUnits = await prisma.unit.findMany({
       where: {
         attendanceManagerId: user.employeeId,

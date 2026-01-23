@@ -4,6 +4,7 @@ export interface Customer {
     name: string;
     email?: string | null;
     phone?: string | null;
+    contactNo?: string | null;
     address?: string | null;
     createdAt?: Date | null;
     updatedAt?: Date | null;
@@ -16,6 +17,7 @@ export interface Customer {
     description?: string | null;
     quantity?: number | null;
     unitPrice?: number | null;
+    serialNo?: string | null;
     createdAt?: Date | null;
     updatedAt?: Date | null;
     isDeleted?: Date | null;

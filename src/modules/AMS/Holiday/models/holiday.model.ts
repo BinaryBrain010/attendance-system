@@ -70,7 +70,7 @@ const holidayModel = prisma.$extends({
 
         return {
           data,
-          total,
+          totalSize: total,
           page,
           pageSize,
           totalPages: Math.ceil(total / pageSize),
@@ -93,7 +93,7 @@ const holidayModel = prisma.$extends({
 
         return {
           data,
-          total,
+          totalSize: total,
           page,
           pageSize,
           totalPages: Math.ceil(total / pageSize),
@@ -134,7 +134,7 @@ const holidayModel = prisma.$extends({
 
         return {
           data,
-          total,
+          totalSize: total,
           page,
           pageSize,
           totalPages: Math.ceil(total / pageSize),

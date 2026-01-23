@@ -26,7 +26,7 @@ class FeaturePermissionController extends BaseController<FeaturePermissionServic
         entityId: (result: any) => result?.id || result?.data?.id,
         description: `Feature permission created`,
         metadata: {
-          featureId: permissionData.featureId,
+          allowedFeatures: permissionData.allowedFeatures,
           parentType: permissionData.parentType,
           parentId: permissionData.parentId
         }

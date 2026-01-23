@@ -1,24 +1,22 @@
-export enum LeaveStatus {
-    PENDING = "PENDING",
-    APPROVED = "APPROVED",
-    REJECTED = "REJECTED",
-  }
+import { LeaveStatus } from "@prisma/client";
+
+export { LeaveStatus };
   
   export interface LeaveRequest {
     id: string;
-    employee: Employee; 
+    employee?: Employee; 
     employeeId: string;
-    leaveAllocationId?: string;
-    reason?: string;
+    leaveAllocationId?: string | null;
+    reason?: string | null;
     startDate: Date;
     endDate: Date;
     status: LeaveStatus;
-    leaveType?: string; // "CASUAL", "MATERNITY", "SICK", etc.
-    image?: string; 
-    location?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-    isDeleted?: Date;
+    leaveType?: string | null; // "CASUAL", "MATERNITY", "SICK", etc.
+    image?: string | null; 
+    location?: string | null;
+    createdAt?: Date | null;
+    updatedAt?: Date | null;
+    isDeleted?: Date | null;
   }
   
   export interface LeaveConfiguration {
@@ -34,16 +32,17 @@ export enum LeaveStatus {
   export interface LeaveAllocation {
     id: string; 
     employeeId: string;
-    leaveConfigId?: string;
+    leaveConfigId?: string | null;
     assignedDays: number;
+    allocatedDays?: number;
     usedDays?: number;
     remainingDays?: number;
-    note?: string; 
+    note?: string | null; 
     allocationStartDate: Date;
-    allocationEndDate?: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
-    isDeleted?: Date;
+    allocationEndDate?: Date | null;
+    createdAt?: Date | null;
+    updatedAt?: Date | null;
+    isDeleted?: Date | null;
   }
   
   // Placeholder Employee interface (add fields as required)

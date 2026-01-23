@@ -1,13 +1,14 @@
 export interface Holiday {
   id?: string;
   date: Date;
-  reason?: string;
-  description?: string;
+  name?: string;
+  reason?: string | null;
+  description?: string | null;
   isActive?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  isDeleted?: Date;
-  createdBy?: string;
-  updatedBy?: string;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+  isDeleted?: Date | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   previousUpdates?: any;
 }

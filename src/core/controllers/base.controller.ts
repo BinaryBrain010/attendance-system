@@ -45,7 +45,7 @@ abstract class BaseController<T> {
   private async logActivityAsync<T>(
     req: Request,
     logConfig: {
-      action: string;
+      action: string | ((result: T) => string);
       entityType: string;
       entityId?: string | ((result: T) => string | undefined);
       description?: string | ((result: T) => string);

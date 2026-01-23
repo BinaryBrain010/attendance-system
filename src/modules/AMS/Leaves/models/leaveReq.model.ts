@@ -50,6 +50,9 @@ const leaveReqModel = prisma.$extends({
 
           const createdItem = await prisma.leaveRequest.create({
             data: newData,
+            include: {
+              employee: true,
+            },
           });
 
           createdItems.push(createdItem);
@@ -199,6 +202,7 @@ const leaveReqModel = prisma.$extends({
         return await prisma.leaveRequest.findMany({
           where,
           include: {
+            employee: true,
             leaveAllocation: {
               include: {
                 leaveConfig: true,
@@ -238,6 +242,7 @@ const leaveReqModel = prisma.$extends({
             skip: skip,
             orderBy: { createdAt: 'desc' },
             include: {
+              employee: true,
               leaveAllocation: {
                 include: {
                   leaveConfig: true,

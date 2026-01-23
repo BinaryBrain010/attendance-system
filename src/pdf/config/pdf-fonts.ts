@@ -17,6 +17,12 @@ export const fonts = {
         italics: 'Helvetica-Oblique',
         bolditalics: 'Helvetica-BoldOblique'
     },
+    Roboto: {
+        normal: 'Roboto-Regular.ttf',
+        bold: 'Roboto-Bold.ttf',
+        italics: 'Roboto-Italic.ttf',
+        bolditalics: 'Roboto-BoldItalic.ttf'
+    },
     Times: {
         normal: 'Times-Roman',
         bold: 'Times-Bold',

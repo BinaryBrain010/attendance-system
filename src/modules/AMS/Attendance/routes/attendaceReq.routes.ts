@@ -480,6 +480,82 @@ class AttendanceReqRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/getById', this.controller.getAttendanceRequestById.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /attendanceReq/bulkUpdateStatus:
+     *   post:
+     *     summary: Bulk approve or reject multiple attendance requests
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Updates the status of multiple attendance requests in a single operation. Requires 'attendance.request.approve.*' permission. If approved, applies proposed changes to attendance records.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - requestIds
+     *               - status
+     *             properties:
+     *               requestIds:
+     *                 type: array
+     *                 items:
+     *                   type: string
+     *                 description: Array of attendance request IDs to update
+     *                 example: ["123e4567-e89b-12d3-a456-426614174000", "223e4567-e89b-12d3-a456-426614174001"]
+     *               status:
+     *                 type: string
+     *                 enum: [APPROVED, REJECTED, PENDING]
+     *                 description: Status to set for all requests
+     *                 example: APPROVED
+     *     responses:
+     *       200:
+     *         description: Bulk status update completed. Returns count of successful and failed operations.
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: "Bulk approved operation completed!"
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     successful:
+     *                       type: integer
+     *                       description: Number of successfully processed requests
+     *                       example: 8
+     *                     failed:
+     *                       type: integer
+     *                       description: Number of failed requests
+     *                       example: 2
+     *                     errors:
+     *                       type: array
+     *                       description: Details of failed requests
+     *                       items:
+     *                         type: object
+     *                         properties:
+     *                           requestId:
+     *                             type: string
+     *                             example: "223e4567-e89b-12d3-a456-426614174001"
+     *                           error:
+     *                             type: string
+     *                             example: "Attendance request not found"
+     *       400:
+     *         description: Bad request - Missing or invalid parameters
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       403:
+     *         description: User doesn't have permission to approve attendance requests
+     */
+    this.router.post('/bulkUpdateStatus', this.controller.bulkUpdateAttendanceRequestStatus.bind(this.controller));
   }
 
   public getRouter(): Router {

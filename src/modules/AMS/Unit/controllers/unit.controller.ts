@@ -140,6 +140,32 @@ class UnitController extends BaseController<UnitService> {
     const operation = () => this.service.getHistoryById(id, filterBool, date);
     await this.handleRequest(operation, res, { successMessage: "Unit history retrieved successfully!" });
   }
+
+  async getUnitAttendanceAndStats(req: Request, res: Response) {
+    const { unitId, from, to, status, employeeId, page, pageSize } = req.body;
+    
+    if (!unitId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Unit ID is required",
+        statusCode: 400
+      });
+    }
+
+    const filters: any = {};
+    if (from) filters.from = from;
+    if (to) filters.to = to;
+    if (status) filters.status = status;
+    if (employeeId) filters.employeeId = employeeId;
+    if (page) filters.page = page;
+    if (pageSize) filters.pageSize = pageSize;
+
+    const operation = () => this.service.getUnitAttendanceAndStats(unitId, filters);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Unit attendance and stats retrieved successfully!",
+      req
+    });
+  }
 }
 
 export default UnitController;

@@ -420,6 +420,166 @@ class UnitRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/getHistoryById', this.controller.getHistoryById.bind(this.controller));
+
+    /**
+     * @swagger
+     * /unit/getAttendanceAndStats:
+     *   post:
+     *     summary: Get attendance data and statistics for a unit
+     *     tags: [Units]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Retrieves attendance records and statistics for all employees in a unit with optional filters
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - unitId
+     *             properties:
+     *               unitId:
+     *                 type: string
+     *                 description: Unit ID to get attendance for
+     *                 example: "88b7e906-86e7-437d-9c69-6255082380f7"
+     *               from:
+     *                 type: string
+     *                 format: date
+     *                 description: "Start date for filtering (default: start of current month)"
+     *                 example: "2026-01-01"
+     *               to:
+     *                 type: string
+     *                 format: date
+     *                 description: "End date for filtering (default: today)"
+     *                 example: "2026-01-31"
+     *               status:
+     *                 type: string
+     *                 enum: [PRESENT, ABSENT, ON_LEAVE, LATE, HALF_DAY]
+     *                 description: Filter by attendance status (optional)
+     *                 example: "PRESENT"
+     *               employeeId:
+     *                 type: string
+     *                 description: Filter by specific employee ID (optional)
+     *                 example: "employee-uuid"
+     *               page:
+     *                 type: integer
+     *                 default: 1
+     *                 description: Page number for pagination
+     *                 example: 1
+     *               pageSize:
+     *                 type: integer
+     *                 default: 10
+     *                 description: Number of records per page
+     *                 example: 10
+     *     responses:
+     *       200:
+     *         description: Unit attendance and stats retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                   example: true
+     *                 message:
+     *                   type: string
+     *                   example: "Unit attendance and stats retrieved successfully!"
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     attendance:
+     *                       type: object
+     *                       properties:
+     *                         data:
+     *                           type: array
+     *                           items:
+     *                             type: object
+     *                             properties:
+     *                               id:
+     *                                 type: string
+     *                               employeeId:
+     *                                 type: string
+     *                               employeeCode:
+     *                                 type: string
+     *                               employeeName:
+     *                                 type: string
+     *                               employeeSurname:
+     *                                 type: string
+     *                               designation:
+     *                                 type: string
+     *                               department:
+     *                                 type: string
+     *                               date:
+     *                                 type: string
+     *                                 format: date
+     *                               status:
+     *                                 type: string
+     *                                 enum: [PRESENT, ABSENT, ON_LEAVE, LATE, HALF_DAY]
+     *                               checkIn:
+     *                                 type: string
+     *                                 format: date-time
+     *                               checkOut:
+     *                                 type: string
+     *                                 format: date-time
+     *                               comment:
+     *                                 type: string
+     *                               location:
+     *                                 type: string
+     *                         totalSize:
+     *                           type: integer
+     *                           example: 150
+     *                         page:
+     *                           type: integer
+     *                           example: 1
+     *                         pageSize:
+     *                           type: integer
+     *                           example: 10
+     *                     stats:
+     *                       type: object
+     *                       properties:
+     *                         totalEmployees:
+     *                           type: integer
+     *                           description: Total number of employees in the unit
+     *                           example: 25
+     *                         totalAttendance:
+     *                           type: integer
+     *                           description: Total attendance records in the date range
+     *                           example: 500
+     *                         byStatus:
+     *                           type: object
+     *                           properties:
+     *                             PRESENT:
+     *                               type: integer
+     *                               example: 350
+     *                             ABSENT:
+     *                               type: integer
+     *                               example: 50
+     *                             ON_LEAVE:
+     *                               type: integer
+     *                               example: 80
+     *                             LATE:
+     *                               type: integer
+     *                               example: 15
+     *                             HALF_DAY:
+     *                               type: integer
+     *                               example: 5
+     *                         dateRange:
+     *                           type: object
+     *                           properties:
+     *                             from:
+     *                               type: string
+     *                               format: date-time
+     *                             to:
+     *                               type: string
+     *                               format: date-time
+     *       400:
+     *         description: Bad request - Unit ID is required
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/getAttendanceAndStats', this.controller.getUnitAttendanceAndStats.bind(this.controller));
   }
 
   public getRouter(): Router {

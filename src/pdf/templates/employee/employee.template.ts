@@ -253,7 +253,7 @@ export const generateEmployeeTemplate = (
     pageSize: "A4",
     pageMargins: [40, 60, 40, 60],
     defaultStyle: {
-      font: "Helvetica",
+      font: "Arial",
     },
   };
 };

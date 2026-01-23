@@ -317,7 +317,7 @@ class UserController extends BaseController<UserService> {
       let unitIds: string[] = [];
       if (user.employeeId) {
         try {
-          const unitEmployeeModel = (await import("../../AMS/Unit/models/unitEmployee.model")).default;
+          const unitEmployeeModel = (await import("../../../AMS/Unit/models/unitEmployee.model")).default;
           
           // Get units where employee is assigned (via UnitEmployee)
           const unitEmployees = await (unitEmployeeModel as any).unitEmployee.getUnitsByEmployeeId(user.employeeId);
