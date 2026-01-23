@@ -32,3 +32,6 @@ Thumbs.db
 # prisma/**/migrations/
 # **/seeder/
 # **/migrations/
+
+# Uploads folder - user uploaded files should not be tracked
+assets/uploads/

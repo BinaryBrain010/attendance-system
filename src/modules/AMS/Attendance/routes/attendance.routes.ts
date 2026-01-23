@@ -1,9 +1,119 @@
-import express, { Router } from 'express';
+import express, { Router, Request, Response, NextFunction } from 'express';
 import AttendanceController from '../controllers/attendance.controller';
 import multer from 'multer';
+import logger from '../../../../core/logger/logger';
 
 // Configure multer to store files in memory as Buffers
 const upload = multer({ storage: multer.memoryStorage() });
+
+/**
+ * Wrapper for multer middleware that handles errors gracefully
+ * Prevents "Boundary not found" errors when non-multipart requests hit multer-protected routes
+ */
+function handleMulter(multerMiddlewareFactory: () => any) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const contentType = req.headers['content-type'] || '';
+    const contentTypeLower = contentType.toLowerCase();
+    const isMultipart = contentTypeLower.includes('multipart/form-data');
+    
+    // If not multipart at all, skip multer and let bodyParser handle it
+    if (!isMultipart) {
+      logger.warn(`Multer middleware skipped: Content-Type is not multipart/form-data. Received: ${contentType}`, {
+        path: req.path,
+        method: req.method
+      });
+      // Initialize req.file as undefined to prevent errors in route handlers
+      (req as any).file = undefined;
+      return next();
+    }
+    
+    // CRITICAL: Check if boundary parameter exists before passing to multer
+    // Multer/busboy requires boundary to parse multipart data
+    // More robust boundary check - look for boundary= or boundary = (with optional spaces)
+    const boundaryMatch = contentType.match(/boundary\s*=\s*([^;,\s]+)/i);
+    const hasBoundary = !!boundaryMatch;
+    
+    if (!hasBoundary) {
+      logger.error('Multipart request missing boundary parameter', {
+        path: req.path,
+        method: req.method,
+        contentType: contentType,
+        allHeaders: JSON.stringify(req.headers),
+        userAgent: req.headers['user-agent']
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request: multipart/form-data Content-Type is missing the required boundary parameter.',
+        statusCode: 400,
+        receivedContentType: contentType,
+        solution: {
+          description: 'The Content-Type header must include a boundary parameter. This happens when you manually set the Content-Type header.',
+          correctUsage: {
+            browser: 'const formData = new FormData(); formData.append("files", file); fetch(url, { method: "POST", body: formData }); // DO NOT set Content-Type header manually!',
+            nodejs: 'const FormData = require("form-data"); const form = new FormData(); form.append("files", file); // FormData automatically sets Content-Type with boundary',
+            axios: 'const formData = new FormData(); formData.append("files", file); axios.post(url, formData); // DO NOT set headers: { "Content-Type": "multipart/form-data" }'
+          },
+          commonMistake: 'Manually setting Content-Type header without boundary: headers: { "Content-Type": "multipart/form-data" }',
+          fix: 'Remove the Content-Type header from your request. Let FormData/form-data library set it automatically.'
+        }
+      });
+    }
+    
+    // For multipart requests with valid boundary, let multer parse it
+    const multerMiddleware = multerMiddlewareFactory();
+    
+    // Apply multer middleware for multipart requests with comprehensive error handling
+    const errorHandler = (err: any) => {
+      if (err) {
+        const errorMessage = err.message || err.toString() || '';
+        if (errorMessage.includes('Boundary not found') || errorMessage.includes('Multipart: Boundary not found')) {
+          logger.error('Multer error: Boundary not found', {
+            path: req.path,
+            method: req.method,
+            contentType: req.headers['content-type'],
+            error: errorMessage
+          });
+          // Don't send response if already sent
+          if (!res.headersSent) {
+            return res.status(400).json({
+              success: false,
+              message: 'Invalid request: multipart/form-data Content-Type is missing or has invalid boundary parameter. Please ensure your request includes a proper Content-Type header with boundary (e.g., Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW)',
+              statusCode: 400
+            });
+          }
+          return;
+        }
+        return next(err);
+      }
+      next();
+    };
+    
+    // Wrap in try-catch to handle any synchronous errors
+    try {
+      multerMiddleware(req, res, errorHandler);
+    } catch (error: any) {
+      // Catch synchronous errors from multer/busboy
+      const errorMessage = error?.message || error?.toString() || '';
+      if (errorMessage.includes('Boundary not found') || errorMessage.includes('Multipart: Boundary not found')) {
+        logger.error('Multer synchronous error: Boundary not found', {
+          path: req.path,
+          method: req.method,
+          contentType: req.headers['content-type'],
+          error: errorMessage
+        });
+        if (!res.headersSent) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid request: multipart/form-data Content-Type is missing or has invalid boundary parameter. Please ensure your request includes a proper Content-Type header with boundary (e.g., Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW)',
+            statusCode: 400
+          });
+        }
+        return;
+      }
+      return next(error);
+    }
+  };
+}
 
 class AttendanceRoutes {
   private router: Router;
@@ -685,7 +795,7 @@ class AttendanceRoutes {
      *       401:
      *         $ref: '#/components/responses/401'
      */
-    this.router.post('/import', upload.single('file'), this.controller.importAttendance.bind(this.controller));
+    this.router.post('/import', handleMulter(() => upload.single('file')), this.controller.importAttendance.bind(this.controller));
   }
 
   public getRouter(): Router {

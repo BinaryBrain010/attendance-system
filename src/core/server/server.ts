@@ -100,8 +100,26 @@ class App {
     // Apply general API rate limiting
     this.app.use('/api', apiLimiter);
     
-    this.app.use(bodyParser.json({ limit: '50mb' }));;
-    this.app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+    // Configure bodyParser to skip multipart/form-data requests (handled by multer)
+    // This prevents bodyParser from interfering with multer's parsing
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      const contentType = (req.headers['content-type'] || '').toLowerCase();
+      // Skip body parsing for multipart requests - let multer handle it
+      if (contentType.includes('multipart/form-data')) {
+        return next();
+      }
+      bodyParser.json({ limit: '50mb' })(req, res, next);
+    });
+    
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      const contentType = (req.headers['content-type'] || '').toLowerCase();
+      // Skip body parsing for multipart requests - let multer handle it
+      if (contentType.includes('multipart/form-data')) {
+        return next();
+      }
+      bodyParser.urlencoded({ limit: '50mb', extended: true })(req, res, next);
+    });
+    
     this.app.use('/uploads', express.static(path.join(__dirname, '..','..',  'assets', 'uploads')));
   }
 
@@ -261,6 +279,20 @@ class App {
       path: req.path,
       method: req.method,
     });
+    
+    // Handle multer/busboy boundary errors
+    if (err.message && (err.message.includes('Boundary not found') || err.message.includes('Multipart: Boundary not found'))) {
+      logger.error('Multer boundary error caught by global handler', {
+        path: req.path,
+        method: req.method,
+        contentType: req.headers['content-type']
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request: Expected multipart/form-data with proper boundary',
+        statusCode: 400
+      });
+    }
     
     // Handle CORS errors
     if (err.message === 'Not allowed by CORS') {
