@@ -34,4 +34,5 @@ Thumbs.db
 # **/migrations/
 
 # Uploads folder - user uploaded files should not be tracked
+src/assets/uploads/
 assets/uploads/
