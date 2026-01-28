@@ -20,19 +20,56 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async createAttendanceRequest(req: Request, res: Response) {
     const attendanceRequestData: AttendanceRequest = req.body;
     const operation = () => this.service.createAttendanceRequest(attendanceRequestData);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request created successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "AttendanceRequest",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Attendance request created for employee ${attendanceRequestData.employeeId}`,
+        metadata: {
+          employeeId: attendanceRequestData.employeeId,
+          attendanceId: attendanceRequestData.attendanceId,
+          status: attendanceRequestData.status,
+          reason: attendanceRequestData.reason
+        }
+      },
+      req
+    });
   }
 
   async updateAttendanceRequest(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateAttendanceRequest(id, data);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request updated successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request updated successfully!",
+      logActivity: {
+        action: "UPDATE",
+        entityType: "AttendanceRequest",
+        entityId: id,
+        description: `Attendance request updated`,
+        metadata: {
+          changes: data,
+          requestId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteAttendanceRequest(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendanceRequest(id);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "AttendanceRequest",
+        entityId: id,
+        description: "Attendance request deleted"
+      },
+      req
+    });
   }
 
   async restoreAttendanceRequest(req: Request, res: Response) {
@@ -72,8 +109,102 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
 
   async updateAttendanceRequestStatus(req: Request, res: Response) {
     const { id, status } = req.body;
-    const operation = () => this.service.updateAttendanceRequestStatus(id, status);
-    await this.handleRequest(operation, res, { successMessage: "Attendance request status updated successfully!" });
+    const userId = (req as Request & { userId?: string }).userId;
+    
+    // Check if user has permission to approve attendance requests
+    const accessModel = (await import("../../../rbac/Access/models/access.model")).default;
+    let hasPermission = false;
+    if (userId) {
+      try {
+        hasPermission = await accessModel.user.checkUserPermission(userId, "attendance.request.approve.*");
+      } catch (error) {
+        console.error("Error checking permission:", error);
+        hasPermission = false;
+      }
+    }
+
+    if (!hasPermission) {
+      return res.status(403).json({ 
+        success: false,
+        message: "You don't have permission to approve attendance requests." 
+      });
+    }
+
+    const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance request status updated successfully!",
+      logActivity: {
+        action: status === "APPROVED" ? "APPROVE" : status === "REJECTED" ? "REJECT" : "UPDATE",
+        entityType: "AttendanceRequest",
+        entityId: id,
+        description: `Attendance request ${status.toLowerCase()}`,
+        metadata: {
+          requestId: id,
+          status,
+          updatedBy: userId
+        }
+      },
+      req
+    });
+  }
+
+  async bulkUpdateAttendanceRequestStatus(req: Request, res: Response) {
+    const { requestIds, status } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
+    
+    if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "requestIds array is required and must not be empty",
+        statusCode: 400
+      });
+    }
+
+    if (!status || !["APPROVED", "REJECTED", "PENDING"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "status is required and must be APPROVED, REJECTED, or PENDING",
+        statusCode: 400
+      });
+    }
+    
+    // Check if user has permission to approve attendance requests
+    const accessModel = (await import("../../../rbac/Access/models/access.model")).default;
+    let hasPermission = false;
+    if (userId) {
+      try {
+        hasPermission = await accessModel.user.checkUserPermission(userId, "attendance.request.approve.*");
+      } catch (error) {
+        console.error("Error checking permission:", error);
+        hasPermission = false;
+      }
+    }
+
+    if (!hasPermission) {
+      return res.status(403).json({ 
+        success: false,
+        message: "You don't have permission to approve attendance requests.",
+        statusCode: 403
+      });
+    }
+
+    const operation = () => this.service.bulkUpdateAttendanceRequestStatus(requestIds, status, userId);
+    await this.handleRequest(operation, res, { 
+      successMessage: `Bulk ${status.toLowerCase()} operation completed!`,
+      logActivity: {
+        action: status === "APPROVED" ? "BULK_APPROVE" : status === "REJECTED" ? "BULK_REJECT" : "BULK_UPDATE",
+        entityType: "AttendanceRequest",
+        entityId: (result: any) => requestIds[0] || null, // Log first ID as representative
+        description: `Bulk ${status.toLowerCase()} for ${requestIds.length} attendance request(s)`,
+        metadata: {
+          requestIds,
+          status,
+          updatedBy: userId,
+          count: requestIds.length
+        }
+      },
+      req
+    });
   }
 }
 

@@ -94,6 +94,7 @@ model User {
   userRoles       UserRole[]
   employee        Employee?        @relation(fields: [employeeId], references: [id])
   employeeId      String?          @unique
+  activityLogs    ActivityLog[]
 }
 
 model Group {
@@ -233,6 +234,9 @@ model Employee {
   createdAt DateTime?
   updatedAt DateTime?
   isDeleted DateTime?
+  createdBy String?   @db.VarChar(36)
+  updatedBy String?   @db.VarChar(36)
+  previousUpdates Json? @db.JsonB
 
   user              User?
   attendances       Attendance[]
@@ -241,6 +245,8 @@ model Employee {
   leaveAllocation   LeaveAllocation[]
   shiftAssignments  ShiftAssignment[]
   todos             Todo[]
+  managedUnits      Unit[]              @relation("UnitAttendanceManager")
+  unitEmployees     UnitEmployee[]
 }
 
 enum Company {
@@ -262,6 +268,9 @@ model Attendance {
   createdAt  DateTime?
   updatedAt  DateTime?
   isDeleted  DateTime?
+  createdBy  String?          @db.VarChar(36)
+  updatedBy  String?          @db.VarChar(36)
+  previousUpdates Json?       @db.JsonB
 }
 
 enum AttendanceStatus {
@@ -274,31 +283,44 @@ enum AttendanceStatus {
 }
 
 model LeaveRequest {
-  id         String      @id @default(uuid()) @db.VarChar(36)
-  employee   Employee    @relation(fields: [employeeId], references: [id])
-  employeeId String
-  reason     String?
-  startDate  DateTime
-  endDate    DateTime
-  status     LeaveStatus @default(PENDING)
-  image      String?
-  location   String?
-  createdAt  DateTime?   @default(now())
-  updatedAt  DateTime?   @updatedAt
-  isDeleted  DateTime?
+  id                  String           @id @default(uuid()) @db.VarChar(36)
+  employee            Employee         @relation(fields: [employeeId], references: [id])
+  employeeId          String
+  leaveAllocation     LeaveAllocation? @relation(fields: [leaveAllocationId], references: [id])
+  leaveAllocationId   String?
+  reason              String?
+  startDate           DateTime
+  endDate             DateTime
+  status              LeaveStatus      @default(PENDING)
+  leaveType           String?          @default("CASUAL") @db.VarChar(50)
+  image               String?
+  location            String?
+  createdAt           DateTime?        @default(now())
+  updatedAt           DateTime?        @updatedAt
+  isDeleted           DateTime?
 }
 
 model AttendanceRequest {
-  id         String      @id @default(uuid()) @db.VarChar(36)
-  employee   Employee    @relation(fields: [employeeId], references: [id])
-  employeeId String
-  reason     String?
-  status     LeaveStatus @default(PENDING)
-  image      String? 
-  location   String? 
-  createdAt  DateTime?   @default(now())
-  updatedAt  DateTime?   @updatedAt
-  isDeleted  DateTime?
+  id            String      @id @default(uuid()) @db.VarChar(36)
+  employee      Employee    @relation(fields: [employeeId], references: [id])
+  employeeId    String
+  attendanceId  String?     @db.VarChar(36)
+  reason        String?
+  status        LeaveStatus @default(PENDING)
+  image         String? 
+  location      String? 
+  // Proposed attendance changes
+  proposedStatus    String?
+  proposedCheckIn   DateTime?
+  proposedCheckOut  DateTime?
+  proposedComment   String?
+  proposedLocation  String?
+  proposedDate      DateTime?
+  requestedBy       String?   @db.VarChar(36)
+  approvedBy        String?   @db.VarChar(36)
+  createdAt         DateTime? @default(now())
+  updatedAt         DateTime? @updatedAt
+  isDeleted         DateTime?
 }
 
 enum LeaveStatus {
@@ -326,12 +348,16 @@ model LeaveAllocation {
   leaveConfig         LeaveConfiguration? @relation(fields: [leaveConfigId], references: [id])
   leaveConfigId       String?
   assignedDays        Int
+  usedDays            Int                 @default(0)
+  remainingDays       Int                 @default(0)
   note                String?
   allocationStartDate DateTime
   allocationEndDate   DateTime?
   createdAt           DateTime?           @default(now())
   updatedAt           DateTime?           @updatedAt
   isDeleted           DateTime?
+
+  leaveRequests       LeaveRequest[]
 }
 
 enum ScheduleParent {
@@ -412,4 +438,84 @@ enum TodoPriority {
   LOW
   MEDIUM
   HIGH
+}
+
+model Holiday {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  date        DateTime
+  reason      String?
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+  isDeleted   DateTime?
+  createdBy   String?   @db.VarChar(36)
+  updatedBy   String?   @db.VarChar(36)
+  previousUpdates Json? @db.JsonB
+}
+
+enum UnitType {
+  SERVICE_CENTER
+  BRANCH
+  OUTLET
+  DEPARTMENT
+  STORE
+  WAREHOUSE
+  OFFICE
+  FACTORY
+  OTHER
+}
+
+model Unit {
+  id                  String      @id @default(uuid()) @db.VarChar(36)
+  name                String
+  type                UnitType
+  description         String?
+  address             String?
+  contactNo           String?
+  email               String?
+  attendanceManagerId String?     @db.VarChar(36)
+  createdAt           DateTime?   @default(now())
+  updatedAt           DateTime?   @updatedAt
+  isDeleted           DateTime?
+  createdBy           String?     @db.VarChar(36)
+  updatedBy           String?     @db.VarChar(36)
+  previousUpdates     Json?       @db.JsonB
+
+  attendanceManager   Employee?   @relation("UnitAttendanceManager", fields: [attendanceManagerId], references: [id])
+  employees           UnitEmployee[]
+}
+
+model UnitEmployee {
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  unitId     String    @db.VarChar(36)
+  employeeId String    @db.VarChar(36)
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+  isDeleted  DateTime?
+
+  unit      Unit      @relation(fields: [unitId], references: [id])
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+
+  @@unique([unitId, employeeId])
+}
+
+model ActivityLog {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  userId      String?   @db.VarChar(36)
+  action      String    // CREATE, UPDATE, DELETE, READ, APPROVE, REJECT, LOGIN, LOGOUT, etc.
+  entityType  String    // Employee, Attendance, AttendanceRequest, Unit, etc.
+  entityId    String?   @db.VarChar(36)
+  description String?
+  metadata    Json?     @db.JsonB // Additional data about the action
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime? @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
 }

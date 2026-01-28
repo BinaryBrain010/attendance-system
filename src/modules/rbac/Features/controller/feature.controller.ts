@@ -28,8 +28,20 @@ class AppFeatureController extends BaseController<AppFeatureService> {
     let featureData: AppFeature = req.body;
     let operation = () => this.service.createAppFeature(featureData);
     let successMessage = "Feature created successfully!";
-    let errorMessage = "Error creating feature:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "Feature",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Feature created: ${featureData.name || 'N/A'}`,
+        metadata: {
+          name: featureData.name,
+          label: featureData.label
+        }
+      },
+      req
+    });
   }
 
   async updateAppFeature(req: Request, res: Response) {
@@ -37,8 +49,20 @@ class AppFeatureController extends BaseController<AppFeatureService> {
 
     let operation = () => this.service.updateAppFeature(id, data);
     let successMessage = "Feature updated successfully!";
-    let errorMessage = "Error updating feature:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Feature",
+        entityId: id,
+        description: `Feature updated: ${data.name || 'N/A'}`,
+        metadata: {
+          changes: data,
+          featureId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteAppFeature(req: Request, res: Response) {
@@ -61,8 +85,16 @@ class AppFeatureController extends BaseController<AppFeatureService> {
     let { id } = req.body;
     let operation = () => this.service.restoreAppFeature(id);
     let successMessage = "Feature restored successfully!";
-    let errorMessage = "Error restoring feature:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Feature",
+        entityId: id,
+        description: "Feature restored"
+      },
+      req
+    });
   }
 
   async getAppFeatureById(req: Request, res: Response) {

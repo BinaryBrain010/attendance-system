@@ -228,6 +228,25 @@ class EmployeeRoutes {
      *         schema:
      *           type: string
      *         description: Optional search term to filter by name, surname, code, designation, or department
+     *       - in: query
+     *         name: from
+     *         schema:
+     *           type: string
+     *           format: date
+     *         description: Start date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter
+     *       - in: query
+     *         name: to
+     *         schema:
+     *           type: string
+     *           format: date
+     *         description: End date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter
+     *       - in: query
+     *         name: dateField
+     *         schema:
+     *           type: string
+     *           enum: [joiningDate, createdAt, updatedAt]
+     *           default: joiningDate
+     *         description: Date field to filter by when using from/to parameters
      *     responses:
      *       200:
      *         description: Employees retrieved successfully
@@ -567,6 +586,64 @@ class EmployeeRoutes {
     
     /**
      * @swagger
+     * /employee/getLinkedUser:
+     *   post:
+     *     summary: Get employee's linked user account
+     *     tags: [Employees]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Retrieves the user account linked to the specified employee. Requires 'employee.user.read.*' permission.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - id
+     *             properties:
+     *               id:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *                 description: Employee ID
+     *     responses:
+     *       200:
+     *         description: Employee linked user retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                 message:
+     *                   type: string
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     id:
+     *                       type: string
+     *                       description: User ID
+     *                     username:
+     *                       type: string
+     *                       description: Username
+     *                     createdAt:
+     *                       type: string
+     *                       format: date-time
+     *                     updatedAt:
+     *                       type: string
+     *                       format: date-time
+     *       400:
+     *         description: Bad request - Employee ID is required
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         description: Employee or linked user not found
+     */
+    this.router.post('/getLinkedUser', this.controller.getEmployeeLinkedUser.bind(this.controller));
+    
+    /**
+     * @swagger
      * /employee/restore:
      *   post:
      *     summary: Restore a deleted employee
@@ -799,6 +876,117 @@ class EmployeeRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/filesDel',this.controller.deleteFiles.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /employee/getHistoryById:
+     *   post:
+     *     summary: Get employee update history by ID
+     *     tags: [Employees]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - id
+     *             properties:
+     *               id:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *               filter:
+     *                 type: boolean
+     *                 description: If true, returns array of dates. If false, returns complete previousUpdates array.
+     *                 example: true
+     *               date:
+     *                 type: string
+     *                 format: date
+     *                 description: Optional. If filter is true and date is provided, returns record for that specific date.
+     *                 example: "2024-01-15"
+     *     responses:
+     *       200:
+     *         description: Employee history retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         $ref: '#/components/responses/404'
+     */
+    this.router.post('/getHistoryById', this.controller.getHistoryById.bind(this.controller));
+    
+    /**
+     * @swagger
+     * /employee/stats:
+     *   post:
+     *     summary: Get comprehensive statistics for an employee
+     *     tags: [Employees]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Returns detailed statistics including attendance, leave requests, and leave allocations with trends for visualization
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - employeeId
+     *             properties:
+     *               employeeId:
+     *                 type: string
+     *                 description: Employee ID
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *               from:
+     *                 type: string
+     *                 format: date
+     *                 description: Optional start date for statistics (defaults to start of current month)
+     *                 example: "2024-01-01"
+     *               to:
+     *                 type: string
+     *                 format: date
+     *                 description: Optional end date for statistics (defaults to end of current month)
+     *                 example: "2024-12-31"
+     *     responses:
+     *       200:
+     *         description: Employee statistics retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 success:
+     *                   type: boolean
+     *                 message:
+     *                   type: string
+     *                 data:
+     *                   type: object
+     *                   properties:
+     *                     employee:
+     *                       type: object
+     *                     attendance:
+     *                       type: object
+     *                     leaveRequests:
+     *                       type: object
+     *                     leaveAllocations:
+     *                       type: object
+     *                     leaveTrends:
+     *                       type: object
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     *       404:
+     *         $ref: '#/components/responses/404'
+     */
+    this.router.post('/stats', this.controller.getEmployeeStats.bind(this.controller));
   }
 
   public getRouter(): Router {

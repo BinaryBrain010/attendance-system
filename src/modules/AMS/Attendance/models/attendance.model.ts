@@ -13,6 +13,32 @@ import { convertToPST } from "../helper/date.helper";
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
 
+// Admin user ID constant
+const ADMIN_USER_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
+
+// Helper function to get username from userId
+async function getUpdatedByName(updatedBy: string | null): Promise<string | null> {
+  if (!updatedBy) {
+    return null;
+  }
+  
+  if (updatedBy === ADMIN_USER_ID) {
+    return "Admin";
+  }
+  
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: updatedBy },
+      select: { username: true },
+    });
+    
+    return user?.username || null;
+  } catch (error) {
+    console.error(`Error fetching username for userId ${updatedBy}:`, error);
+    return null;
+  }
+}
+
 // Helper function to get start of day in Pakistan timezone, then convert to UTC for database query
 function getStartOfDayPakistan(date: Date): Date {
   // Get the date components in Pakistan timezone
@@ -74,8 +100,25 @@ const attendanceModel = prisma.$extends({
       async checkAttendance(
         employeeId: string,
         status: AttendanceStatus,
-        date?: Date
+        date?: Date,
+        userId?: string
       ) {
+        // Check unit-based access control if userId is provided
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, check if employee is in the list
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0 || !accessibleEmployeeIds.includes(employeeId)) {
+              const { ForbiddenError } = await import('../../../../core/errors/app.error');
+              throw new ForbiddenError('You don\'t have permission to check attendance for this employee. You can only check attendance for employees in your assigned unit(s).');
+            }
+          }
+        }
+
         // Use Pakistan timezone for date filtering
         const targetDate = date ? new Date(date) : new Date();
         const todayStart = getStartOfDayPakistan(targetDate);
@@ -200,25 +243,42 @@ const attendanceModel = prisma.$extends({
       },
       
       // Method to mark attendance
-      async markAttendance(attendanceData: Attendance) {
+      async markAttendance(attendanceData: Attendance & { createdByUserId?: string; updatedByUserId?: string; createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string }) {
         // Use database transaction to prevent race conditions
         return await prisma.$transaction(async (tx) => {
+          // Extract audit trail fields and leave-related fields
+          const { createdByUserId, updatedByUserId, createLeaveRequest, leaveType, leaveReason, ...attendanceFields } = attendanceData as any;
+          
+          // Check unit-based access control if userId is provided
+          if (createdByUserId) {
+            const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+            const accessibleEmployeeIds = await getAccessibleEmployeeIds(createdByUserId, 'attendance');
+            
+            // If null, user has supervisor permission (access all)
+            // If empty array, user has no access
+            // If array with IDs, check if employee is in the list
+            if (accessibleEmployeeIds !== null) {
+              if (accessibleEmployeeIds.length === 0 || !accessibleEmployeeIds.includes(attendanceFields.employeeId)) {
+                const { ForbiddenError } = await import('../../../../core/errors/app.error');
+                throw new ForbiddenError('You don\'t have permission to mark attendance for this employee. You can only mark attendance for employees in your assigned unit(s).');
+              }
+            }
+          }
+          
           // Use Pakistan timezone for date filtering
-          const targetDate = attendanceData.date
-            ? new Date(attendanceData.date)
+          const targetDate = attendanceFields.date
+            ? new Date(attendanceFields.date)
             : new Date();
           const todayStart = getStartOfDayPakistan(targetDate);
           const todayEnd = getEndOfDayPakistan(targetDate);
         
           const employee = await tx.employee.findUnique({
-            where: { id: attendanceData.employeeId },
+            where: { id: attendanceFields.employeeId },
           });
         
           if (!employee) {
-            return {
-              success: false,
-              message: `Employee with ID ${attendanceData.employeeId} not found`,
-            };
+            const { NotFoundError } = await import('../../../../core/errors/app.error');
+            throw new NotFoundError(`Employee with ID ${attendanceFields.employeeId}`);
           }
         
           // Normalize the date to start of day in Pakistan timezone for consistent storage
@@ -228,7 +288,7 @@ const attendanceModel = prisma.$extends({
           // Check for existing attendance within the same day (Pakistan timezone)
           const existingAttendance = await tx.attendance.findFirst({
             where: {
-              employeeId: attendanceData.employeeId,
+              employeeId: attendanceFields.employeeId,
               date: {
                 gte: todayStart,
                 lt: todayEnd,
@@ -238,6 +298,27 @@ const attendanceModel = prisma.$extends({
           });
         
           if (existingAttendance) {
+            // Prepare previous update record for audit trail
+            const existingAttendanceWithAudit = existingAttendance as any;
+            const previousUpdate = {
+              data: {
+                status: existingAttendance.status,
+                checkIn: existingAttendance.checkIn,
+                checkOut: existingAttendance.checkOut,
+                comment: existingAttendance.comment,
+                location: existingAttendance.location,
+                date: existingAttendance.date,
+              },
+              updatedBy: existingAttendanceWithAudit.updatedBy || null,
+              updatedAt: existingAttendance.updatedAt || new Date(),
+            };
+
+            // Get existing previousUpdates  array or initialize empty array
+            const existingPreviousUpdates = (existingAttendanceWithAudit.previousUpdates as any[]) || [];
+
+            // Add current state to previousUpdates and keep only last 3
+            const updatedPreviousUpdates = [previousUpdate, ...existingPreviousUpdates].slice(0, 3);
+
             // If attendance already exists, mark it as a checkout
             if ((existingAttendance.status === "PRESENT" || existingAttendance.status === "LATE") && existingAttendance.checkIn && !existingAttendance.checkOut) {
               const updatedAttendance = await tx.attendance.update({
@@ -245,10 +326,13 @@ const attendanceModel = prisma.$extends({
                 data: {
                   checkOut: new Date(), // Checkout time is the current time
                   comment:
-                    attendanceData.comment ||
+                    attendanceFields.comment ||
                     existingAttendance.comment ||
-                    ''
-                },
+                    '',
+                  updatedBy: updatedByUserId || null,
+                  updatedAt: new Date(),
+                  previousUpdates: updatedPreviousUpdates,
+                } as any,
               });
               return {
                 success: true,
@@ -258,17 +342,41 @@ const attendanceModel = prisma.$extends({
             }
         
             // If checkOut already exists, update the attendance if needed
-            if (attendanceData.status && attendanceData.status !== existingAttendance.status) {
+            if (attendanceFields.status && attendanceFields.status !== existingAttendance.status) {
               const updatedAttendance = await tx.attendance.update({
                 where: { id: existingAttendance.id },
                 data: {
-                  status: attendanceData.status,
-                  checkIn: attendanceData.checkIn || existingAttendance.checkIn,
-                  checkOut: attendanceData.checkOut || existingAttendance.checkOut,
-                  comment: attendanceData.comment || existingAttendance.comment || '',
-                  location: attendanceData.location || existingAttendance.location,
-                },
+                  status: attendanceFields.status,
+                  checkIn: attendanceFields.checkIn || existingAttendance.checkIn,
+                  checkOut: attendanceFields.checkOut || existingAttendance.checkOut,
+                  comment: attendanceFields.comment || existingAttendance.comment || '',
+                  location: attendanceFields.location || existingAttendance.location,
+                  updatedBy: updatedByUserId || null,
+                  updatedAt: new Date(),
+                  previousUpdates: updatedPreviousUpdates,
+                } as any,
               });
+
+              // If status changed to ON_LEAVE and createLeaveRequest is true, create a leave request
+              if (attendanceFields.status === 'ON_LEAVE' && createLeaveRequest) {
+                try {
+                  const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+                  
+                  const leaveRequestData: any = {
+                    employeeId: attendanceFields.employeeId,
+                    startDate: normalizedDate,
+                    endDate: normalizedDate,
+                    status: 'APPROVED',
+                    reason: leaveReason || 'Leave marked during attendance update',
+                    leaveType: leaveType || 'CASUAL',
+                  };
+
+                  await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+                } catch (error) {
+                  console.error('Error creating leave request during attendance update:', error);
+                }
+              }
+
               return {
                 success: true,
                 message: `Attendance updated successfully for ${employee.name} ${employee.surname}!`,
@@ -287,12 +395,38 @@ const attendanceModel = prisma.$extends({
           // If no existing attendance, proceed to create with normalized date
           const newAttendance = await tx.attendance.create({
             data: {
-              ...attendanceData,
+              ...attendanceFields,
               date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
-              checkIn: attendanceData.checkIn || new Date(),
-              comment: attendanceData.comment || '',
-            },
+              checkIn: attendanceFields.checkIn || new Date(),
+              comment: attendanceFields.comment || '',
+              createdBy: createdByUserId || null,
+              previousUpdates: [],
+            } as any,
           });
+
+          // If status is ON_LEAVE and createLeaveRequest is true, create a leave request
+          if (attendanceFields.status === 'ON_LEAVE' && createLeaveRequest) {
+            try {
+              // Import leave request model dynamically to avoid circular dependency
+              const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+              
+              // Create leave request for the same date
+              const leaveRequestData: any = {
+                employeeId: attendanceFields.employeeId,
+                startDate: normalizedDate,
+                endDate: normalizedDate,
+                status: 'APPROVED', // Auto-approve when marked during attendance
+                reason: leaveReason || 'Leave marked during attendance',
+                leaveType: leaveType || 'CASUAL',
+              };
+
+              // Create the leave request (this will automatically link to leave allocation if configured)
+              await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+            } catch (error) {
+              console.error('Error creating leave request during attendance marking:', error);
+              // Don't fail the attendance marking if leave request creation fails
+            }
+          }
         
           return {
             success: true,
@@ -300,6 +434,165 @@ const attendanceModel = prisma.$extends({
             data: newAttendance,
           };
         });
+      },
+
+      // Bulk mark leave for selected employees
+      async bulkMarkLeave(
+        employeeIds: string[],
+        date: Date,
+        leaveType?: string,
+        reason?: string,
+        createLeaveRequest?: boolean,
+        createdByUserId?: string
+      ): Promise<any> {
+        // Check unit-based access control if userId is provided
+        let accessibleEmployeeIds: string[] | null = null;
+        if (createdByUserId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          accessibleEmployeeIds = await getAccessibleEmployeeIds(createdByUserId, 'attendance');
+          
+          // If null, user has supervisor permission (access all)
+          // If empty array, user has no access
+          // If array with IDs, filter employeeIds to only include accessible ones
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return {
+                success: false,
+                message: `You don't have permission to mark attendance. You are not assigned to any units.`,
+                total: 0,
+                successful: 0,
+                failed: 0,
+                results: [],
+              };
+            }
+            // Filter employeeIds to only include accessible ones
+            employeeIds = employeeIds.filter(id => accessibleEmployeeIds!.includes(id));
+            if (employeeIds.length === 0) {
+              return {
+                success: false,
+                message: `None of the selected employees are in your assigned unit(s).`,
+                total: 0,
+                successful: 0,
+                failed: 0,
+                results: [],
+              };
+            }
+          }
+        }
+
+        const normalizedDate = getStartOfDayPakistan(date);
+        const dateStart = new Date(normalizedDate);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(normalizedDate);
+        dateEnd.setHours(23, 59, 59, 999);
+
+        const results = [];
+
+        for (const employeeId of employeeIds) {
+          try {
+            // Check if employee exists
+            const employee = await prisma.employee.findUnique({
+              where: { id: employeeId, isDeleted: null },
+            });
+
+            if (!employee) {
+              results.push({
+                employeeId,
+                success: false,
+                message: `Employee not found`,
+              });
+              continue;
+            }
+
+            // Check if attendance already exists
+            const existingAttendance = await prisma.attendance.findFirst({
+              where: {
+                employeeId,
+                date: {
+                  gte: dateStart,
+                  lte: dateEnd,
+                },
+                isDeleted: null,
+              },
+            });
+
+            if (existingAttendance) {
+              // Update existing attendance to ON_LEAVE
+              const updatedAttendance = await prisma.attendance.update({
+                where: { id: existingAttendance.id },
+                data: {
+                  status: AttendanceStatus.ON_LEAVE,
+                  comment: reason || existingAttendance.comment || '',
+                  updatedBy: createdByUserId || null,
+                  updatedAt: new Date(),
+                } as any,
+              });
+
+              results.push({
+                employeeId,
+                employeeName: `${employee.name} ${employee.surname}`,
+                success: true,
+                message: `Leave marked successfully`,
+                data: updatedAttendance,
+              });
+            } else {
+              // Create new attendance record as ON_LEAVE
+              const newAttendance = await prisma.attendance.create({
+                data: {
+                  employeeId,
+                  date: normalizedDate,
+                  status: AttendanceStatus.ON_LEAVE,
+                  comment: reason || '',
+                  createdBy: createdByUserId || null,
+                  createdAt: new Date(),
+                } as any,
+              });
+
+              results.push({
+                employeeId,
+                employeeName: `${employee.name} ${employee.surname}`,
+                success: true,
+                message: `Leave marked successfully`,
+                data: newAttendance,
+              });
+            }
+
+            // If createLeaveRequest is true, create a leave request
+            if (createLeaveRequest) {
+              try {
+                const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+                
+                const leaveRequestData: any = {
+                  employeeId,
+                  startDate: normalizedDate,
+                  endDate: normalizedDate,
+                  status: 'APPROVED',
+                  reason: reason || 'Bulk leave marking',
+                  leaveType: leaveType || 'CASUAL',
+                };
+
+                await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+              } catch (error) {
+                console.error(`Error creating leave request for employee ${employeeId}:`, error);
+              }
+            }
+          } catch (error: any) {
+            results.push({
+              employeeId,
+              success: false,
+              message: error.message || 'Error marking leave',
+            });
+          }
+        }
+
+        return {
+          success: true,
+          message: `Bulk leave marking completed`,
+          total: employeeIds.length,
+          successful: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+          results,
+        };
       },
 
       async gpFindEmployeeAttendance(
@@ -390,7 +683,7 @@ ORDER BY
         return data;
       },
 
-      async gpFindDatedMany(this: any, from: Date | string | null, to: Date | string | null) {
+      async gpFindDatedMany(this: any, from: Date | string | null, to: Date | string | null, userId?: string) {
         // Convert input dates to Date objects if they're strings
         const fromDate = from ? (typeof from === 'string' ? new Date(from) : from) : null;
         const toDate = to ? (typeof to === 'string' ? new Date(to) : to) : null;
@@ -421,8 +714,26 @@ ORDER BY
         console.log('Date filter - From:', todayStart.toISOString(), 'To:', todayEnd.toISOString());
         console.log('Date filter (Pakistan time) - From:', formatInTimeZone(todayStart, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), 'To:', formatInTimeZone(todayEnd, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
 
+        // Apply unit-based access control if userId is provided
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all) - no filter needed
+          // If empty array, user has no access - return empty result
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return [];
+            }
+            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+
         // Fetch full attendance details with employee data
-        const data = await prisma.$queryRaw`
+        const data = await prisma.$queryRawUnsafe(`
           SELECT 
             a.*,
             e."name" AS "employeeName",
@@ -431,20 +742,21 @@ ORDER BY
             e."contactNo",
             e."address",
             e."department", 
-            e."code" -- Include additional employee fields if needed
+            e."code"
           FROM "Attendance" a
           LEFT JOIN "Employee" e 
             ON a."employeeId" = e.id
           WHERE a."isDeleted" IS NULL
-            AND a."date" >= ${todayStart.toISOString()}::timestamp
-            AND a."date" <= ${todayEnd.toISOString()}::timestamp
+            AND a."date" >= '${todayStart.toISOString()}'::timestamp
+            AND a."date" <= '${todayEnd.toISOString()}'::timestamp
+            ${employeeFilter}
             ORDER BY 
             a."date" ASC
-        `;
+        `);
 
         return data;
       },
-      async gpFindMany(this: any) {
+      async gpFindMany(this: any, userId?: string) {
         // Get current date and calculate start/end of today in Pakistan timezone
         const now = new Date();
         const todayStart = getStartOfDayPakistan(now);
@@ -453,8 +765,26 @@ ORDER BY
         console.log('Today filter (UTC) - From:', todayStart.toISOString(), 'To:', todayEnd.toISOString());
         console.log('Today filter (Pakistan time) - From:', formatInTimeZone(todayStart, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), 'To:', formatInTimeZone(todayEnd, PAKISTAN_TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
 
+        // Apply unit-based access control if userId is provided
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all) - no filter needed
+          // If empty array, user has no access - return empty result
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return [];
+            }
+            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+
         // Fetch full attendance details with employee data
-        const data = await prisma.$queryRaw`
+        const data = await prisma.$queryRawUnsafe(`
           SELECT 
             a.*,
             e."name" AS "employeeName",
@@ -463,18 +793,72 @@ ORDER BY
             e."contactNo",
             e."address",
             e."department", 
-            e."code" -- Include additional employee fields if needed
+            e."code"
           FROM "Attendance" a
           LEFT JOIN "Employee" e 
             ON a."employeeId" = e.id
           WHERE a."isDeleted" IS NULL
-            AND a."date" >= ${todayStart.toISOString()}::timestamp
-            AND a."date" <= ${todayEnd.toISOString()}::timestamp
+            AND a."date" >= '${todayStart.toISOString()}'::timestamp
+            AND a."date" <= '${todayEnd.toISOString()}'::timestamp
+            ${employeeFilter}
             ORDER BY 
             a."date" ASC
-        `;
+        `);
 
         return data;
+      },
+
+      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string) {
+        const skip = (page - 1) * pageSize;
+        
+        // Apply unit-based access control if userId is provided
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
+          
+          // If null, user has supervisor permission (access all) - no filter needed
+          // If empty array, user has no access - return empty result
+          // If array with IDs, filter by those IDs
+          if (accessibleEmployeeIds !== null) {
+            if (accessibleEmployeeIds.length === 0) {
+              return { data: [], totalSize: 0 };
+            }
+            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+
+        const data = await prisma.$queryRawUnsafe(`
+          SELECT 
+            a.*,
+            e."name" AS "employeeName",
+            e."surname" AS "employeeSurname",
+            e."designation",
+            e."contactNo",
+            e."address",
+            e."department", 
+            e."code"
+          FROM "Attendance" a
+          LEFT JOIN "Employee" e 
+            ON a."employeeId" = e.id
+          WHERE a."isDeleted" IS NULL
+            ${employeeFilter}
+          ORDER BY a."createdAt" DESC
+          LIMIT ${pageSize}
+          OFFSET ${skip}
+        `) as any[];
+
+        const totalSizeResult = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*)::int AS count
+          FROM "Attendance" a
+          WHERE a."isDeleted" IS NULL
+            ${employeeFilter}
+        `) as any[];
+        
+        const totalSize = totalSizeResult[0]?.count || 0;
+
+        return { data, totalSize };
       },
 
       async markFaceAttendance(this: any, image: string) {
@@ -507,7 +891,134 @@ ORDER BY
             message: 'No matching face found'
           };
         }
-      }
+      },
+
+      async gpCreate(this: any, createdData: any) {
+        if (!Array.isArray(createdData)) {
+          createdData = [createdData];
+        }
+
+        const createdItems = [];
+
+        for (const data of createdData) {
+          const { createdByUserId, ...remainingData } = data;
+          
+          let newData = {
+            ...remainingData,
+            createdAt: new Date(),
+            createdBy: createdByUserId || null,
+            previousUpdates: [],
+          };
+
+          const createdItem = await this.create({
+            data: newData as any,
+          });
+
+          createdItems.push(createdItem);
+        }
+
+        return createdItems;
+      },
+
+      async gpUpdate(this: any, updateId: string, data: any) {
+        const { updatedByUserId, ...remainingData } = data;
+
+        // Get current state before update for audit trail
+        const currentAttendance = await prisma.attendance.findUnique({
+          where: { id: updateId },
+        }) as any;
+
+        if (!currentAttendance) {
+          throw new Error(`Attendance with ID ${updateId} not found.`);
+        }
+
+        // Prepare previous update record
+        const previousUpdate = {
+          data: {
+            status: currentAttendance.status,
+            checkIn: currentAttendance.checkIn,
+            checkOut: currentAttendance.checkOut,
+            comment: currentAttendance.comment,
+            location: currentAttendance.location,
+            date: currentAttendance.date,
+          },
+          updatedBy: currentAttendance.updatedBy || null,
+          updatedAt: currentAttendance.updatedAt || new Date(),
+        };
+
+        // Get existing previousUpdates array or initialize empty array
+        const existingPreviousUpdates = (currentAttendance.previousUpdates as any[]) || [];
+
+        // Add current state to previousUpdates and keep only last 3
+        const updatedPreviousUpdates = [previousUpdate, ...existingPreviousUpdates].slice(0, 3);
+
+        // Prepare update data with audit trail
+        const updateData: any = {
+          ...remainingData,
+          updatedAt: new Date(),
+          updatedBy: updatedByUserId || null,
+          previousUpdates: updatedPreviousUpdates,
+        };
+
+        // Update the attendance data
+        const updatedData = await prisma.attendance.update({
+          where: { id: updateId },
+          data: updateData as any,
+        });
+
+        return updatedData;
+      },
+
+      async getHistoryById(this: any, attendanceId: string, filter?: boolean, date?: string) {
+        const attendance = await prisma.attendance.findUnique({
+          where: { id: attendanceId },
+        }) as any;
+
+        if (!attendance) {
+          throw new Error(`Attendance with ID ${attendanceId} not found.`);
+        }
+
+        const previousUpdates = (attendance.previousUpdates as any[]) || [];
+
+        // Add updatedByName to each update record
+        const previousUpdatesWithNames = await Promise.all(
+          previousUpdates.map(async (update: any) => {
+            const updatedByName = await getUpdatedByName(update.updatedBy || null);
+            return {
+              ...update,
+              updatedByName: updatedByName,
+            };
+          })
+        );
+
+        // If filter is not true, return complete previousUpdates array with names
+        if (!filter) {
+          return previousUpdatesWithNames;
+        }
+
+        // If filter is true and date is provided, return record for that specific date
+        if (filter && date) {
+          const targetDate = new Date(date);
+          // Normalize dates to compare only date part (ignore time)
+          const targetDateStr = targetDate.toISOString().split('T')[0];
+          
+          const record = previousUpdatesWithNames.find((update: any) => {
+            if (!update.updatedAt) return false;
+            const updateDate = new Date(update.updatedAt);
+            const updateDateStr = updateDate.toISOString().split('T')[0];
+            return updateDateStr === targetDateStr;
+          });
+
+          return record || null;
+        }
+
+        // If filter is true but no date provided, return array of dates
+        const dates = previousUpdatesWithNames
+          .map((update: any) => update.updatedAt)
+          .filter((date: any) => date !== null && date !== undefined);
+
+        return dates;
+      },
       
       
     },

@@ -3,6 +3,7 @@ import BaseController from "../../../../core/controllers/base.controller";
 import { Attendance } from "../types/Attendance";
 import path from "path";
 import AttendanceService from "../services/attendnace.service";
+import { logActivityFromRequest } from "../../../ActivityLog/helper/activityLog.helper";
 import { AttendanceExcelUtility } from "../../../../excel/attendance";
 import { AttendancePDF } from "../../../../pdf/attendance";
 
@@ -12,13 +13,15 @@ class AttendanceController extends BaseController<AttendanceService> {
   private pdfUtility = new AttendancePDF();
 
   async getAllAttendances(req: Request, res: Response) {
-    const operation = () => this.service.getAllattendances();
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAllattendances(userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
   async getAttendances(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getAttendances(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAttendances(page, pageSize, userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
@@ -31,7 +34,8 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async getDated(req: Request, res: Response) {
     const { from, to } = req.body;
-    const operation = () => this.service.getDatedAttendance(from, to);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getDatedAttendance(from, to, userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
@@ -149,57 +153,186 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async createAttendance(req: Request, res: Response) {
     const AttendanceData: Attendance = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.createAttendance(AttendanceData);
-    await this.handleRequest(operation, res, { successMessage: "Attendance created successfully!" });
+    const operation = () => this.service.createAttendance({ ...AttendanceData, createdByUserId: userId } as any);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "Attendance",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Attendance created for employee ${AttendanceData.employeeId}`,
+        metadata: {
+          employeeId: AttendanceData.employeeId,
+          status: AttendanceData.status,
+          date: AttendanceData.date
+        }
+      },
+      req
+    });
   }
 
   async checkAttendance(req: Request, res: Response) {
     const { employeeId, status, date } = req.body;
-    try {
-      const result = await this.service.checkAttendance(
-        employeeId,
-        status,
-        date
-      );
-      return res.status(201).json({
-        message: result.message,
-        success: result.success,
-        status: result.status,
-      });
-    } catch (error) {
-      console.error("Error creating attendance:", error);
-      return res.status(500).json({ message: "Error creating attendance." });
-    }
+    const userId = (req as Request & { userId?: string }).userId;
+    
+    const operation = () => this.service.checkAttendance(employeeId, status, date, userId);
+    await this.handleRequest(operation, res, { successMessage: "Attendance check completed successfully!" });
   }
 
   async markAttendance(req: Request, res: Response) {
-    const attendanceData: Attendance = req.body;
+    const attendanceData: Attendance & { createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
 
-    try {
-      const result = await this.service.markAttendance(attendanceData);
-      if (!result.success) {
-        return res.status(400).json({ message: result.message });
-      }
-      return res
-        .status(201)
-        .json({ message: result.message, data: result.data });
-    } catch (error) {
-      console.error("Error creating attendance:", error);
-      return res.status(500).json({ message: "Error creating attendance." });
+    const operation = () => this.service.markAttendance({ 
+      ...attendanceData, 
+      createdByUserId: userId,
+      updatedByUserId: userId 
+    } as any);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance marked successfully!", 
+      statusCode: 201,
+      logActivity: {
+        action: (result: any) => {
+          // Determine actual action from result message
+          const message = result?.message || "";
+          if (message.includes("Check-out marked")) {
+            return "UPDATE"; // Checkout is an update
+          } else if (message.includes("updated successfully")) {
+            return "UPDATE";
+          } else if (message.includes("already marked") && !message.includes("Check-out")) {
+            return "READ"; // Just viewing existing
+          }
+          return "CREATE"; // New attendance marked
+        },
+        entityType: "Attendance",
+        entityId: (result: any) => {
+          // Extract attendance ID from result
+          if (result?.data?.id) return result.data.id;
+          if (result?.id) return result.id;
+          return attendanceData.id;
+        },
+        description: (result: any) => result?.message || `Attendance marked for employee ${attendanceData.employeeId}`,
+        metadata: (result: any) => ({
+          employeeId: attendanceData.employeeId,
+          status: attendanceData.status,
+          date: attendanceData.date,
+          checkIn: attendanceData.checkIn,
+          checkOut: attendanceData.checkOut,
+          attendanceId: result?.data?.id || result?.id,
+          originalMessage: result?.message
+        })
+      },
+      req
+    });
+  }
+
+  async bulkMarkLeave(req: Request, res: Response) {
+    const { employeeIds, date, leaveType, reason, createLeaveRequest } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
+
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({ message: "employeeIds array is required and must not be empty" });
     }
+
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
+    }
+
+    const operation = () => this.service.bulkMarkLeave(
+      employeeIds,
+      new Date(date),
+      leaveType,
+      reason,
+      createLeaveRequest,
+      userId
+    );
+    await this.handleRequest(operation, res, { 
+      successMessage: "Bulk leave marking completed successfully!",
+      logActivity: {
+        action: "BULK_UPDATE",
+        entityType: "Attendance",
+        description: `Bulk leave marked for ${employeeIds.length} employee(s)`,
+        metadata: {
+          employeeIds,
+          date,
+          leaveType,
+          reason,
+          count: employeeIds.length
+        }
+      },
+      req
+    });
   }
 
   async updateAttendance(req: Request, res: Response) {
     const { id, data } = req.body;
-    const operation = () => this.service.updateAttendance(id, data);
-    await this.handleRequest(operation, res, { successMessage: "Attendance updated successfully!" });
+    const userId = (req as Request & { userId?: string }).userId;
+
+    try {
+      const result = await this.service.updateAttendance(id, { ...data, updatedByUserId: userId }, userId);
+      
+      // Log activity for update
+      try {
+
+        await logActivityFromRequest(
+          req,
+          result && result.requiresApproval ? "REQUEST" : "UPDATE",
+          "Attendance",
+          id,
+          result && result.requiresApproval 
+            ? "Attendance update request created" 
+            : "Attendance updated directly",
+          {
+            changes: data,
+            requiresApproval: result?.requiresApproval || false,
+            requestId: result?.requestId || null
+          }
+        );
+      } catch (logError) {
+        console.error("Error logging activity:", logError);
+      }
+      
+      // If result indicates request was created, return appropriate response
+      if (result && result.requiresApproval) {
+        return res.status(202).json({
+          success: true,
+          message: result.message,
+          requiresApproval: true,
+          requestId: result.requestId,
+          data: result.data,
+        });
+      }
+      
+      // Direct update was successful
+      return res.status(200).json({
+        success: true,
+        message: "Attendance updated successfully!",
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("Error updating attendance:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || "Error updating attendance." 
+      });
+    }
   }
 
   async deleteAttendance(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendance(id);
-    await this.handleRequest(operation, res, { successMessage: "Attendance deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Attendance deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "Attendance",
+        entityId: id,
+        description: "Attendance deleted"
+      },
+      req
+    });
   }
 
   async getAttendanceById(req: Request, res: Response) {
@@ -231,6 +364,25 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () =>
       this.service.importAttendance(employeeId, month, file);
     await this.handleRequest(operation, res, { successMessage: "Attendance imported successfully!" });
+  }
+
+  async getHistoryById(req: Request, res: Response) {
+    const { id, filter, date } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ message: "Attendance ID is required" });
+    }
+
+    // Convert filter to boolean if it's a string
+    const filterBool = filter === true || filter === "true";
+    
+    const operation = () => this.service.getHistoryById(id, filterBool, date);
+    await this.handleRequest(operation, res, { successMessage: "Attendance history retrieved successfully!" });
+  }
+
+  async getAttendanceRequestSummary(req: Request, res: Response) {
+    const operation = () => this.service.getAttendanceRequestSummary();
+    await this.handleRequest(operation, res, { successMessage: "Attendance request summary retrieved successfully!" });
   }
 }
 

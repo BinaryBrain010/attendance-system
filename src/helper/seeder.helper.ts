@@ -47,12 +47,18 @@ class SeederHelper {
   }
 
   private async gpCreateFeatures() {
-    const data = await this.appFeaturesService.getAllAppFeatures();
-    if (data.length > 0) {
-      console.log("skipping Features creation");
+    const existingFeatures = await this.appFeaturesService.getAllAppFeatures();
+    const existingFeatureNames = new Set(existingFeatures.map(f => f.name));
+    
+    // Filter out features that already exist
+    const featuresToCreate = features.filter(feature => !existingFeatureNames.has(feature.name));
+    
+    if (featuresToCreate.length === 0) {
+      console.log("All features already exist. Skipping feature creation.");
     } else {
-      await prisma.appFeature.gpCreate(features);
-      console.log("Features created successfully.");
+      await prisma.appFeature.gpCreate(featuresToCreate);
+      console.log(`${featuresToCreate.length} new feature(s) created successfully.`);
+      console.log(`Skipped ${features.length - featuresToCreate.length} existing feature(s).`);
     }
   }
 

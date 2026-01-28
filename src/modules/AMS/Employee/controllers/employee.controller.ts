@@ -17,6 +17,10 @@ class EmployeeController extends BaseController<EmployeeService> {
     const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
     const filter = req.query.filter as string;
     const search = req.query.search as string;
+    const from = req.query.from as string;
+    const to = req.query.to as string;
+    const dateField = (req.query.dateField as string) || 'joiningDate'; // joiningDate, createdAt, or updatedAt
+    const userId = (req as Request & { userId?: string }).userId;
 
     const operation = async () => {
       return await this.service.getEmployeesWithPagination(
@@ -25,7 +29,11 @@ class EmployeeController extends BaseController<EmployeeService> {
         sortBy,
         sortOrder,
         filter,
-        search
+        search,
+        from,
+        to,
+        dateField,
+        userId
       );
     };
 
@@ -45,7 +53,20 @@ class EmployeeController extends BaseController<EmployeeService> {
       await this.service.deleteFiles(employeeId, fileName);
     };
 
-    await this.handleRequest(operation, res, { successMessage: "File deleted successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "File deleted successfully!",
+      logActivity: {
+        action: "DELETE",
+        entityType: "EmployeeFile",
+        entityId: employeeId,
+        description: `File deleted: ${fileName}`,
+        metadata: {
+          employeeId,
+          fileName
+        }
+      },
+      req
+    });
   }
 
   async getEmployeeExcel(req: Request, res: Response): Promise<void> {
@@ -154,6 +175,25 @@ class EmployeeController extends BaseController<EmployeeService> {
       const updatedFilePaths = [...existingFilePaths, ...newFilePaths];
       await this.service.updateFilePaths(employeeId, updatedFilePaths);
 
+      // Log activity
+      try {
+        const { logActivityFromRequest } = await import('../../../ActivityLog/helper/activityLog.helper');
+        await logActivityFromRequest(
+          req,
+          "UPDATE",
+          "EmployeeFile",
+          employeeId,
+          `Files uploaded: ${newFilePaths.length} file(s)`,
+          {
+            employeeId,
+            filesCount: newFilePaths.length,
+            fileNames: newFilePaths
+          }
+        );
+      } catch (logError) {
+        console.error("Error logging activity:", logError);
+      }
+
       return res
         .status(200)
         .json({ message: "Files uploaded and employee updated successfully" });
@@ -196,15 +236,45 @@ class EmployeeController extends BaseController<EmployeeService> {
 
   async createEmployee(req: Request, res: Response) {
     const employeeData: Employee = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.createEmployee(employeeData);
-    await this.handleRequest(operation, res, { successMessage: "Employee created successfully!" });
+    const operation = () => this.service.createEmployee({ ...employeeData, createdByUserId: userId } as Employee & { createdByUserId?: string });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employee created successfully!",
+      logActivity: {
+        action: "CREATE",
+        entityType: "Employee",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Employee created: ${employeeData.name} ${employeeData.surname}`,
+        metadata: {
+          employeeCode: employeeData.code,
+          name: employeeData.name,
+          surname: employeeData.surname
+        }
+      },
+      req
+    });
   }
 
   async updateEmployee(req: Request, res: Response) {
     const { id, data } = req.body;
-    const operation = () => this.service.updateEmployee(id, data);
-    await this.handleRequest(operation, res, { successMessage: "Employee updated successfully!" });
+    const userId = (req as Request & { userId?: string }).userId;
+
+    const operation = () => this.service.updateEmployee(id, { ...data, updatedByUserId: userId });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employee updated successfully!",
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Employee",
+        entityId: id,
+        description: `Employee updated: ${data.name || 'N/A'} ${data.surname || ''}`,
+        metadata: {
+          changes: data,
+          employeeId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteEmployee(req: Request, res: Response) {
@@ -225,15 +295,63 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Employee retrieved successfully!" });
   }
 
+  async getEmployeeLinkedUser(req: Request, res: Response) {
+    const { id } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Employee ID is required" 
+      });
+    }
+
+    const operation = () => this.service.getEmployeeLinkedUser(id);
+    await this.handleRequest(operation, res, { successMessage: "Employee linked user retrieved successfully!" });
+  }
+
   async restoreEmployee(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.restoreEmployee(id);
-    await this.handleRequest(operation, res, { successMessage: "Employee restored successfully!" });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Employee restored successfully!",
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Employee",
+        entityId: id,
+        description: "Employee restored"
+      },
+      req
+    });
   }
 
   async getEmployeesForFaceRecognition(req: Request, res: Response) {
     const operation = () => this.service.getEmployeesForFaceRecognition();
     await this.handleRequest(operation, res, { successMessage: "Employees for face recognition retrieved successfully!" });
+  }
+
+  async getHistoryById(req: Request, res: Response) {
+    const { id, filter, date } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
+
+    // Convert filter to boolean if it's a string
+    const filterBool = filter === true || filter === "true";
+    
+    const operation = () => this.service.getHistoryById(id, filterBool, date);
+    await this.handleRequest(operation, res, { successMessage: "Employee history retrieved successfully!" });
+  }
+
+  async getEmployeeStats(req: Request, res: Response) {
+    const { employeeId, from, to } = req.body;
+    
+    if (!employeeId) {
+      return res.status(400).json({ message: "Employee ID is required" });
+    }
+
+    const operation = () => this.service.getEmployeeStats(employeeId, from, to);
+    await this.handleRequest(operation, res, { successMessage: "Employee statistics retrieved successfully!" });
   }
 }
 

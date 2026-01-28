@@ -182,6 +182,7 @@ export const features: AppFeature[] = [
   { name: "employee.*", label: "Employee (Nav)" },
   { name: "employee.create.*", parentFeatureId: "employee.*", label: "Create" },
   { name: "employee.read.*", parentFeatureId: "employee.*", label: "Read" },
+  { name: "employee.user.read.*", parentFeatureId: "employee.read.*", label: "View Employee Linked User" },
   { name: "employee.update.*", parentFeatureId: "employee.*", label: "Update" },
   { name: "employee.restore.*", parentFeatureId: "employee.*", label: "Restore" },
   {
@@ -207,6 +208,7 @@ export const features: AppFeature[] = [
   { name: "employee.delete.*", parentFeatureId: "employee.*", label: "Delete" },
   { name: "employee.pdf.*", parentFeatureId: "employee.*", label: "Print" },
   { name: "employee.excel.*", parentFeatureId: "employee.*", label: "Excel" },
+  { name: "employee.viewPreviousUpdate.*", parentFeatureId: "employee.*", label: "View Previous Update" },
 
 
   //attendance
@@ -218,13 +220,19 @@ export const features: AppFeature[] = [
 { name: "attendance.manualAttendance.*", parentFeatureId: "attendance.*", label: "Manual Attendance" },
 { name: "attendance.filter.*", parentFeatureId: "attendance.*", label: "Filter Attendance" },
 { name: "attendance.update.*", parentFeatureId: "attendance.*", label: "Update Attendance" },
+{ name: "attendance.update.direct.*", parentFeatureId: "attendance.update.*", label: "Update Attendance Directly (No Approval Required)" },
+{ name: "attendance.read.*", parentFeatureId: "attendance.*", label: "Read Attendance" },
+{ name: "attendance.export.*", parentFeatureId: "attendance.*", label: "Export Attendance" },
 { name: "attendance.excelImport.*", parentFeatureId: "attendance.*", label: "Excel Import" },
-// attedanceReq
-{ name: "attendanceReq.*", label: "Attendance Req (Nav)" },
+{ name: "attendance.viewPreviousUpdate.*", parentFeatureId: "attendance.*", label: "View Previous Update" },
+// attedanceReq - Not shown in navbar, accessible from Attendance page
+{ name: "attendanceReq.*", label: "Attendance Request" },
 { name: "attendanceReq.create.*", parentFeatureId: "attendanceReq.*", label: "Create" },
 { name: "attendanceReq.read.*", parentFeatureId: "attendanceReq.*", label: "Read" },
 { name: "attendanceReq.update.*", parentFeatureId: "attendanceReq.*", label: "Update" },
+{ name: "attendanceReq.delete.*", parentFeatureId: "attendanceReq.*", label: "Delete" },
 { name: "attendanceReq.restore.*", parentFeatureId: "attendanceReq.*", label: "Restore" },
+{ name: "attendance.request.approve.*", parentFeatureId: "attendanceReq.*", label: "Approve/Reject Attendance Requests" },
 
 //leave
 { name: "leave.*", label: "Leave (Nav)" },
@@ -244,6 +252,7 @@ export const features: AppFeature[] = [
 { name: "leaveAlloc.create.*", parentFeatureId: "leaveAlloc.*", label: "Create" },
 { name: "leaveAlloc.read.*", parentFeatureId: "leaveAlloc.*", label: "Read" },
 { name: "leaveAlloc.update.*", parentFeatureId: "leaveAlloc.*", label: "Update" },
+{ name: "leaveAlloc.delete.*", parentFeatureId: "leaveAlloc.*", label: "Delete" },
 { name: "leaveAlloc.restore.*", parentFeatureId: "leaveAlloc.*", label: "Restore" },
 
 //leave Config
@@ -251,7 +260,37 @@ export const features: AppFeature[] = [
 { name: "leaveConfig.create.*", parentFeatureId: "leaveConfig.*", label: "Create" },
 { name: "leaveConfig.read.*", parentFeatureId: "leaveConfig.*", label: "Read" },
 { name: "leaveConfig.update.*", parentFeatureId: "leaveConfig.*", label: "Update" },
+{ name: "leaveConfig.delete.*", parentFeatureId: "leaveConfig.*", label: "Delete" },
 { name: "leaveConfig.restore.*", parentFeatureId: "leaveConfig.*", label: "Restore" },
+
+//holiday
+{ name: "holiday.*", label: "Holiday (Nav)" },
+{ name: "holiday.create.*", parentFeatureId: "holiday.*", label: "Create" },
+{ name: "holiday.read.*", parentFeatureId: "holiday.*", label: "Read" },
+{ name: "holiday.update.*", parentFeatureId: "holiday.*", label: "Update" },
+{ name: "holiday.delete.*", parentFeatureId: "holiday.*", label: "Delete" },
+{ name: "holiday.restore.*", parentFeatureId: "holiday.*", label: "Restore" },
+{ name: "holiday.markSundays.*", parentFeatureId: "holiday.*", label: "Mark Sundays" },
+{ name: "holiday.viewPreviousUpdate.*", parentFeatureId: "holiday.*", label: "View Previous Update" },
+
+//unit
+{ name: "unit.*", label: "Unit (Nav)" },
+{ name: "unit.create.*", parentFeatureId: "unit.*", label: "Create" },
+{ name: "unit.read.*", parentFeatureId: "unit.*", label: "Read" },
+{ name: "unit.update.*", parentFeatureId: "unit.*", label: "Update" },
+{ name: "unit.delete.*", parentFeatureId: "unit.*", label: "Delete" },
+{ name: "unit.restore.*", parentFeatureId: "unit.*", label: "Restore" },
+{ name: "unit.viewPreviousUpdate.*", parentFeatureId: "unit.*", label: "View Previous Update" },
+{ name: "unitEmployee.*", parentFeatureId: "unit.*", label: "Unit Employee Management" },
+{ name: "unitEmployee.assign.*", parentFeatureId: "unitEmployee.*", label: "Assign Employees" },
+{ name: "unitEmployee.read.*", parentFeatureId: "unitEmployee.*", label: "View Unit Employees" },
+{ name: "employee.read.all.*", parentFeatureId: "employee.read.*", label: "Access All Employees (Supervisor)" },
+{ name: "attendance.read.all.*", parentFeatureId: "attendance.read.*", label: "Access All Attendances (Supervisor)" },
+
+//activityLog
+{ name: "activityLog.*", label: "Activity Log (Nav)" },
+{ name: "activityLog.read.*", parentFeatureId: "activityLog.*", label: "Read Activity Logs" },
+{ name: "activityLog.read.own.*", parentFeatureId: "activityLog.read.*", label: "Read Own Activity Logs" },
 
 // faceRegistration - Hidden for now
 // { name: "faceRegistration.*", label: "Face Registration (Nav)" },

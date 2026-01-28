@@ -29,7 +29,7 @@ class AccessService {
       // God mode user - return all features
       if (userId === "58c55d6a-910c-46f8-a422-4604bea6cd15") {
         const allFeatures = await featureModel.appFeature.gpFindMany();
-        return allFeatures.map((feature) => feature.name).sort();
+        return allFeatures.map((feature: any) => feature.name).sort();
       }
 
       const allowedFeaturesSet = new Set<string>();

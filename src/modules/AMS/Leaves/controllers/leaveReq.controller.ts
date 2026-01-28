@@ -7,7 +7,8 @@ class LeaveReqController extends BaseController<LeaveReqService> {
   protected service = new LeaveReqService();
 
   async getAllLeaveRequests(req: Request, res: Response) {
-    const operation = () => this.service.getAllLeaveRequests();
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAllLeaveRequests(userId);
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
     await this.handleRequest(operation, res, { successMessage });
@@ -15,7 +16,8 @@ class LeaveReqController extends BaseController<LeaveReqService> {
 
   async getLeaveRequests(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getLeaveRequests(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getLeaveRequests(page, pageSize, userId);
     const successMessage = "Leave requests retrieved successfully!";
     const errorMessage = "Error retrieving leave requests:";
     await this.handleRequest(operation, res, { successMessage });
@@ -56,32 +58,75 @@ class LeaveReqController extends BaseController<LeaveReqService> {
     const leaveRequestData: LeaveRequest = req.body;
     const operation = () => this.service.createLeaveRequest(leaveRequestData);
     const successMessage = "Leave request created successfully!";
-    const errorMessage = "Error creating leave request:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "LeaveRequest",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Leave request created for employee ${leaveRequestData.employeeId}`,
+        metadata: {
+          employeeId: leaveRequestData.employeeId,
+          startDate: leaveRequestData.startDate,
+          endDate: leaveRequestData.endDate,
+          leaveType: leaveRequestData.leaveType,
+          status: leaveRequestData.status
+        }
+      },
+      req
+    });
   }
 
   async updateLeaveRequest(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateLeaveRequest(id, data);
     const successMessage = "Leave request updated successfully!";
-    const errorMessage = "Error updating leave request:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "LeaveRequest",
+        entityId: id,
+        description: `Leave request updated`,
+        metadata: {
+          changes: data,
+          requestId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteLeaveRequest(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteLeaveRequest(id);
     const successMessage = "Leave request deleted successfully!";
-    const errorMessage = "Error deleting leave request:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "LeaveRequest",
+        entityId: id,
+        description: "Leave request deleted"
+      },
+      req
+    });
   }
 
   async restoreLeaveRequest(req: Request, res: Response) {
     const { requestId } = req.body;
     const operation = () => this.service.restoreLeaveRequest(requestId);
     const successMessage = "Leave request restored successfully!";
-    const errorMessage = "Error restoring leave request:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "LeaveRequest",
+        entityId: requestId,
+        description: "Leave request restored"
+      },
+      req
+    });
   }
 
   async getLeaveRequestById(req: Request, res: Response) {
@@ -94,10 +139,23 @@ class LeaveReqController extends BaseController<LeaveReqService> {
 
   async updateLeaveRequestStatus(req: Request, res: Response) {
     const { id, status } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
     const operation = () => this.service.updateLeaveRequestStatus(id, status);
-    const successMessage = "Leave request status updated successfully!";
-    const errorMessage = "Error updating leave request status:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage: "Leave request status updated successfully!",
+      logActivity: {
+        action: status === "APPROVED" ? "APPROVE" : status === "REJECTED" ? "REJECT" : "UPDATE",
+        entityType: "LeaveRequest",
+        entityId: id,
+        description: `Leave request ${status.toLowerCase()}`,
+        metadata: {
+          requestId: id,
+          status,
+          updatedBy: userId
+        }
+      },
+      req
+    });
   }
 }
 

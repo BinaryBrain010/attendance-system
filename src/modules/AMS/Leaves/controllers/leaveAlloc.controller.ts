@@ -7,7 +7,8 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
   protected service = new LeaveAllocService();
 
   async getAllLeaveAllocations(req: Request, res: Response) {
-    const operation = () => this.service.getAllLeaveAllocations();
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getAllLeaveAllocations(userId);
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
     await this.handleRequest(operation, res, { successMessage });
@@ -15,7 +16,8 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
 
   async getLeaveAllocations(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getLeaveAllocations(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getLeaveAllocations(page, pageSize, userId);
     const successMessage = "Leave allocations retrieved successfully!";
     const errorMessage = "Error retrieving leave allocations:";
     await this.handleRequest(operation, res, { successMessage });
@@ -56,32 +58,73 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const leaveAllocData: LeaveAllocation = req.body;
     const operation = () => this.service.createLeaveAllocation(leaveAllocData);
     const successMessage = "Leave allocation created successfully!";
-    const errorMessage = "Error creating leave allocation:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "LeaveAllocation",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Leave allocation created for employee ${leaveAllocData.employeeId}`,
+        metadata: {
+          employeeId: leaveAllocData.employeeId,
+          leaveConfigId: leaveAllocData.leaveConfigId,
+          assignedDays: leaveAllocData.assignedDays
+        }
+      },
+      req
+    });
   }
 
   async updateLeaveAllocation(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateLeaveAllocation(id, data);
     const successMessage = "Leave allocation updated successfully!";
-    const errorMessage = "Error updating leave allocation:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "LeaveAllocation",
+        entityId: id,
+        description: `Leave allocation updated`,
+        metadata: {
+          changes: data,
+          allocationId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteLeaveAllocation(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteLeaveAllocation(id);
     const successMessage = "Leave allocation deleted successfully!";
-    const errorMessage = "Error deleting leave allocation:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "LeaveAllocation",
+        entityId: id,
+        description: "Leave allocation deleted"
+      },
+      req
+    });
   }
 
   async restoreLeaveAllocation(req: Request, res: Response) {
     const { allocId } = req.body;
     const operation = () => this.service.restoreLeaveAllocation(allocId);
     const successMessage = "Leave allocation restored successfully!";
-    const errorMessage = "Error restoring leave allocation:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "LeaveAllocation",
+        entityId: allocId,
+        description: "Leave allocation restored"
+      },
+      req
+    });
   }
 
   async getLeaveAllocationById(req: Request, res: Response) {
@@ -98,6 +141,44 @@ class LeaveAllocController extends BaseController<LeaveAllocService> {
     const successMessage = "Leave allocation retrieved successfully!";
     const errorMessage = "Error retrieving leave allocation:";
     await this.handleRequest(operation, res, { successMessage });
+  }
+
+  async assignToAllEmployees(req: Request, res: Response) {
+    const { leaveConfigId, assignedDays, allocationStartDate, allocationEndDate, note } = req.body;
+    
+    if (!leaveConfigId || !assignedDays || !allocationStartDate) {
+      return res.status(400).json({ 
+        message: "leaveConfigId, assignedDays, and allocationStartDate are required" 
+      });
+    }
+
+    const startDate = new Date(allocationStartDate);
+    const endDate = allocationEndDate ? new Date(allocationEndDate) : undefined;
+
+    const operation = () => this.service.assignToAllEmployees(
+      leaveConfigId,
+      assignedDays,
+      startDate,
+      endDate,
+      note
+    );
+    const successMessage = "Leave configuration assigned to all employees successfully!";
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "BULK_CREATE",
+        entityType: "LeaveAllocation",
+        description: `Leave configuration assigned to all employees`,
+        metadata: {
+          leaveConfigId,
+          assignedDays,
+          allocationStartDate: startDate,
+          allocationEndDate: endDate,
+          note
+        }
+      },
+      req
+    });
   }
 }
 

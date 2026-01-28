@@ -26,8 +26,22 @@ class LeaveController extends BaseController<LeaveService> {
     const operation = () =>
       this.service.createLeaveConfiguration(leaveConfigData);
     const successMessage = "Leave configuration created successfully!";
-    const errorMessage = "Error creating leave configuration:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "LeaveConfiguration",
+        entityId: (result: any) => Array.isArray(result) ? result[0]?.id : result?.id || result?.data?.id,
+        description: Array.isArray(leaveConfigData) 
+          ? `Bulk leave configurations created: ${leaveConfigData.length} item(s)`
+          : `Leave configuration created: ${leaveConfigData.name || 'N/A'}`,
+        metadata: {
+          isBulk: Array.isArray(leaveConfigData),
+          count: Array.isArray(leaveConfigData) ? leaveConfigData.length : 1
+        }
+      },
+      req
+    });
   }
 
   async updateLeaveConfiguration(req: Request, res: Response) {
@@ -35,24 +49,52 @@ class LeaveController extends BaseController<LeaveService> {
     const operation = () =>
       this.service.updateLeaveConfiguration(id, leaveConfigData);
     const successMessage = "Leave configuration updated successfully!";
-    const errorMessage = "Error updating leave configuration:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "UPDATE",
+        entityType: "LeaveConfiguration",
+        entityId: id,
+        description: `Leave configuration updated: ${leaveConfigData.name || 'N/A'}`,
+        metadata: {
+          changes: leaveConfigData,
+          leaveConfigId: id
+        }
+      },
+      req
+    });
   }
 
   async deleteLeaveConfiguration(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteLeaveConfiguration(id);
     const successMessage = "Leave configuration deleted successfully!";
-    const errorMessage = "Error deleting leave configuration:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "LeaveConfiguration",
+        entityId: id,
+        description: "Leave configuration deleted"
+      },
+      req
+    });
   }
 
   async restoreLeaveConfiguration(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.restoreLeaveConfiguration(id);
     const successMessage = "Leave configuration restored successfully!";
-    const errorMessage = "Error restoring leave configuration:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "LeaveConfiguration",
+        entityId: id,
+        description: "Leave configuration restored"
+      },
+      req
+    });
   }
 
   async getLeaveConfigurationById(req: Request, res: Response) {

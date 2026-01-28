@@ -508,6 +508,7 @@ export const generateAttendanceTemplate = (
       }
     },
     defaultStyle: {
+      font: 'Arial',
       fontSize: 9,
       color: '#2C3E50',
     },

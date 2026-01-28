@@ -48,8 +48,21 @@ class ItemController extends BaseController<itemService> {
     const ItemData: Item = req.body;
     const operation = () => this.service.createItem(ItemData);
     const successMessage = "Item created successfully!";
-    const errorMessage = "Error creating Item:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "CREATE",
+        entityType: "Item",
+        entityId: (result: any) => result?.id || result?.data?.id,
+        description: `Item created: ${ItemData.name || 'N/A'}`,
+        metadata: {
+          name: ItemData.name,
+          serialNo: ItemData.serialNo,
+          quantity: ItemData.quantity
+        }
+      },
+      req
+    });
   }
 
   async updateItem(req: Request, res: Response) {
@@ -64,8 +77,16 @@ class ItemController extends BaseController<itemService> {
     const { id } = req.body;
     const operation = () => this.service.deleteItem(id);
     const successMessage = "Item deleted successfully!";
-    const errorMessage = "Error deleting Item:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "DELETE",
+        entityType: "Item",
+        entityId: id,
+        description: "Item deleted"
+      },
+      req
+    });
   }
 
   async searchItems(req: Request, res: Response) {
@@ -89,8 +110,16 @@ class ItemController extends BaseController<itemService> {
     const { id } = req.body;
     const operation = () => this.service.restoreItem(id);
     const successMessage = "Item restored successfully!";
-    const errorMessage = "Error restoring Item:";
-    await this.handleRequest(operation, res, { successMessage });
+    await this.handleRequest(operation, res, { 
+      successMessage,
+      logActivity: {
+        action: "RESTORE",
+        entityType: "Item",
+        entityId: id,
+        description: "Item restored"
+      },
+      req
+    });
   }
 
   async getBySerialNo(req: Request, res: Response) {

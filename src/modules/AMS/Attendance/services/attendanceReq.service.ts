@@ -81,14 +81,52 @@ class LeaveReqService {
   // Update leave request status
   async updateAttendanceRequestStatus(
     requestId: string,
-    status: LeaveStatus
+    status: LeaveStatus,
+    approvedBy?: string
   ): Promise<void> {
-    await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status);
+    await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status, approvedBy);
   }
 
   // Get total number of leave requests
   async getTotalAttendanceRequests(): Promise<number> {
     return await attendanceRequestModel.attendanceRequest.gpCount();
+  }
+
+  // Bulk update attendance request status (approve/reject multiple requests)
+  async bulkUpdateAttendanceRequestStatus(
+    requestIds: string[],
+    status: LeaveStatus,
+    approvedBy?: string
+  ): Promise<{
+    successful: number;
+    failed: number;
+    errors: Array<{ requestId: string; error: string }>;
+  }> {
+    const results = {
+      successful: 0,
+      failed: 0,
+      errors: [] as Array<{ requestId: string; error: string }>,
+    };
+
+    // Process each request
+    for (const requestId of requestIds) {
+      try {
+        await attendanceRequestModel.attendanceRequest.gpUpdateStatus(
+          requestId,
+          status,
+          approvedBy
+        );
+        results.successful++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push({
+          requestId,
+          error: error.message || "Unknown error",
+        });
+      }
+    }
+
+    return results;
   }
 }
 
