@@ -718,7 +718,6 @@ const employeeModel = prisma.$extends({
               filePaths: true,
               notes: true,
               company: true,
-              image: true,
               code: true,
               status: true,
               resignationDate: true,
