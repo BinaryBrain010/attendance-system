@@ -5,6 +5,7 @@ import { User, UserData } from "../types/user";
 import blacklistTokenModel from "../../Token/models/token.model";
 import { blackListedTokens } from "../../Token/types/token";
 import accessModel from "../../Access/models/access.model";
+import { AppError, InternalServerError, ValidationError } from "../../../../core/errors/app.error";
 
 import { create } from "domain";
 const userModel = prisma.$extends({
@@ -817,7 +818,7 @@ WHERE "User".id = ${id}
 
       async gpUpdate(this: any, id: string, data: UserData) {
         if (data.username === "") {
-          return "User not updated";
+          throw new ValidationError("Username is required");
         }
         try {
           const user = await userModel.user.findFirst({
@@ -825,6 +826,10 @@ WHERE "User".id = ${id}
               id: id,
             },
           });
+
+          if (!user) {
+            throw new ValidationError("User not found");
+          }
 
           let newData: any = {
             username: data.username,
@@ -852,7 +857,7 @@ WHERE "User".id = ${id}
                 data: userRole,
               });
             } else {
-              return "Role does not exist";
+              throw new ValidationError("Role does not exist");
             }
           }
 
@@ -875,7 +880,7 @@ WHERE "User".id = ${id}
                 data: userGroup,
               });
             } else {
-              return "Group does not exist";
+              throw new ValidationError("Group does not exist");
             }
           }
 
@@ -906,7 +911,12 @@ WHERE "User".id = ${id}
           return updatedUser;
         } catch (error) {
           console.error("Error updating user:", error);
-          return "Error updating user";
+
+          if (error instanceof AppError) {
+            throw error;
+          }
+
+          throw new InternalServerError("Error updating user");
         }
       },
 

@@ -81,6 +81,12 @@ class AppFeatureController extends BaseController<AppFeatureService> {
     await this.handleRequest(operation, res, { successMessage });
   }
 
+  async getAppFeatureHierarchy(req: Request, res: Response) {
+    const operation = () => this.service.getAppFeatureHierarchy();
+    const successMessage = "Feature hierarchy fetched successfully!";
+    await this.handleRequest(operation, res, { successMessage });
+  }
+
   async restoreAppFeature(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.restoreAppFeature(id);

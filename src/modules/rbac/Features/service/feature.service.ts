@@ -35,6 +35,10 @@ class AppFeatureService {
     // return await featureModel.appFeature.actGetChildFeatures();
   }
 
+  async getAppFeatureHierarchy(): Promise<Record<string, AppFeature[]>[]> {
+    return await featureModel.appFeature.gpGetHierarchy();
+  }
+
   async restoreAppFeature(featureId: string): Promise<void> {
     return await featureModel.appFeature.gpRestore(featureId);
   }

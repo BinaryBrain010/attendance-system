@@ -85,6 +85,8 @@ class AppFeatureRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/get', this.controller.getAppFeatureById.bind(this.controller)); 
+
+    this.router.get('/hierarchy', this.controller.getAppFeatureHierarchy.bind(this.controller));
     
     /**
      * @swagger

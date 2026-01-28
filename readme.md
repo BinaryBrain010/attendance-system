@@ -2,7 +2,7 @@
 
 # Gate Pass App REST API
 
-This is a REST API for the Gate Pass App, built with Node.js, Prisma, Express, and TypeScript. It handles the backend operations for managing gate passes, including CRUD operations, authentication, and role-based access control.
+This is a comprehensive enterprise management system REST API built with Node.js, Prisma, Express, and TypeScript. The application serves as a complete solution for managing gate passes, employee attendance with face recognition, leave management, and organizational operations. It provides a robust backend infrastructure with role-based access control (RBAC), activity logging, and multi-module support including Attendance Management System (AMS), Gate Pass Management, Employee Management, and Unit/Service Center operations. The API handles authentication, authorization, CRUD operations, and complex business logic for tracking employee attendance, leave requests, holidays, gate passes, customers, and inventory items. Built with TypeScript for type safety and Prisma ORM for efficient database management, it offers a scalable and maintainable architecture for enterprise-level operations.
 
 ## Features
 

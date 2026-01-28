@@ -72,6 +72,49 @@ const featureModel = prisma.$extends({
               item.parentFeatureId === null ? undefined : item.parentFeatureId,
           }));
         },
+
+        async gpGetHierarchy(this: any): Promise<Record<string, AppFeature[]>[]> {
+          const features: AppFeature[] = await this.findMany({
+            where: {
+              isDeleted: null,
+            },
+          });
+
+          const normalize = (f: any): AppFeature => ({
+            ...f,
+            parentFeatureId: f.parentFeatureId === null ? undefined : f.parentFeatureId,
+          });
+
+          const normalized = features.map(normalize);
+
+          const byParent = new Map<string | undefined, AppFeature[]>();
+          for (const f of normalized) {
+            const key = f.parentFeatureId;
+            const arr = byParent.get(key) || [];
+            arr.push(f);
+            byParent.set(key, arr);
+          }
+
+          const getDescendants = (parentName: string): AppFeature[] => {
+            const directChildren = byParent.get(parentName) || [];
+            let all: AppFeature[] = [...directChildren];
+            for (const child of directChildren) {
+              all = all.concat(getDescendants(child.name));
+            }
+            return all;
+          };
+
+          const topLevelParents = (byParent.get(undefined) || []).sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+
+          const result: Record<string, AppFeature[]> = {};
+          for (const parent of topLevelParents) {
+            result[parent.name] = [parent, ...getDescendants(parent.name)];
+          }
+
+          return [result];
+        },
       },
     },
   });
