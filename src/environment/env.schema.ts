@@ -32,7 +32,12 @@ type Env = z.infer<typeof envSchema>;
 let env: Env;
 
 try {
-  env = envSchema.parse(process.env);
+  const rawEnv = {
+    ...process.env,
+    PORT: process.env.PORT ?? process.env.port,
+  };
+
+  env = envSchema.parse(rawEnv);
 } catch (error) {
   if (error instanceof z.ZodError) {
     console.error('❌ Invalid environment variables:');
