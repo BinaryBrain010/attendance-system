@@ -138,9 +138,35 @@ export class GatePassPDF {
     
     // Draw items
     let currentPage = page;
-    data.items.forEach((item: Item, index: number) => {
-      // Check if we need a new page
-      if (yPosition < 150) {
+    const bottomMargin = 60; // keep clear of pagination/footer
+    const serialLineHeight = 14;
+    const serialPrefix = "Serial Numbers: ";
+    const maxSerialWidth = width - 110;
+
+    const buildSerialLines = (serialNos: string[]) => {
+      const lines: string[] = [];
+      let currentLine = serialPrefix;
+
+      serialNos.forEach((serial) => {
+        const candidate = currentLine + (currentLine === serialPrefix ? serial : `, ${serial}`);
+        const candidateWidth = helveticaBoldFont.widthOfTextAtSize(candidate, 11);
+        if (candidateWidth > maxSerialWidth && currentLine !== serialPrefix) {
+          lines.push(currentLine);
+          currentLine = serial;
+        } else {
+          currentLine = candidate;
+        }
+      });
+
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+
+      return lines;
+    };
+
+    const ensurePageSpace = (requiredHeight: number) => {
+      if (yPosition - requiredHeight < bottomMargin) {
         currentPage = pdfDoc.addPage([595, 842]);
         yPosition = height - 50;
         currentPage.drawText("Items (continued)", {
@@ -152,28 +178,37 @@ export class GatePassPDF {
         });
         yPosition -= 20;
       }
-      
-      // Sort serial numbers
+    };
+
+    data.items.forEach((item: Item, index: number) => {
+      // Sort serial numbers (ascending)
       const sortedSerialNos = [...item.serialNos].sort((a, b) => {
         const numA = parseInt(a, 10);
         const numB = parseInt(b, 10);
         if (!isNaN(numA) && !isNaN(numB)) {
           return numA - numB;
         }
-        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
       });
-      
+
+      const serialLines = buildSerialLines(sortedSerialNos);
+      const serialBlockHeight = (serialLines.length - 1) * serialLineHeight;
+      const rowHeight = 40 + serialBlockHeight + 12;
+      const requiredHeight = rowHeight + 10;
+
+      ensurePageSpace(requiredHeight);
+
       // Background color for alternating rows
       if (index % 2 === 0) {
         currentPage.drawRectangle({
           x: 50,
-          y: yPosition - 35,
+          y: yPosition - rowHeight + 5,
           width: width - 100,
-          height: 40,
+          height: rowHeight,
           color: rgb(0.95, 0.95, 0.95),
         });
       }
-      
+
       // Item name
       currentPage.drawText(`${index + 1}. ${item.name}`, {
         x: 55,
@@ -182,7 +217,7 @@ export class GatePassPDF {
         font: helveticaBoldFont,
         color: rgb(0, 0, 0),
       });
-      
+
       // Quantity
       currentPage.drawText(`Quantity: ${item.quantity}`, {
         x: 55,
@@ -191,58 +226,22 @@ export class GatePassPDF {
         font: helveticaFont,
         color: rgb(0, 0, 0),
       });
-      
-      // Serial numbers
-      const serialText = `Serial Numbers: ${sortedSerialNos.join(", ")}`;
-      // Handle long serial number lists by wrapping
-      const maxWidth = width - 110;
-      const serialWidth = helveticaBoldFont.widthOfTextAtSize(serialText, 11);
-      if (serialWidth > maxWidth) {
-        // Split into multiple lines if too long
-        const words = sortedSerialNos.join(", ").split(", ");
-        let line = "Serial Numbers: ";
-        let lineY = yPosition - 40;
-        
-        words.forEach((word, wordIndex) => {
-          const testLine = line + (line === "Serial Numbers: " ? word : ", " + word);
-          const testWidth = helveticaBoldFont.widthOfTextAtSize(testLine, 11);
-          
-          if (testWidth > maxWidth && line !== "Serial Numbers: ") {
-            currentPage.drawText(line, {
-              x: 55,
-              y: lineY,
-              size: 11,
-              font: helveticaBoldFont,
-              color: rgb(0, 0, 0),
-            });
-            line = word;
-            lineY -= 15;
-          } else {
-            line = testLine;
-          }
-        });
-        
-        if (line) {
-          currentPage.drawText(line, {
-            x: 55,
-            y: lineY,
-            size: 11,
-            font: helveticaBoldFont,
-            color: rgb(0, 0, 0),
-          });
-          yPosition = lineY - 20;
-        }
-      } else {
-        currentPage.drawText(serialText, {
+
+      // Serial numbers (wrapped)
+      let lineY = yPosition - 40;
+      serialLines.forEach((line) => {
+        currentPage.drawText(line, {
           x: 55,
-          y: yPosition - 40,
+          y: lineY,
           size: 11,
           font: helveticaBoldFont,
           color: rgb(0, 0, 0),
         });
-        yPosition -= 50;
-      }
-      
+        lineY -= serialLineHeight;
+      });
+
+      yPosition -= rowHeight;
+
       // Draw border line
       currentPage.drawLine({
         start: { x: 50, y: yPosition },
@@ -250,7 +249,7 @@ export class GatePassPDF {
         thickness: 0.5,
         color: rgb(0.8, 0.8, 0.8),
       });
-      
+
       yPosition -= 10;
     });
     

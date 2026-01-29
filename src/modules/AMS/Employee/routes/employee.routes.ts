@@ -233,13 +233,13 @@ class EmployeeRoutes {
      *         schema:
      *           type: string
      *           format: date
-     *         description: Start date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter
+     *         description: "Start date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter"
      *       - in: query
      *         name: to
      *         schema:
      *           type: string
      *           format: date
-     *         description: End date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter
+     *         description: "End date for date range filter (format: YYYY-MM-DD). Filters by joiningDate, createdAt, or updatedAt based on dateField parameter"
      *       - in: query
      *         name: dateField
      *         schema:
