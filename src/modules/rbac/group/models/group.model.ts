@@ -182,11 +182,21 @@ const groupModel = prisma.$extends({
           // Check if filter is "true" for limited field selection
           const isFilterMode = filter === "true";
 
-          // Add search filter if provided
+          // Add search filter if provided (multi-term sequential filtering)
           if (search) {
-            where.OR = [
-              { name: { contains: search, mode: 'insensitive' } },
-            ];
+            const searchTerms = search
+              .trim()
+              .split(/\s+/)
+              .filter((term) => term.length > 0);
+
+            if (searchTerms.length > 0) {
+              where.AND = where.AND || [];
+              searchTerms.forEach((term) => {
+                where.AND.push({
+                  OR: [{ name: { contains: term, mode: 'insensitive' } }],
+                });
+              });
+            }
           }
 
           // Validate and set sortBy field

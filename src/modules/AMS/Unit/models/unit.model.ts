@@ -131,8 +131,11 @@ const unitModel = prisma.$extends({
       },
 
       async gpSearch(this: any, searchTerm: string | string[], page: number, pageSize: number) {
-        const searchTerms = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
-        const searchConditions = searchTerms.map(term => ({
+        const rawTerms = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
+        const searchTerms = rawTerms
+          .flatMap((term) => term.trim().split(/\s+/))
+          .filter((term) => term.length > 0);
+        const searchConditions = searchTerms.map((term) => ({
           OR: [
             { name: { contains: term, mode: Prisma.QueryMode.insensitive } },
             { description: { contains: term, mode: Prisma.QueryMode.insensitive } },
@@ -141,14 +144,13 @@ const unitModel = prisma.$extends({
         }));
 
         const skip = (page - 1) * pageSize;
+        const where =
+          searchConditions.length > 0
+            ? { AND: [{ isDeleted: null }, ...searchConditions] }
+            : { isDeleted: null };
         const [data, total] = await Promise.all([
           prisma.unit.findMany({
-            where: {
-              AND: [
-                { isDeleted: null },
-                { OR: searchConditions },
-              ],
-            },
+            where,
             orderBy: { createdAt: 'desc' },
             skip,
             take: pageSize,
@@ -164,12 +166,7 @@ const unitModel = prisma.$extends({
             },
           }),
           prisma.unit.count({
-            where: {
-              AND: [
-                { isDeleted: null },
-                { OR: searchConditions },
-              ],
-            },
+            where,
           }),
         ]);
 

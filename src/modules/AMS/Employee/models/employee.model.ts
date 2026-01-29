@@ -668,15 +668,27 @@ const employeeModel = prisma.$extends({
           where.status = filter;
         }
 
-        // Add search filter if provided
+        // Add search filter if provided (multi-term sequential filtering)
         if (search) {
-          where.OR = [
-            { name: { contains: search, mode: 'insensitive' } },
-            { surname: { contains: search, mode: 'insensitive' } },
-            { code: { contains: search, mode: 'insensitive' } },
-            { designation: { contains: search, mode: 'insensitive' } },
-            { department: { contains: search, mode: 'insensitive' } },
-          ];
+          const searchTerms = search
+            .trim()
+            .split(/\s+/)
+            .filter((term) => term.length > 0);
+
+          if (searchTerms.length > 0) {
+            where.AND = where.AND || [];
+            searchTerms.forEach((term) => {
+              where.AND.push({
+                OR: [
+                  { name: { contains: term, mode: 'insensitive' } },
+                  { surname: { contains: term, mode: 'insensitive' } },
+                  { code: { contains: term, mode: 'insensitive' } },
+                  { designation: { contains: term, mode: 'insensitive' } },
+                  { department: { contains: term, mode: 'insensitive' } },
+                ],
+              });
+            });
+          }
         }
 
         // Add date range filter if provided

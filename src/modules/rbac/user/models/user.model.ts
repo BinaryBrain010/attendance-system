@@ -432,11 +432,21 @@ WHERE "User".id = ${id}
         // Check if filter is "true" for limited field selection
         const isFilterMode = filter === "true";
 
-        // Add search filter if provided
+        // Add search filter if provided (multi-term sequential filtering)
         if (search) {
-          where.OR = [
-            { username: { contains: search, mode: 'insensitive' } },
-          ];
+          const searchTerms = search
+            .trim()
+            .split(/\s+/)
+            .filter((term) => term.length > 0);
+
+          if (searchTerms.length > 0) {
+            where.AND = where.AND || [];
+            searchTerms.forEach((term) => {
+              where.AND.push({
+                OR: [{ username: { contains: term, mode: 'insensitive' } }],
+              });
+            });
+          }
         }
 
         // Validate and set sortBy field
