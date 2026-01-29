@@ -47,7 +47,6 @@ const attendanceRequestModel = prisma.$extends({
             e."department" AS "employeeDepartment",
             e."contactNo" AS "employeeContactNo",
             e."address" AS "employeeAddress",
-            e."image" AS "employeeImage",
             e."status" AS "employeeStatus",
             ru.username AS "requestedByName",
             au.username AS "approvedByName"
@@ -87,7 +86,6 @@ const attendanceRequestModel = prisma.$extends({
             e."department" AS "employeeDepartment",
             e."contactNo" AS "employeeContactNo",
             e."address" AS "employeeAddress",
-            e."image" AS "employeeImage",
             e."status" AS "employeeStatus",
             ru.username AS "requestedByName",
             au.username AS "approvedByName"
@@ -130,7 +128,6 @@ const attendanceRequestModel = prisma.$extends({
             e."department" AS "employeeDepartment",
             e."contactNo" AS "employeeContactNo",
             e."address" AS "employeeAddress",
-            e."image" AS "employeeImage",
             e."status" AS "employeeStatus",
             ru.username AS "requestedByName",
             au.username AS "approvedByName"
@@ -182,7 +179,6 @@ const attendanceRequestModel = prisma.$extends({
             e."department" AS "employeeDepartment",
             e."contactNo" AS "employeeContactNo",
             e."address" AS "employeeAddress",
-            e."image" AS "employeeImage",
             e."status" AS "employeeStatus",
             ru.username AS "requestedByName",
             au.username AS "approvedByName"
@@ -291,7 +287,6 @@ const attendanceRequestModel = prisma.$extends({
             e."department" AS "employeeDepartment",
             e."contactNo" AS "employeeContactNo",
             e."address" AS "employeeAddress",
-            e."image" AS "employeeImage",
             e."status" AS "employeeStatus",
             ru.username AS "requestedByName",
             au.username AS "approvedByName"
@@ -366,7 +361,6 @@ const attendanceRequestModel = prisma.$extends({
             e."department" AS "employeeDepartment",
             e."contactNo" AS "employeeContactNo",
             e."address" AS "employeeAddress",
-            e."image" AS "employeeImage",
             e."status" AS "employeeStatus",
             ru.username AS "requestedByName",
             au.username AS "approvedByName"
