@@ -406,6 +406,17 @@ const employeeModel = prisma.$extends({
           previousUpdates: updatedPreviousUpdates,
         };
 
+        // If company changes, update code prefix while keeping sequence number
+        if (remainingData.company && remainingData.company !== currentEmployee.company) {
+          const newPrefix = companyPrefixMap[remainingData.company as Company];
+          if (newPrefix && currentEmployee.code) {
+            const match = currentEmployee.code.match(/^(SOL|PWH|OK)-(\d+)$/);
+            if (match) {
+              updateData.code = `${newPrefix}-${match[2]}`;
+            }
+          }
+        }
+
         // Update the employee data
         const updatedData = await prisma.employee.update({
           where: { id: updateId },
