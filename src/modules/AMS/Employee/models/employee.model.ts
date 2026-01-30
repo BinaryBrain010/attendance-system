@@ -217,15 +217,15 @@ const employeeModel = prisma.$extends({
           // Construct the full file path
           const filePath = path.join(uploadDir, fileName);
 
-          // Check if the file exists and delete it
+          // Check if the file exists and delete it (ignore missing file)
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
           } else {
-            throw new Error("File not found on the server");
+            console.warn(`File not found on the server: ${filePath}`);
           }
 
           // Remove the file path from the Employee's filePaths array in the database
-          const updatedFilePaths = employee.filePaths.filter(
+          const updatedFilePaths = (employee.filePaths || []).filter(
             (fp: string) => !fp.endsWith(fileName)
           );
 
