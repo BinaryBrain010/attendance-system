@@ -353,7 +353,7 @@ const employeeModel = prisma.$extends({
         return user;
       },
       async gpUpdate(updateId: string, data: any) {
-        const { userId, updatedByUserId, ...remainingData } = data;
+        const { userId, updatedByUserId, updatedByName, ...remainingData } = data;
 
         // Get current state before update for audit trail
         const currentEmployee = await prisma.employee.findUnique({
@@ -750,7 +750,7 @@ const employeeModel = prisma.$extends({
         const orderBy: any = {};
         orderBy[sortField] = order;
 
-        // Select clause - limited fields if filter=true, otherwise full fields
+        // Select clause - limited fields if filter=true, otherwise summary fields
         const select = isFilterMode
           ? {
               id: true,
@@ -760,29 +760,14 @@ const employeeModel = prisma.$extends({
             }
           : {
               id: true,
+              code: true,
               name: true,
               surname: true,
-              address: true,
-              joiningDate: true,
-              bloodGroup: true,
-              dob: true,
-              cnic: true,
-              contactNo: true,
-              emergencyContactNo: true,
               designation: true,
               department: true,
-              martialStatus: true,
-              noOfChildrens: true,
-              filePaths: true,
-              notes: true,
+              address: true,
+              contactNo: true,
               company: true,
-              code: true,
-              status: true,
-              resignationDate: true,
-              createdAt: true,
-              updatedAt: true,
-              updatedBy: true,
-              // faceDescriptor is excluded by not including it in select
             };
 
         // Execute query with pagination, sorting, and filtering
@@ -798,6 +783,11 @@ const employeeModel = prisma.$extends({
             where,
           }),
         ]);
+
+        const includeUpdatedByName = !isFilterMode && (select as any).updatedBy;
+        if (!includeUpdatedByName) {
+          return { data, totalSize };
+        }
 
         // Fetch usernames for all updatedBy fields
         const dataWithUpdatedByName = await Promise.all(
