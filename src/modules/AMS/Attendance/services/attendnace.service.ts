@@ -5,6 +5,7 @@ import { AttendanceStatus } from "@prisma/client";
 import ExcelValidator from "../helper/excelValidator";
 import accessModel from "../../../rbac/Access/models/access.model";
 import attendanceRequestModel from "../models/attendanceReq.model";
+import prisma from "../../../../core/models/base.model";
 
 class AttendanceService {
   async getAllattendances(userId?: string) {
@@ -201,6 +202,86 @@ return await attendanceModel.attendance.markFaceAttendance(image);
 
   async getHistoryById(attendanceId: string, filter?: boolean, date?: string): Promise<any> {
     return await attendanceModel.attendance.getHistoryById(attendanceId, filter, date);
+  }
+
+  async getAttendanceSummary(from?: string | Date | null, to?: string | Date | null): Promise<{
+    totalEmployees: number;
+    present: number;
+    absent: number;
+    late: number;
+    halfDays: number;
+    onLeave: number;
+    pending: number;
+    noClockOut: number;
+  }> {
+    const now = new Date();
+    const fromDate = from ? new Date(from) : new Date(now);
+    const toDate = to ? new Date(to) : new Date(now);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    const [statusCounts, totalEmployees, noClockOut] = await Promise.all([
+      prisma.attendance.groupBy({
+        by: ["status"],
+        where: {
+          isDeleted: null,
+          date: { gte: fromDate, lte: toDate },
+        },
+        _count: { status: true },
+      }),
+      prisma.employee.count({
+        where: { isDeleted: null },
+      }),
+      prisma.attendance.count({
+        where: {
+          isDeleted: null,
+          status: { in: ["PRESENT", "LATE"] },
+          checkOut: null,
+          date: { gte: fromDate, lte: toDate },
+        },
+      }),
+    ]);
+
+    const summary = {
+      totalEmployees,
+      present: 0,
+      absent: 0,
+      late: 0,
+      halfDays: 0,
+      onLeave: 0,
+      pending: 0,
+      noClockOut,
+    };
+
+    statusCounts.forEach((item) => {
+      switch (item.status) {
+        case "PRESENT":
+          summary.present = item._count.status;
+          break;
+        case "ABSENT":
+          summary.absent = item._count.status;
+          break;
+        case "LATE":
+          summary.late = item._count.status;
+          break;
+        case "HALF_DAY":
+          summary.halfDays = item._count.status;
+          break;
+        case "ON_LEAVE":
+          summary.onLeave = item._count.status;
+          break;
+        default:
+          break;
+      }
+    });
+
+    summary.pending = Math.max(
+      summary.totalEmployees -
+        (summary.present + summary.absent + summary.late + summary.halfDays + summary.onLeave),
+      0
+    );
+
+    return summary;
   }
 
   async getAttendanceRequestSummary(): Promise<{

@@ -384,6 +384,12 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getAttendanceRequestSummary();
     await this.handleRequest(operation, res, { successMessage: "Attendance request summary retrieved successfully!" });
   }
+
+  async getAttendanceSummary(req: Request, res: Response) {
+    const { from, to } = req.body || {};
+    const operation = () => this.service.getAttendanceSummary(from, to);
+    await this.handleRequest(operation, res, { successMessage: "Attendance summary retrieved successfully!" });
+  }
 }
 
 export default AttendanceController;

@@ -984,6 +984,36 @@ class AttendanceRoutes {
 
     /**
      * @swagger
+     * /attendance/summary:
+     *   post:
+     *     summary: Get attendance summary for date range
+     *     description: Returns attendance counts for present, absent, late, half day, on leave, pending, and no clock out.
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: false
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               from:
+     *                 type: string
+     *                 format: date
+     *               to:
+     *                 type: string
+     *                 format: date
+     *     responses:
+     *       200:
+     *         description: Attendance summary retrieved successfully
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/summary', this.controller.getAttendanceSummary.bind(this.controller));
+
+    /**
+     * @swagger
      * /attendance/requestSummary:
      *   get:
      *     summary: Get attendance request summary (counts by status)
