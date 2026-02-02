@@ -1,6 +1,36 @@
 import { LeaveRequest, Prisma } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
 import { LeaveStatus } from "@prisma/client";
+import { addDays } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+
+// Pakistan timezone constant
+const PAKISTAN_TIMEZONE = "Asia/Karachi";
+
+// Helper function to get start of day in Pakistan timezone, then convert to UTC for database query
+function getStartOfDayPakistan(date: Date): Date {
+  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, "yyyy"));
+  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, "MM")) - 1;
+  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, "dd"));
+  const pakistanMidnight = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  pakistanMidnight.setUTCHours(pakistanMidnight.getUTCHours() - 5);
+  return pakistanMidnight;
+}
+
+// Helper function to get end of day in Pakistan timezone, then convert to UTC for database query
+function getEndOfDayPakistan(date: Date): Date {
+  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, "yyyy"));
+  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, "MM")) - 1;
+  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, "dd"));
+  const pakistanEndOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+  pakistanEndOfDay.setUTCHours(pakistanEndOfDay.getUTCHours() - 5);
+  return pakistanEndOfDay;
+}
+
+function calculateLeaveDays(startDate: Date, endDate: Date): number {
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+}
 
 const leaveReqModel = prisma.$extends({
   model: {
@@ -18,6 +48,37 @@ const leaveReqModel = prisma.$extends({
             createdAt: new Date(),
           };
 
+        if (!data.employeeId) {
+          throw new Error("Employee ID is required for leave request.");
+        }
+
+        const requestStartDate = new Date(data.startDate);
+        const requestEndDate = new Date(data.endDate);
+
+        if (isNaN(requestStartDate.getTime()) || isNaN(requestEndDate.getTime())) {
+          throw new Error("Invalid start or end date for leave request.");
+        }
+
+        if (requestEndDate < requestStartDate) {
+          throw new Error("Leave end date cannot be before start date.");
+        }
+
+        // Prevent overlapping pending/approved requests for the same employee
+        const overlap = await prisma.leaveRequest.findFirst({
+          where: {
+            employeeId: data.employeeId,
+            isDeleted: null,
+            status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
+            startDate: { lte: requestEndDate },
+            endDate: { gte: requestStartDate },
+          },
+          select: { id: true, status: true, startDate: true, endDate: true },
+        });
+
+        if (overlap) {
+          throw new Error("A leave request already exists for the selected dates.");
+        }
+
           // If leaveType is provided and it's not CASUAL, try to find the leave allocation
           if (data.leaveType && data.leaveType !== 'CASUAL' && data.employeeId) {
             // Find the leave allocation for this employee and leave type
@@ -27,6 +88,10 @@ const leaveReqModel = prisma.$extends({
                 isDeleted: null,
               },
             });
+
+          if (!leaveConfig) {
+            throw new Error("Selected leave type is not configured.");
+          }
 
             if (leaveConfig) {
               const leaveAllocation = await prisma.leaveAllocation.findFirst({
@@ -38,6 +103,11 @@ const leaveReqModel = prisma.$extends({
               });
 
               if (leaveAllocation) {
+              const leaveDays = calculateLeaveDays(requestStartDate, requestEndDate);
+              const remainingDays = leaveAllocation.remainingDays ?? (leaveAllocation.assignedDays - (leaveAllocation.usedDays || 0));
+              if (remainingDays < leaveDays) {
+                throw new Error(`Insufficient leave balance. Available: ${remainingDays} days, Requested: ${leaveDays} days.`);
+              }
                 newData.leaveAllocationId = leaveAllocation.id;
               }
             }
@@ -127,6 +197,74 @@ const leaveReqModel = prisma.$extends({
                 updatedAt: new Date(),
               } as any,
             });
+          }
+        }
+
+        // Sync attendance on approval
+        if (status === LeaveStatus.APPROVED) {
+          const startDate = new Date(currentRequest.startDate);
+          const endDate = new Date(currentRequest.endDate);
+          const normalizedStart = getStartOfDayPakistan(startDate);
+          const normalizedEnd = getStartOfDayPakistan(endDate);
+
+          for (let date = new Date(normalizedStart); date <= normalizedEnd; date = addDays(date, 1)) {
+            const dayStart = getStartOfDayPakistan(date);
+            const dayEnd = getEndOfDayPakistan(date);
+            const existingAttendance = await prisma.attendance.findFirst({
+              where: {
+                employeeId: currentRequest.employeeId,
+                date: { gte: dayStart, lte: dayEnd },
+                isDeleted: null,
+              },
+            }) as any;
+
+            if (existingAttendance) {
+              if (existingAttendance.status === "ON_LEAVE") {
+                continue;
+              }
+
+              const previousUpdate = {
+                data: {
+                  status: existingAttendance.status,
+                  checkIn: existingAttendance.checkIn,
+                  checkOut: existingAttendance.checkOut,
+                  comment: existingAttendance.comment,
+                  location: existingAttendance.location,
+                  date: existingAttendance.date,
+                },
+                updatedBy: existingAttendance.updatedBy || null,
+                updatedAt: existingAttendance.updatedAt || new Date(),
+              };
+
+              const existingPreviousUpdates = (existingAttendance.previousUpdates as any[]) || [];
+              const updatedPreviousUpdates = [previousUpdate, ...existingPreviousUpdates].slice(0, 3);
+
+              await prisma.attendance.update({
+                where: { id: existingAttendance.id },
+                data: {
+                  status: "ON_LEAVE",
+                  checkIn: null,
+                  checkOut: null,
+                  comment: currentRequest.reason || existingAttendance.comment || "",
+                  updatedAt: new Date(),
+                  previousUpdates: updatedPreviousUpdates,
+                } as any,
+              });
+            } else {
+              await prisma.attendance.create({
+                data: {
+                  employeeId: currentRequest.employeeId,
+                  date: dayStart,
+                  status: "ON_LEAVE",
+                  checkIn: null,
+                  checkOut: null,
+                  comment: currentRequest.reason || "",
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  previousUpdates: [],
+                } as any,
+              });
+            }
           }
         }
       },

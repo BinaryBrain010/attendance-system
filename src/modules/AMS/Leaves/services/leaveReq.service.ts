@@ -2,6 +2,7 @@ import leaveReqModel from "../models/leaveReq.model";
 import { LeaveRequest, LeaveStatus } from "../types/leave";
 import { paginatedData } from "../../../../types/paginatedData";
 import prisma from "../../../../core/models/base.model";
+import { formatInTimeZone } from "date-fns-tz";
 
 class LeaveReqService {
   // Get all leave requests
@@ -123,9 +124,24 @@ class LeaveReqService {
       }),
     ]);
 
+    const calculateDays = (start: Date, end: Date) =>
+      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    const allocationUsage = new Map<string, number>();
+    requests
+      .filter((request: any) => (request.status || "").toUpperCase() === "APPROVED")
+      .forEach((request: any) => {
+        const allocationId = request.leaveAllocationId || request.leaveAllocation?.id;
+        if (!allocationId) return;
+        const startDate = new Date(request.startDate);
+        const endDate = new Date(request.endDate);
+        const days = calculateDays(startDate, endDate);
+        allocationUsage.set(allocationId, (allocationUsage.get(allocationId) || 0) + days);
+      });
+
     const allocationCards = allocations.map((allocation) => {
-      const usedDays = allocation.usedDays ?? 0;
-      const remainingDays = allocation.remainingDays ?? Math.max(allocation.assignedDays - usedDays, 0);
+      const usedDays = allocationUsage.get(allocation.id) ?? allocation.usedDays ?? 0;
+      const remainingDays = Math.max(allocation.assignedDays - usedDays, 0);
       return {
         id: allocation.id,
         type: allocation.leaveConfig?.name || "Leave",
@@ -176,6 +192,8 @@ class LeaveReqService {
       leaveType: string;
       requestId: string;
     }> = [];
+    const calendarDateSet = new Set<string>();
+    const toPakistanDateKey = (date: Date) => formatInTimeZone(date, "Asia/Karachi", "yyyy-MM-dd");
 
     requestRows.forEach((request: any) => {
       const start = new Date(request.startDate);
@@ -185,12 +203,38 @@ class LeaveReqService {
 
       const cursor = new Date(rangeStart);
       while (cursor <= rangeEnd) {
+        const dateKey = toPakistanDateKey(cursor);
         calendarDays.push({
-          date: cursor.toISOString().split("T")[0],
+          date: dateKey,
           status: request.status,
           leaveType: request.leaveType,
           requestId: request.id,
         });
+        calendarDateSet.add(dateKey);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
+
+    // Add allocation days to calendar (as ALLOCATED) if no request exists for that date
+    allocations.forEach((allocation: any) => {
+      const allocStart = allocation.allocationStartDate ? new Date(allocation.allocationStartDate) : fromDate;
+      const allocEnd = allocation.allocationEndDate ? new Date(allocation.allocationEndDate) : toDate;
+      const rangeStart = allocStart < fromDate ? fromDate : allocStart;
+      const rangeEnd = allocEnd > toDate ? toDate : allocEnd;
+      const leaveType = allocation.leaveConfig?.name || "Leave";
+
+      const cursor = new Date(rangeStart);
+      while (cursor <= rangeEnd) {
+        const dateKey = toPakistanDateKey(cursor);
+        if (!calendarDateSet.has(dateKey)) {
+          calendarDays.push({
+            date: dateKey,
+            status: "ALLOCATED",
+            leaveType,
+            requestId: "",
+          });
+          calendarDateSet.add(dateKey);
+        }
         cursor.setDate(cursor.getDate() + 1);
       }
     });

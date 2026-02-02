@@ -966,6 +966,37 @@ ORDER BY
           data: updateData as any,
         });
 
+        // If attendance was ON_LEAVE and is changed to a non-leave status,
+        // cancel any approved leave requests for that date
+        if (
+          currentAttendance.status === 'ON_LEAVE' &&
+          remainingData.status &&
+          remainingData.status !== 'ON_LEAVE'
+        ) {
+          try {
+            const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+            const baseDate = remainingData.date || currentAttendance.date || new Date();
+            const dayStart = getStartOfDayPakistan(new Date(baseDate));
+            const dayEnd = getEndOfDayPakistan(new Date(baseDate));
+            const approvedRequests = await prisma.leaveRequest.findMany({
+              where: {
+                employeeId: remainingData.employeeId || currentAttendance.employeeId,
+                status: 'APPROVED',
+                isDeleted: null,
+                startDate: { lte: dayEnd },
+                endDate: { gte: dayStart },
+              },
+              select: { id: true },
+            });
+
+            for (const request of approvedRequests) {
+              await leaveReqModel.leaveRequest.gpUpdateStatus(request.id, 'REJECTED');
+            }
+          } catch (error) {
+            console.error('Error cancelling leave request after attendance update:', error);
+          }
+        }
+
         // If status is ON_LEAVE and createLeaveRequest is true, create a leave request
         if (remainingData.status === 'ON_LEAVE' && createLeaveRequest) {
           try {
