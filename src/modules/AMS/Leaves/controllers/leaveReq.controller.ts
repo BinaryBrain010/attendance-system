@@ -157,6 +157,12 @@ class LeaveReqController extends BaseController<LeaveReqService> {
       req
     });
   }
+
+  async getLeaveOverviewByEmployee(req: Request, res: Response) {
+    const { employeeId, from, to } = req.body;
+    const operation = () => this.service.getLeaveOverviewByEmployee(employeeId, from, to);
+    await this.handleRequest(operation, res, { successMessage: "Leave overview retrieved successfully!" });
+  }
 }
 
 export default LeaveReqController;

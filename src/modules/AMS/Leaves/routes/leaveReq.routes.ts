@@ -101,6 +101,46 @@ class LeaveReqRoutes {
     
     /**
      * @swagger
+     * /leave/leave-requests/overviewByEmployee:
+     *   post:
+     *     summary: Get leave overview by employee ID
+     *     tags: [Leaves]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - employeeId
+     *             properties:
+     *               employeeId:
+     *                 type: string
+     *                 example: "123e4567-e89b-12d3-a456-426614174000"
+     *               from:
+     *                 type: string
+     *                 format: date
+     *                 example: "2026-01-01"
+     *               to:
+     *                 type: string
+     *                 format: date
+     *                 example: "2026-01-30"
+     *     responses:
+     *       200:
+     *         description: Leave overview retrieved successfully
+     *         content:
+     *           application/json:
+     *             schema:
+     *               $ref: '#/components/schemas/Success'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/overviewByEmployee', this.controller.getLeaveOverviewByEmployee.bind(this.controller));
+    
+    /**
+     * @swagger
      * /leave/leave-requests/deleted:
      *   get:
      *     summary: Get deleted leave requests
