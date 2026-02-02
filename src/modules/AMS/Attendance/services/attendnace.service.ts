@@ -59,6 +59,51 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     );
   }
 
+  async bulkMarkAttendance(
+    employeeIds: string[],
+    status: AttendanceStatus,
+    date: Date,
+    options?: {
+      checkIn?: Date | null;
+      checkOut?: Date | null;
+      location?: string;
+      comment?: string;
+      createLeaveRequest?: boolean;
+      leaveType?: string;
+      leaveReason?: string;
+    },
+    createdByUserId?: string
+  ): Promise<any> {
+    return await attendanceModel.attendance.bulkMarkAttendance(
+      employeeIds,
+      status,
+      date,
+      options,
+      createdByUserId
+    );
+  }
+
+  async bulkMarkAttendanceByEmployee(
+    items: {
+      employeeId: string;
+      status: AttendanceStatus;
+      date: Date;
+      checkIn?: Date | null;
+      checkOut?: Date | null;
+      location?: string;
+      comment?: string;
+      createLeaveRequest?: boolean;
+      leaveType?: string;
+      leaveReason?: string;
+    }[],
+    createdByUserId?: string
+  ): Promise<any> {
+    return await attendanceModel.attendance.bulkMarkAttendanceByEmployee(
+      items,
+      createdByUserId
+    );
+  }
+
   async checkAttendance(employeeId:string,attendanceStatus:AttendanceStatus,date:Date, userId?: string
   ){
     return await attendanceModel.attendance.checkAttendance(employeeId,attendanceStatus,date, userId);

@@ -228,6 +228,77 @@ class AttendanceController extends BaseController<AttendanceService> {
     });
   }
 
+  async bulkMarkAttendance(req: Request, res: Response) {
+    const { employeeIds, status, date, checkIn, checkOut, location, comment, createLeaveRequest, leaveType, leaveReason } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
+
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({ message: "employeeIds array is required and must not be empty" });
+    }
+
+    if (!date) {
+      return res.status(400).json({ message: "date is required" });
+    }
+
+    if (!status) {
+      return res.status(400).json({ message: "status is required" });
+    }
+
+    const operation = () => this.service.bulkMarkAttendance(
+      employeeIds,
+      status,
+      new Date(date),
+      {
+        checkIn: checkIn ? new Date(checkIn) : undefined,
+        checkOut: checkOut ? new Date(checkOut) : undefined,
+        location,
+        comment,
+        createLeaveRequest,
+        leaveType,
+        leaveReason
+      },
+      userId
+    );
+    await this.handleRequest(operation, res, { 
+      successMessage: "Bulk attendance completed successfully!",
+      logActivity: {
+        action: "BULK_UPDATE",
+        entityType: "Attendance",
+        description: `Bulk attendance marked for ${employeeIds.length} employee(s)`,
+        metadata: {
+          employeeIds,
+          status,
+          date,
+          count: employeeIds.length
+        }
+      },
+      req
+    });
+  }
+
+  async bulkMarkAttendanceByEmployee(req: Request, res: Response) {
+    const { items } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "items array is required and must not be empty" });
+    }
+
+    const operation = () => this.service.bulkMarkAttendanceByEmployee(items, userId);
+    await this.handleRequest(operation, res, { 
+      successMessage: "Bulk attendance completed successfully!",
+      logActivity: {
+        action: "BULK_UPDATE",
+        entityType: "Attendance",
+        description: `Bulk attendance marked for ${items.length} employee(s)`,
+        metadata: {
+          count: items.length
+        }
+      },
+      req
+    });
+  }
+
   async bulkMarkLeave(req: Request, res: Response) {
     const { employeeIds, date, leaveType, reason, createLeaveRequest } = req.body;
     const userId = (req as Request & { userId?: string }).userId;

@@ -483,6 +483,121 @@ class AttendanceRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/markAttendance', this.controller.markAttendance.bind(this.controller));
+
+    /**
+     * @swagger
+     * /attendance/bulkMarkAttendance:
+     *   post:
+     *     summary: Mark attendance for multiple selected employees
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Marks attendance for multiple employees on a specific date with a single request.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - employeeIds
+     *               - status
+     *               - date
+     *             properties:
+     *               employeeIds:
+     *                 type: array
+     *                 items:
+     *                   type: string
+     *                 example: ["emp-id-1", "emp-id-2"]
+     *               status:
+     *                 type: string
+     *                 enum: [PRESENT, ABSENT, LATE, ON_LEAVE, HALF_DAY, HOLIDAYS]
+     *               date:
+     *                 type: string
+     *                 format: date
+     *               checkIn:
+     *                 type: string
+     *                 format: date-time
+     *               checkOut:
+     *                 type: string
+     *                 format: date-time
+     *               comment:
+     *                 type: string
+     *               location:
+     *                 type: string
+     *               createLeaveRequest:
+     *                 type: boolean
+     *               leaveType:
+     *                 type: string
+     *               leaveReason:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Bulk attendance completed successfully
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/bulkMarkAttendance', this.controller.bulkMarkAttendance.bind(this.controller));
+
+    /**
+     * @swagger
+     * /attendance/bulkMarkAttendanceByEmployee:
+     *   post:
+     *     summary: Mark attendance for multiple employees with per-employee status
+     *     tags: [Attendance]
+     *     security:
+     *       - bearerAuth: []
+     *     description: Marks attendance for multiple employees with a status per employee in a single request.
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required:
+     *               - items
+     *             properties:
+     *               items:
+     *                 type: array
+     *                 items:
+     *                   type: object
+     *                   required: [employeeId, status, date]
+     *                   properties:
+     *                     employeeId:
+     *                       type: string
+     *                     status:
+     *                       type: string
+     *                       enum: [PRESENT, ABSENT, LATE, ON_LEAVE, HALF_DAY, HOLIDAYS]
+     *                     date:
+     *                       type: string
+     *                       format: date
+     *                     checkIn:
+     *                       type: string
+     *                       format: date-time
+     *                     checkOut:
+     *                       type: string
+     *                       format: date-time
+     *                     comment:
+     *                       type: string
+     *                     location:
+     *                       type: string
+     *                     createLeaveRequest:
+     *                       type: boolean
+     *                     leaveType:
+     *                       type: string
+     *                     leaveReason:
+     *                       type: string
+     *     responses:
+     *       200:
+     *         description: Bulk attendance completed successfully
+     *       400:
+     *         $ref: '#/components/responses/400'
+     *       401:
+     *         $ref: '#/components/responses/401'
+     */
+    this.router.post('/bulkMarkAttendanceByEmployee', this.controller.bulkMarkAttendanceByEmployee.bind(this.controller));
     
     /**
      * @swagger

@@ -248,6 +248,8 @@ const attendanceModel = prisma.$extends({
         return await prisma.$transaction(async (tx) => {
           // Extract audit trail fields and leave-related fields
           const { createdByUserId, updatedByUserId, createLeaveRequest, leaveType, leaveReason, ...attendanceFields } = attendanceData as any;
+          const shouldClearTimes = (status?: string | null) =>
+            status === "ABSENT" || status === "ON_LEAVE";
           
           // Check unit-based access control if userId is provided
           if (createdByUserId) {
@@ -343,12 +345,17 @@ const attendanceModel = prisma.$extends({
         
             // If checkOut already exists, update the attendance if needed
             if (attendanceFields.status && attendanceFields.status !== existingAttendance.status) {
+              const clearTimes = shouldClearTimes(attendanceFields.status);
               const updatedAttendance = await tx.attendance.update({
                 where: { id: existingAttendance.id },
                 data: {
                   status: attendanceFields.status,
-                  checkIn: attendanceFields.checkIn || existingAttendance.checkIn,
-                  checkOut: attendanceFields.checkOut || existingAttendance.checkOut,
+                  checkIn: clearTimes
+                    ? null
+                    : attendanceFields.checkIn || existingAttendance.checkIn,
+                  checkOut: clearTimes
+                    ? null
+                    : attendanceFields.checkOut || existingAttendance.checkOut,
                   comment: attendanceFields.comment || existingAttendance.comment || '',
                   location: attendanceFields.location || existingAttendance.location,
                   updatedBy: updatedByUserId || null,
@@ -393,11 +400,14 @@ const attendanceModel = prisma.$extends({
           }
         
           // If no existing attendance, proceed to create with normalized date
+          const clearTimesOnCreate = shouldClearTimes(attendanceFields.status);
           const newAttendance = await tx.attendance.create({
             data: {
               ...attendanceFields,
               date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
-              checkIn: attendanceFields.checkIn || new Date(),
+              checkIn: clearTimesOnCreate
+                ? null
+                : attendanceFields.checkIn || new Date(),
               comment: attendanceFields.comment || '',
               createdBy: createdByUserId || null,
               previousUpdates: [],
@@ -591,6 +601,188 @@ const attendanceModel = prisma.$extends({
           total: employeeIds.length,
           successful: results.filter(r => r.success).length,
           failed: results.filter(r => !r.success).length,
+          results,
+        };
+      },
+
+      // Bulk mark attendance for selected employees
+      async bulkMarkAttendance(
+        employeeIds: string[],
+        status: AttendanceStatus,
+        date: Date,
+        options?: {
+          checkIn?: Date | null;
+          checkOut?: Date | null;
+          location?: string;
+          comment?: string;
+          createLeaveRequest?: boolean;
+          leaveType?: string;
+          leaveReason?: string;
+        },
+        createdByUserId?: string
+      ): Promise<any> {
+        if (!employeeIds || employeeIds.length === 0) {
+          return {
+            success: false,
+            message: "employeeIds array is required and must not be empty",
+            total: 0,
+            successful: 0,
+            failed: 0,
+            results: [],
+          };
+        }
+
+        const results: any[] = [];
+        let successful = 0;
+        let failed = 0;
+
+        for (const employeeId of employeeIds) {
+          try {
+            const attendancePayload: any = {
+              employeeId,
+              date,
+              status,
+              checkIn:
+                options?.checkIn !== undefined
+                  ? options.checkIn
+                  : status === "PRESENT"
+                  ? date
+                  : null,
+              checkOut: options?.checkOut ?? null,
+              location: options?.location || "",
+              comment: options?.comment || "",
+              createLeaveRequest: options?.createLeaveRequest,
+              leaveType: options?.leaveType,
+              leaveReason: options?.leaveReason,
+              createdByUserId,
+              updatedByUserId: createdByUserId,
+            };
+
+            const result = await this.markAttendance(attendancePayload);
+            if (result?.success === false) {
+              failed += 1;
+              results.push({
+                employeeId,
+                success: false,
+                message: result?.message || "Failed to mark attendance",
+              });
+              continue;
+            }
+
+            successful += 1;
+            results.push({
+              employeeId,
+              success: true,
+              message: result?.message || "Attendance marked successfully",
+              data: result?.data,
+            });
+          } catch (error: any) {
+            failed += 1;
+            results.push({
+              employeeId,
+              success: false,
+              message: error?.message || "Failed to mark attendance",
+            });
+          }
+        }
+
+        return {
+          success: failed === 0,
+          message: `Bulk attendance completed. ${successful}/${employeeIds.length} succeeded.`,
+          total: employeeIds.length,
+          successful,
+          failed,
+          results,
+        };
+      },
+
+      // Bulk mark attendance with per-employee status
+      async bulkMarkAttendanceByEmployee(
+        items: {
+          employeeId: string;
+          status: AttendanceStatus;
+          date: Date;
+          checkIn?: Date | null;
+          checkOut?: Date | null;
+          location?: string;
+          comment?: string;
+          createLeaveRequest?: boolean;
+          leaveType?: string;
+          leaveReason?: string;
+        }[],
+        createdByUserId?: string
+      ): Promise<any> {
+        if (!items || items.length === 0) {
+          return {
+            success: false,
+            message: "items array is required and must not be empty",
+            total: 0,
+            successful: 0,
+            failed: 0,
+            results: [],
+          };
+        }
+
+        const results: any[] = [];
+        let successful = 0;
+        let failed = 0;
+
+        for (const item of items) {
+          try {
+            const attendancePayload: any = {
+              employeeId: item.employeeId,
+              date: item.date,
+              status: item.status,
+              checkIn:
+                item.checkIn !== undefined
+                  ? item.checkIn
+                  : item.status === "PRESENT"
+                  ? item.date
+                  : null,
+              checkOut: item.checkOut ?? null,
+              location: item.location || "",
+              comment: item.comment || "",
+              createLeaveRequest: item.createLeaveRequest,
+              leaveType: item.leaveType,
+              leaveReason: item.leaveReason,
+              createdByUserId,
+              updatedByUserId: createdByUserId,
+            };
+
+            const result = await this.markAttendance(attendancePayload);
+            if (result?.success === false) {
+              failed += 1;
+              results.push({
+                employeeId: item.employeeId,
+                success: false,
+                message: result?.message || "Failed to mark attendance",
+              });
+              continue;
+            }
+
+            successful += 1;
+            results.push({
+              employeeId: item.employeeId,
+              success: true,
+              message: result?.message || "Attendance marked successfully",
+              data: result?.data,
+            });
+          } catch (error: any) {
+            failed += 1;
+            results.push({
+              employeeId: item.employeeId,
+              success: false,
+              message: error?.message || "Failed to mark attendance",
+            });
+          }
+        }
+
+        return {
+          success: failed === 0,
+          message: `Bulk attendance completed. ${successful}/${items.length} succeeded.`,
+          total: items.length,
+          successful,
+          failed,
           results,
         };
       },
