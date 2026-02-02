@@ -89,7 +89,11 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   }
 
   async getEmployeeById(employeeId: string): Promise<Employee | null> {
-    return await employeeModel.employee.gpFindById(employeeId);
+    const employee = await employeeModel.employee.gpFindById(employeeId);
+    if (employee && employee.emergencyContactNo === null) {
+      employee.emergencyContactNo = undefined as unknown as string;
+    }
+    return employee as Employee | null;
   }
 
   async getEmployeeByCode(code: string){
