@@ -921,7 +921,7 @@ ORDER BY
       },
 
       async gpUpdate(this: any, updateId: string, data: any) {
-        const { updatedByUserId, ...remainingData } = data;
+        const { updatedByUserId, createLeaveRequest, leaveType, leaveReason, ...remainingData } = data;
 
         // Get current state before update for audit trail
         const currentAttendance = await prisma.attendance.findUnique({
@@ -965,6 +965,27 @@ ORDER BY
           where: { id: updateId },
           data: updateData as any,
         });
+
+        // If status is ON_LEAVE and createLeaveRequest is true, create a leave request
+        if (remainingData.status === 'ON_LEAVE' && createLeaveRequest) {
+          try {
+            const leaveReqModel = (await import('../../Leaves/models/leaveReq.model')).default;
+            const baseDate = remainingData.date || currentAttendance.date || new Date();
+            const normalizedDate = getStartOfDayPakistan(new Date(baseDate));
+            const leaveRequestData: any = {
+              employeeId: remainingData.employeeId || currentAttendance.employeeId,
+              startDate: normalizedDate,
+              endDate: normalizedDate,
+              status: 'APPROVED',
+              reason: leaveReason || remainingData.comment || 'Leave marked during attendance update',
+              leaveType: leaveType || 'CASUAL',
+            };
+
+            await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+          } catch (error) {
+            console.error('Error creating leave request during attendance update:', error);
+          }
+        }
 
         return updatedData;
       },

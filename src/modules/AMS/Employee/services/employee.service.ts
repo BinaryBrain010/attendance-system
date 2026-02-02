@@ -186,6 +186,7 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
       leaveRequestsByStatus,
       totalLeaveRequests,
       approvedLeaveRequests,
+      approvedLeaveRequestsInRange,
       pendingLeaveRequests,
       rejectedLeaveRequests,
       
@@ -276,6 +277,21 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
         },
       }),
       
+      // Approved leave requests overlapping date range (for attendance stats)
+      prisma.leaveRequest.findMany({
+        where: {
+          employeeId,
+          status: LeaveStatus.APPROVED,
+          isDeleted: null,
+          startDate: { lte: toDate },
+          endDate: { gte: fromDate },
+        },
+        select: {
+          startDate: true,
+          endDate: true,
+        },
+      }),
+      
       // Pending leave requests
       prisma.leaveRequest.count({
         where: {
@@ -341,6 +357,32 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     attendanceByStatus.forEach((item) => {
       attendanceStats.byStatus[item.status as keyof typeof attendanceStats.byStatus] = item._count.status;
     });
+
+    // Calculate approved leave days within the requested date range
+    let leaveDaysInRange = 0;
+    approvedLeaveRequestsInRange.forEach((request) => {
+      const requestStart = new Date(request.startDate);
+      const requestEnd = new Date(request.endDate);
+      const rangeStart = requestStart > fromDate ? requestStart : fromDate;
+      const rangeEnd = requestEnd < toDate ? requestEnd : toDate;
+      rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd.setHours(0, 0, 0, 0);
+      if (rangeEnd >= rangeStart) {
+        const diffTime = Math.abs(rangeEnd.getTime() - rangeStart.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        leaveDaysInRange += diffDays;
+      }
+    });
+
+    // If leave requests are approved but attendance entries weren't created, reflect them in stats
+    if (leaveDaysInRange > 0) {
+      const recordedLeaveDays = attendanceStats.byStatus.ON_LEAVE || 0;
+      const missingLeaveDays = Math.max(0, leaveDaysInRange - recordedLeaveDays);
+      if (missingLeaveDays > 0) {
+        attendanceStats.byStatus.ON_LEAVE += missingLeaveDays;
+        attendanceStats.total += missingLeaveDays;
+      }
+    }
 
     // Calculate leave request statistics
     const leaveRequestStats = {
