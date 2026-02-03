@@ -20,7 +20,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async createAttendanceRequest(req: Request, res: Response) {
     const attendanceRequestData: AttendanceRequest = req.body;
     const operation = () => this.service.createAttendanceRequest(attendanceRequestData);
-    await this.handleRequest(operation, res, { 
+    await this.handleRequest(operation, res, {
       successMessage: "Attendance request created successfully!",
       logActivity: {
         action: "CREATE",
@@ -41,7 +41,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async updateAttendanceRequest(req: Request, res: Response) {
     const { id, data } = req.body;
     const operation = () => this.service.updateAttendanceRequest(id, data);
-    await this.handleRequest(operation, res, { 
+    await this.handleRequest(operation, res, {
       successMessage: "Attendance request updated successfully!",
       logActivity: {
         action: "UPDATE",
@@ -60,7 +60,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async deleteAttendanceRequest(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.deleteAttendanceRequest(id);
-    await this.handleRequest(operation, res, { 
+    await this.handleRequest(operation, res, {
       successMessage: "Attendance request deleted successfully!",
       logActivity: {
         action: "DELETE",
@@ -110,7 +110,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async updateAttendanceRequestStatus(req: Request, res: Response) {
     const { id, status } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
-    
+
     // Check if user has permission to approve attendance requests
     const accessModel = (await import("../../../rbac/Access/models/access.model")).default;
     let hasPermission = false;
@@ -124,14 +124,14 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
     }
 
     if (!hasPermission) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: "You don't have permission to approve attendance requests." 
+        message: "You don't have permission to approve attendance requests."
       });
     }
 
     const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId);
-    await this.handleRequest(operation, res, { 
+    await this.handleRequest(operation, res, {
       successMessage: "Attendance request status updated successfully!",
       logActivity: {
         action: status === "APPROVED" ? "APPROVE" : status === "REJECTED" ? "REJECT" : "UPDATE",
@@ -151,7 +151,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async bulkUpdateAttendanceRequestStatus(req: Request, res: Response) {
     const { requestIds, status } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
-    
+
     if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
       return res.status(400).json({
         success: false,
@@ -167,7 +167,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
         statusCode: 400
       });
     }
-    
+
     // Check if user has permission to approve attendance requests
     const accessModel = (await import("../../../rbac/Access/models/access.model")).default;
     let hasPermission = false;
@@ -181,7 +181,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
     }
 
     if (!hasPermission) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
         message: "You don't have permission to approve attendance requests.",
         statusCode: 403
@@ -189,7 +189,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
     }
 
     const operation = () => this.service.bulkUpdateAttendanceRequestStatus(requestIds, status, userId);
-    await this.handleRequest(operation, res, { 
+    await this.handleRequest(operation, res, {
       successMessage: `Bulk ${status.toLowerCase()} operation completed!`,
       logActivity: {
         action: status === "APPROVED" ? "BULK_APPROVE" : status === "REJECTED" ? "BULK_REJECT" : "BULK_UPDATE",

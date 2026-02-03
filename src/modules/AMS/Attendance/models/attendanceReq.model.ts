@@ -9,20 +9,20 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
   if (!updatedBy) {
     return null;
   }
-  
+
   // Admin user ID constant
   const ADMIN_USER_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
-  
+
   if (updatedBy === ADMIN_USER_ID) {
     return "Admin";
   }
-  
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: updatedBy },
       select: { username: true },
     });
-    
+
     return user?.username || null;
   } catch (error) {
     console.error("Error fetching username:", error);
@@ -33,7 +33,7 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
 
 const attendanceRequestModel = prisma.$extends({
   model: {
-    attendanceRequest:{
+    attendanceRequest: {
 
       async gpFindMany(this: any): Promise<any[]> {
         const data = await prisma.$queryRaw`
@@ -57,7 +57,7 @@ const attendanceRequestModel = prisma.$extends({
           WHERE ar."isDeleted" IS NULL
           ORDER BY ar."createdAt" DESC
         ` as any[];
-        
+
         // Resolve usernames for admin user
         const resolvedData = await Promise.all(
           data.map(async (item: any) => {
@@ -70,7 +70,7 @@ const attendanceRequestModel = prisma.$extends({
             return item;
           })
         );
-        
+
         return resolvedData;
       },
 
@@ -97,11 +97,11 @@ const attendanceRequestModel = prisma.$extends({
             AND ar."isDeleted" IS NULL
           LIMIT 1
         ` as any[];
-        
+
         if (!data[0]) {
           return null;
         }
-        
+
         const item = data[0];
         // Resolve usernames for admin user
         if (!item.requestedByName && item.requestedBy) {
@@ -110,13 +110,13 @@ const attendanceRequestModel = prisma.$extends({
         if (!item.approvedByName && item.approvedBy) {
           item.approvedByName = await getUpdatedByName(item.approvedBy);
         }
-        
+
         return item;
       },
 
       async gpPgFindMany(this: any, page: number, pageSize: number): Promise<any> {
         const skip = (page - 1) * pageSize;
-        
+
         const data = await prisma.$queryRaw`
           SELECT 
             ar.*,
@@ -146,7 +146,7 @@ const attendanceRequestModel = prisma.$extends({
           FROM "AttendanceRequest" ar
           WHERE ar."isDeleted" IS NULL
         ` as any[];
-        
+
         const totalSize = totalSizeResult[0]?.count || 0;
 
         // Resolve usernames for admin user
@@ -167,7 +167,7 @@ const attendanceRequestModel = prisma.$extends({
 
       async gpPgFindDeletedMany(this: any, page: number, pageSize: number): Promise<any> {
         const skip = (page - 1) * pageSize;
-        
+
         const data = await prisma.$queryRaw`
           SELECT 
             ar.*,
@@ -197,7 +197,7 @@ const attendanceRequestModel = prisma.$extends({
           FROM "AttendanceRequest" ar
           WHERE ar."isDeleted" IS NOT NULL
         ` as any[];
-        
+
         const totalSize = totalSizeResult[0]?.count || 0;
 
         // Resolve usernames for admin user
@@ -228,7 +228,7 @@ const attendanceRequestModel = prisma.$extends({
         // Update the request status
         const updatedRequest = await prisma.attendanceRequest.update({
           where: { id: requestId },
-          data: { 
+          data: {
             status,
             approvedBy: status === LeaveStatus.APPROVED ? (approvedBy || null) : null,
           },
@@ -260,7 +260,7 @@ const attendanceRequestModel = prisma.$extends({
           // This is a new attendance request (not an update)
           // Create new attendance with proposed data
           const { employeeId, proposedDate, proposedCheckIn, proposedStatus, proposedLocation, proposedComment } = attendanceRequest;
-          
+
           const attendanceData = {
             employeeId,
             date: proposedDate || new Date(),
@@ -298,7 +298,7 @@ const attendanceRequestModel = prisma.$extends({
             AND ar."isDeleted" IS NULL
           ORDER BY ar."createdAt" DESC
         ` as any[];
-        
+
         // Resolve usernames for admin user
         const resolvedData = await Promise.all(
           data.map(async (item: any) => {
@@ -311,7 +311,7 @@ const attendanceRequestModel = prisma.$extends({
             return item;
           })
         );
-        
+
         return resolvedData;
       },
 
@@ -324,7 +324,7 @@ const attendanceRequestModel = prisma.$extends({
       ): Promise<any> {
         const skip = (page - 1) * pageSize;
         const searchTermsArray = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
-        
+
         // Build search conditions - escape SQL injection properly
         let searchWhereClause = '';
         if (searchTermsArray.length > 0 && columns.length > 0) {
@@ -381,7 +381,7 @@ const attendanceRequestModel = prisma.$extends({
           WHERE ar."isDeleted" IS NULL
             ${searchWhereClause}
         `) as any[];
-        
+
         const totalSize = totalSizeResult[0]?.count || 0;
 
         // Resolve usernames for admin user
