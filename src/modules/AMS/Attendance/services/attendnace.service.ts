@@ -1,11 +1,12 @@
 import attendanceModel from "../models/attendance.model";
 import { Attendance } from "../types/Attendance";
-import { paginatedData } from "../../../../types/paginatedData";
 import { AttendanceStatus } from "@prisma/client";
+import { paginatedData } from "../../../../types/paginatedData";
+import prisma from "../../../../core/models/base.model";
+import { getAccessibleEmployeeIds } from "../../Unit/helper/unitAccess.helper";
 import ExcelValidator from "../helper/excelValidator";
 import accessModel from "../../../rbac/Access/models/access.model";
 import attendanceRequestModel from "../models/attendanceReq.model";
-import prisma from "../../../../core/models/base.model";
 
 class AttendanceService {
   async getAllattendances(userId?: string) {
@@ -249,7 +250,11 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     return await attendanceModel.attendance.getHistoryById(attendanceId, filter, date);
   }
 
-  async getAttendanceSummary(from?: string | Date | null, to?: string | Date | null): Promise<{
+  async getAttendanceSummary(
+    from?: string | Date | null,
+    to?: string | Date | null,
+    userId?: string
+  ): Promise<{
     totalEmployees: number;
     present: number;
     absent: number;
@@ -265,17 +270,42 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(23, 59, 59, 999);
 
+    const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, "attendance");
+
+    if (Array.isArray(accessibleEmployeeIds) && accessibleEmployeeIds.length === 0) {
+      return {
+        totalEmployees: 0,
+        present: 0,
+        absent: 0,
+        late: 0,
+        halfDays: 0,
+        onLeave: 0,
+        pending: 0,
+        noClockOut: 0,
+      };
+    }
+
+    const employeeFilter = Array.isArray(accessibleEmployeeIds)
+      ? { employeeId: { in: accessibleEmployeeIds } }
+      : {};
+
     const [statusCounts, totalEmployees, noClockOut] = await Promise.all([
       prisma.attendance.groupBy({
         by: ["status"],
         where: {
           isDeleted: null,
           date: { gte: fromDate, lte: toDate },
+          ...employeeFilter,
         },
         _count: { status: true },
       }),
       prisma.employee.count({
-        where: { isDeleted: null },
+        where: {
+          isDeleted: null,
+          ...(Array.isArray(accessibleEmployeeIds)
+            ? { id: { in: accessibleEmployeeIds } }
+            : {}),
+        },
       }),
       prisma.attendance.count({
         where: {
@@ -283,6 +313,7 @@ return await attendanceModel.attendance.markFaceAttendance(image);
           status: { in: ["PRESENT", "LATE"] },
           checkOut: null,
           date: { gte: fromDate, lte: toDate },
+          ...employeeFilter,
         },
       }),
     ]);
