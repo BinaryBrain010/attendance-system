@@ -43,6 +43,7 @@ import LeaveRoutes from "../../modules/AMS/Leaves/routes/leave.routes";
 import HolidayRoutes from "../../modules/AMS/Holiday/routes/holiday.routes";
 import UnitRoutes from "../../modules/AMS/Unit/routes/unit.routes";
 import UnitEmployeeRoutes from "../../modules/AMS/Unit/routes/unitEmployee.routes";
+import ShiftRoutes from "../../modules/AMS/Shift/routes/shift.routes";
 import ActivityLogRoutes from "../../modules/ActivityLog/routes/activityLog.routes";
 
 class App {
@@ -184,6 +185,7 @@ class App {
       HolidayRoutes,
       UnitRoutes,
       UnitEmployeeRoutes,
+      ShiftRoutes,
       
       //ActivityLog
       ActivityLogRoutes

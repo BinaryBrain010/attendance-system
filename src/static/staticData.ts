@@ -211,6 +211,61 @@ export const features: AppFeature[] = [
   { name: "employee.viewPreviousUpdate.*", parentFeatureId: "employee.*", label: "View Previous Update" },
 
 
+  //shift
+  { name: "shift.*", label: "Shift (Nav)" },
+  { name: "shift.create.*", parentFeatureId: "shift.*", label: "Create" },
+  { name: "shift.read.*", parentFeatureId: "shift.*", label: "Read" },
+  { name: "shift.update.*", parentFeatureId: "shift.*", label: "Update" },
+  { name: "shift.delete.*", parentFeatureId: "shift.*", label: "Delete" },
+  { name: "shift.restore.*", parentFeatureId: "shift.*", label: "Restore" },
+  { name: "shift.viewPreviousUpdate.*", parentFeatureId: "shift.*", label: "View Previous Update" },
+  {
+    name: "shift.assignments.*",
+    parentFeatureId: "shift.*",
+    label: "Shift Assignments",
+  },
+  {
+    name: "shift.assignments.assignToEmployee.*",
+    parentFeatureId: "shift.assignments.*",
+    label: "Assign To Employee",
+  },
+  {
+    name: "shift.assignments.removeAssignment.*",
+    parentFeatureId: "shift.assignments.*",
+    label: "Remove Assignment",
+  },
+  {
+    name: "shift.assignments.assignedEmployees.*",
+    parentFeatureId: "shift.assignments.*",
+    label: "Assigned Employees",
+  },
+  {
+    name: "shift.assignments.assignToUnit.*",
+    parentFeatureId: "shift.assignments.*",
+    label: "Assign To Unit (Bulk)",
+  },
+  {
+    name: "shift.timetable.*",
+    parentFeatureId: "shift.*",
+    label: "Shift Time Table",
+  },
+  {
+    name: "shift.timetable.read.*",
+    parentFeatureId: "shift.timetable.*",
+    label: "Read",
+  },
+  {
+    name: "shift.timetable.upsert.*",
+    parentFeatureId: "shift.timetable.*",
+    label: "Create/Update",
+  },
+  {
+    name: "shift.timetable.delete.*",
+    parentFeatureId: "shift.timetable.*",
+    label: "Delete",
+  },
+
+
   //attendance
   { name: "attendance.*", label: "Attendance (Nav)" },
 { name: "attendance.markAttendance.*", parentFeatureId: "attendance.*", label: "Attendance Marking" },

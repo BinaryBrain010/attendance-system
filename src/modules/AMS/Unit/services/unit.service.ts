@@ -34,8 +34,8 @@ interface UnitAttendanceFilters {
 }
 
 class UnitService {
-  async getAllUnits(): Promise<Unit[]> {
-    return await unitModel.unit.gpFindMany();
+  async getAllUnits(light?: boolean): Promise<Unit[] | { id: string; name: string }[]> {
+    return await unitModel.unit.gpFindMany(light);
   }
 
   async getUnits(page: number, pageSize: number): Promise<paginatedData> {

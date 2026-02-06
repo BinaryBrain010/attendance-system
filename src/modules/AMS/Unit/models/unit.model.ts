@@ -31,7 +31,14 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
 const unitModel = prisma.$extends({
   model: {
     unit: {
-      async gpFindMany(this: any) {
+      async gpFindMany(this: any, light?: boolean) {
+        if (light) {
+          return await prisma.unit.findMany({
+            where: { isDeleted: null },
+            orderBy: { name: 'asc' },
+            select: { id: true, name: true },
+          });
+        }
         return await prisma.unit.findMany({
           where: { isDeleted: null },
           orderBy: { createdAt: 'desc' },

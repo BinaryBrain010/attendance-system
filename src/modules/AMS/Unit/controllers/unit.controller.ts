@@ -7,7 +7,8 @@ class UnitController extends BaseController<UnitService> {
   protected service = new UnitService();
 
   async getAllUnits(req: Request, res: Response) {
-    const operation = () => this.service.getAllUnits();
+    const light = req.query.light === 'true' || req.query.light === '1';
+    const operation = () => this.service.getAllUnits(light);
     await this.handleRequest(operation, res, { successMessage: "Units retrieved successfully!" });
   }
 

@@ -11,6 +11,12 @@ class EmployeeController extends BaseController<EmployeeService> {
   private excelUtility = new EmployeeExcelUtility();
 
   async getAllEmployees(req: Request, res: Response) {
+    const light = req.query.light === 'true' || req.query.light === '1';
+    if (light) {
+      const operation = () => this.service.getFilterEmployees();
+      await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
+      return;
+    }
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const sortBy = (req.query.sortBy as string) || 'createdAt';

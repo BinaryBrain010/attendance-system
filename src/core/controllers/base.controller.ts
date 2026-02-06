@@ -98,6 +98,11 @@ abstract class BaseController<T> {
       logger.warn(`AppError: ${error.message}`, { statusCode: error.statusCode });
       return ApiResponse.error(res, error.message, error.statusCode);
     }
+
+    const prismaError: any = error as any;
+    if (prismaError?.code === 'P2002') {
+      return ApiResponse.error(res, prismaError?.meta?.target ? `Unique constraint failed on: ${prismaError.meta.target}` : 'Duplicate value error', 409);
+    }
     
     logger.error('Unexpected error:', error);
     return ApiResponse.error(res, 'Internal server error', 500);

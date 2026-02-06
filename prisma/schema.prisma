@@ -395,6 +395,47 @@ model Shift {
   isDeleted   DateTime?
 
   assignments ShiftAssignment[]
+  timetables  ShiftTimetable[]
+  timetableBlocks ShiftTimetableBlock[]
+}
+
+model ShiftTimetable {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  shiftId   String   @db.VarChar(36)
+  dayOfWeek Int
+  startTime DateTime
+  endTime   DateTime
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+  isDeleted DateTime?
+
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  @@unique([shiftId, dayOfWeek])
+}
+
+enum ShiftTimetableBlockType {
+  WORK
+  BREAK
+  CUSTOM
+}
+
+model ShiftTimetableBlock {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  shiftId   String   @db.VarChar(36)
+  dayOfWeek Int
+  startTime DateTime
+  endTime   DateTime
+  type      ShiftTimetableBlockType @default(WORK)
+  customType String?
+  label     String?
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+  isDeleted DateTime?
+
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  @@index([shiftId, dayOfWeek])
 }
 
 model ShiftAssignment {
