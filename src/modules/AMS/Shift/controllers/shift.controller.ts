@@ -179,6 +179,15 @@ class ShiftController extends BaseController<ShiftService> {
     await this.handleRequest(operation, res, { successMessage: "Assigned employees retrieved successfully!" });
   }
 
+  async getAssignmentsByEmployee(req: Request, res: Response) {
+    const employeeId = (req.body?.employeeId || req.query?.employeeId) as string;
+    if (!employeeId) {
+      return res.status(400).json({ message: "employeeId is required" });
+    }
+    const operation = () => this.service.getAssignmentsByEmployeeId(employeeId);
+    await this.handleRequest(operation, res, { successMessage: "Employee shift assignments retrieved successfully!" });
+  }
+
   async checkAssignmentConflicts(req: Request, res: Response) {
     const { shiftId, startDate, endDate, employeeIds } = req.body;
     if (!shiftId || !startDate || !employeeIds || !Array.isArray(employeeIds)) {

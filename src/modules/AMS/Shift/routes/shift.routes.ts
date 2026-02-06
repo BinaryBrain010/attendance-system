@@ -30,6 +30,7 @@ class ShiftRoutes {
     this.router.post("/checkAssignmentConflicts", this.controller.checkAssignmentConflicts.bind(this.controller));
     this.router.post("/removeAssignment", this.controller.removeAssignment.bind(this.controller));
     this.router.post("/assignedEmployees", this.controller.getAssignedEmployees.bind(this.controller));
+    this.router.post("/assignmentsByEmployee", this.controller.getAssignmentsByEmployee.bind(this.controller));
     this.router.post("/assignToUnit", this.controller.assignToUnit.bind(this.controller));
 
     // Timetable

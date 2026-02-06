@@ -256,6 +256,40 @@ class ShiftService {
     return await shiftModel.shiftAssignment.getAssignedEmployeesByShiftId(shiftId);
   }
 
+  async getAssignmentsByEmployeeId(employeeId: string): Promise<any[]> {
+    const assignments = await prisma.shiftAssignment.findMany({
+      where: { employeeId, isDeleted: null },
+      include: {
+        shift: {
+          select: {
+            id: true,
+            name: true,
+            startTime: true,
+            endTime: true,
+            description: true,
+          },
+        },
+      },
+      orderBy: [{ startDate: "desc" }],
+    });
+
+    const result = await Promise.all(
+      assignments.map(async (a) => {
+        const timetableBlocks = await this.getTimetableBlocks(a.shiftId);
+        const timetable = await this.getTimetableByShiftId(a.shiftId);
+        return {
+          id: a.id,
+          startDate: a.startDate,
+          endDate: a.endDate,
+          shift: a.shift,
+          timetableBlocks: timetableBlocks || [],
+          timetable: timetable || [],
+        };
+      })
+    );
+    return result;
+  }
+
   async assignToUnit(unitId: string, shiftId: string, startDate: Date, endDate?: Date | null) {
     const unitEmployees = await prisma.unitEmployee.findMany({
       where: {
