@@ -323,14 +323,32 @@ const attendanceModel = prisma.$extends({
 
             // If attendance already exists, mark it as a checkout
             if ((existingAttendance.status === "PRESENT" || existingAttendance.status === "LATE") && existingAttendance.checkIn && !existingAttendance.checkOut) {
+              const checkOutTime = new Date();
+              let checkoutComment = attendanceFields.comment || existingAttendance.comment || '';
+
+              try {
+                const { getShiftEndOnDate } = await import('../../SystemConfig/helper/attendanceStatus.helper');
+                const SystemConfigService = (await import('../../SystemConfig/services/systemConfig.service')).default;
+                const shiftEnd = await getShiftEndOnDate(tx, attendanceFields.employeeId, normalizedDate);
+                const earlyGraceMinutes = await SystemConfigService.getEarlyCheckOutGraceMinutes();
+
+                if (shiftEnd && earlyGraceMinutes >= 0) {
+                  const graceThreshold = new Date(shiftEnd.getTime() - earlyGraceMinutes * 60 * 1000);
+                  if (checkOutTime < graceThreshold) {
+                    checkoutComment = checkoutComment
+                      ? `${checkoutComment}; Early check-out`
+                      : 'Early check-out';
+                  }
+                }
+              } catch (e) {
+                // If config/shift lookup fails, leave comment as-is
+              }
+
               const updatedAttendance = await tx.attendance.update({
                 where: { id: existingAttendance.id },
                 data: {
-                  checkOut: new Date(), // Checkout time is the current time
-                  comment:
-                    attendanceFields.comment ||
-                    existingAttendance.comment ||
-                    '',
+                  checkOut: checkOutTime,
+                  comment: checkoutComment,
                   updatedBy: updatedByUserId || null,
                   updatedAt: new Date(),
                   previousUpdates: updatedPreviousUpdates,
@@ -399,11 +417,29 @@ const attendanceModel = prisma.$extends({
             };
           }
         
+          // If no existing attendance, resolve PRESENT vs LATE using shift + system config
+          let effectiveStatus = attendanceFields.status;
+          if (effectiveStatus === 'PRESENT' && !shouldClearTimes(effectiveStatus)) {
+            const checkInForCompare = attendanceFields.checkIn || new Date();
+            try {
+              const { getEffectiveStatusForCheckIn } = await import('../../SystemConfig/helper/attendanceStatus.helper');
+              effectiveStatus = await getEffectiveStatusForCheckIn(
+                tx,
+                attendanceFields.employeeId,
+                normalizedDate,
+                checkInForCompare
+              );
+            } catch (e) {
+              // If helper fails (e.g. no shift/config), keep PRESENT
+            }
+          }
+
           // If no existing attendance, proceed to create with normalized date
-          const clearTimesOnCreate = shouldClearTimes(attendanceFields.status);
+          const clearTimesOnCreate = shouldClearTimes(effectiveStatus);
           const newAttendance = await tx.attendance.create({
             data: {
               ...attendanceFields,
+              status: effectiveStatus,
               date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
               checkIn: clearTimesOnCreate
                 ? null

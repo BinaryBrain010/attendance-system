@@ -300,7 +300,7 @@ class ShiftService {
     });
 
     const employeeIds = unitEmployees.map((ue) => ue.employeeId);
-    const { assigned, skipped } = await this.assignToEmployees(employeeIds, shiftId, startDate, endDate);
+    const { assigned, skipped } = await this.assignToEmployees(employeeIds, shiftId, startDate, endDate ?? null);
 
     return { assignedCount: assigned.length, skippedCount: skipped.length, assigned, skipped };
   }

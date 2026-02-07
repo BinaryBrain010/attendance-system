@@ -342,6 +342,11 @@ export const features: AppFeature[] = [
 { name: "employee.read.all.*", parentFeatureId: "employee.read.*", label: "Access All Employees (Supervisor)" },
 { name: "attendance.read.all.*", parentFeatureId: "attendance.read.*", label: "Access All Attendances (Supervisor)" },
 
+//systemConfig
+{ name: "systemConfig.*", label: "System Config (Nav)" },
+{ name: "systemConfig.read.*", parentFeatureId: "systemConfig.*", label: "Read" },
+{ name: "systemConfig.update.*", parentFeatureId: "systemConfig.*", label: "Update" },
+
 //activityLog
 { name: "activityLog.*", label: "Activity Log (Nav)" },
 { name: "activityLog.read.*", parentFeatureId: "activityLog.*", label: "Read Activity Logs" },
