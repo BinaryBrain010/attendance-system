@@ -45,6 +45,7 @@ import UnitRoutes from "../../modules/AMS/Unit/routes/unit.routes";
 import UnitEmployeeRoutes from "../../modules/AMS/Unit/routes/unitEmployee.routes";
 import ShiftRoutes from "../../modules/AMS/Shift/routes/shift.routes";
 import SystemConfigRoutes from "../../modules/AMS/SystemConfig/routes/systemConfig.routes";
+import AnalyticsRoutes from "../../modules/AMS/Analytics/routes/analytics.routes";
 import ActivityLogRoutes from "../../modules/ActivityLog/routes/activityLog.routes";
 
 class App {
@@ -188,6 +189,7 @@ class App {
       UnitEmployeeRoutes,
       ShiftRoutes,
       SystemConfigRoutes,
+      AnalyticsRoutes,
 
       //ActivityLog
       ActivityLogRoutes
