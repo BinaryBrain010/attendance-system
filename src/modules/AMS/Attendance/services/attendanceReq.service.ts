@@ -3,6 +3,51 @@ import { AttendanceRequest } from "../types/AttendanceRequest";
 import { paginatedData } from "../../../../types/paginatedData";
 import { LeaveStatus } from "@prisma/client";
 
+// Only these fields exist on Prisma AttendanceRequest model (no JOIN/alias fields).
+const ATTENDANCE_REQUEST_SCHEMA_KEYS = [
+  "id",
+  "employeeId",
+  "attendanceId",
+  "reason",
+  "status",
+  "image",
+  "location",
+  "proposedStatus",
+  "proposedCheckIn",
+  "proposedCheckOut",
+  "proposedComment",
+  "proposedLocation",
+  "proposedDate",
+  "requestedBy",
+  "approvedBy",
+  "createdAt",
+  "updatedAt",
+  "isDeleted",
+] as const;
+
+/** Prisma expects ISO-8601 DateTime. Convert date-only "YYYY-MM-DD" to noon UTC. */
+function toDateTime(value: unknown): unknown {
+  if (value === undefined || value === null) return value;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(value + "T12:00:00.000Z");
+    return new Date(value);
+  }
+  return value;
+}
+
+function sanitizeAttendanceRequestData(data: any): Record<string, unknown> {
+  if (!data || typeof data !== "object") return {};
+  const dateKeys = ["proposedDate", "proposedCheckIn", "proposedCheckOut", "createdAt", "updatedAt"];
+  const out: Record<string, unknown> = {};
+  for (const key of ATTENDANCE_REQUEST_SCHEMA_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(data, key) && data[key] !== undefined) {
+      out[key] = dateKeys.includes(key) ? toDateTime(data[key]) : data[key];
+    }
+  }
+  return out;
+}
+
 class LeaveReqService {
   // Get all leave requests
   async getAllAttendanceRequests(): Promise<AttendanceRequest[]> {
@@ -17,12 +62,23 @@ class LeaveReqService {
     return await attendanceRequestModel.attendanceRequest.gpPgFindMany(page, pageSize);
   }
 
-
   // Create new leave request(s)
   async createAttendanceRequest(
     AttendanceRequestData: AttendanceRequest | AttendanceRequest[]
   ): Promise<AttendanceRequest | AttendanceRequest[]> {
-    return await attendanceRequestModel.attendanceRequest.gpCreate(AttendanceRequestData);
+    const raw = Array.isArray(AttendanceRequestData)
+      ? AttendanceRequestData.map((d) => sanitizeAttendanceRequestData(d))
+      : sanitizeAttendanceRequestData(AttendanceRequestData);
+    const payload = Array.isArray(raw)
+      ? raw.map((o) => {
+          const { id: _id, ...rest } = o as { id?: string; [k: string]: unknown };
+          return rest;
+        })
+      : (() => {
+          const { id: _id, ...rest } = raw as { id?: string; [k: string]: unknown };
+          return rest;
+        })();
+    return await attendanceRequestModel.attendanceRequest.gpCreate(payload);
   }
 
   // Update an existing leave request
@@ -30,7 +86,8 @@ class LeaveReqService {
     requestId: string,
     AttendanceRequestData: AttendanceRequest
   ): Promise<any> {
-    return await attendanceRequestModel.attendanceRequest.gpUpdate(requestId, AttendanceRequestData);
+    const payload = sanitizeAttendanceRequestData(AttendanceRequestData);
+    return await attendanceRequestModel.attendanceRequest.gpUpdate(requestId, payload);
   }
 
   // Soft delete a leave request

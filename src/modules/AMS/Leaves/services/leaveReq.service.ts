@@ -4,6 +4,25 @@ import { paginatedData } from "../../../../types/paginatedData";
 import prisma from "../../../../core/models/base.model";
 import { formatInTimeZone } from "date-fns-tz";
 
+/** Prisma expects ISO-8601 DateTime. Convert date-only "YYYY-MM-DD" to noon UTC. */
+function toDateTime(value: unknown): Date | unknown {
+  if (value === undefined || value === null) return value;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(value + "T12:00:00.000Z");
+    return new Date(value);
+  }
+  return value;
+}
+
+function normalizeLeaveRequestDates(data: any): any {
+  if (!data || typeof data !== "object") return data;
+  const out = { ...data };
+  if (Object.prototype.hasOwnProperty.call(out, "startDate")) out.startDate = toDateTime(out.startDate);
+  if (Object.prototype.hasOwnProperty.call(out, "endDate")) out.endDate = toDateTime(out.endDate);
+  return out;
+}
+
 class LeaveReqService {
   // Get all leave requests
   async getAllLeaveRequests(userId?: string): Promise<LeaveRequest[]> {
@@ -24,7 +43,10 @@ class LeaveReqService {
   async createLeaveRequest(
     leaveRequestData: LeaveRequest | LeaveRequest[]
   ): Promise<LeaveRequest | LeaveRequest[]> {
-    return await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+    const normalized = Array.isArray(leaveRequestData)
+      ? leaveRequestData.map(normalizeLeaveRequestDates)
+      : normalizeLeaveRequestDates(leaveRequestData);
+    return await leaveReqModel.leaveRequest.gpCreate(normalized);
   }
 
   // Update an existing leave request
@@ -32,7 +54,8 @@ class LeaveReqService {
     requestId: string,
     leaveRequestData: LeaveRequest
   ): Promise<any> {
-    return await leaveReqModel.leaveRequest.gpUpdate(requestId, leaveRequestData);
+    const normalized = normalizeLeaveRequestDates(leaveRequestData);
+    return await leaveReqModel.leaveRequest.gpUpdate(requestId, normalized);
   }
 
   // Soft delete a leave request

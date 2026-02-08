@@ -130,7 +130,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
   }
 
   async getLeaveRequestById(req: Request, res: Response) {
-    const { requestId } = req.body;
+    const requestId = (req.query.requestId as string) || req.body?.requestId;
     const operation = () => this.service.getLeaveRequestById(requestId);
     const successMessage = "Leave request retrieved successfully!";
     const errorMessage = "Error retrieving leave request:";

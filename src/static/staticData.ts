@@ -128,6 +128,46 @@ export const features: AppFeature[] = [
     parentFeatureId: "profile.*",
     label: "Profile Logout(of all devices)",
   },
+  {
+    name: "profile.activityLog.read.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Activity Log (view activity logs on profile)",
+  },
+  {
+    name: "profile.personalAttendance.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Attendance (view personal attendance on profile)",
+  },
+  {
+    name: "profile.personalLeaves.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Leaves (view personal leaves on profile)",
+  },
+  {
+    name: "profile.personalLeaveRequest.view.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Leave Request View (view own leave requests on personal leaves)",
+  },
+  {
+    name: "profile.personalLeaveRequest.create.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Leave Request Create (create own leave request)",
+  },
+  {
+    name: "profile.personalAttendanceRequest.view.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Attendance Request View (view own attendance requests on personal attendance)",
+  },
+  {
+    name: "profile.personalAttendanceRequest.create.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Attendance Request Create (create own attendance request)",
+  },
+  {
+    name: "profile.personalDocuments.*",
+    parentFeatureId: "profile.*",
+    label: "Profile Personal Documents (view own employee documents on profile)",
+  },
   { name: "setting.*", label: "Setting (Nav)" },
   { name: "setting.read.*", parentFeatureId: "setting.*", label: "Read" },
   { name: "role.*", label: "Role (Nav)" },

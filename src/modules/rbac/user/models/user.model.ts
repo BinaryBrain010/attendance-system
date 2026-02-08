@@ -795,12 +795,22 @@ WHERE "User".id = ${id}
       },
 
       async getLoggedInUser(this: any, id: string) {
-        const user = await userModel.user.findFirst({
-          where: {
-            id: id,
-          },
+        const user = await prisma.user.findFirst({
+          where: { id, isDeleted: null },
+          include: { employee: { select: { id: true, image: true, filePaths: true } } },
         });
-        return user?.username;
+        const employee = user?.employee as { id?: string; image?: string | null; filePaths?: string[] } | null;
+        const profileImage = employee?.image ?? null;
+        const filePaths = employee?.filePaths ?? [];
+        const employeePicturePath = filePaths.find(
+          (fp) => fp && String(fp).toLowerCase().includes("employee_picture_")
+        ) ?? null;
+        return {
+          username: user?.username ?? null,
+          profileImage,
+          profileImageFromFile: employeePicturePath ? employeePicturePath.replace(/\\/g, "/") : null,
+          employeeId: employee?.id ?? null,
+        };
       },
 
       async checkPreviousPassowrd(this: any, id: string, password: string) {
