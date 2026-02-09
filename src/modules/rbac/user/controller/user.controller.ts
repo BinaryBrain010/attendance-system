@@ -273,7 +273,8 @@ class UserController extends BaseController<UserService> {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    const expiresIn = rememberMe ? "6M" : "24h";
+    // Use "180d" for 6 months (ms package has no "months" - "6M" was parsed as 6 minutes!)
+    const expiresIn = rememberMe ? "180d" : "24h";
     let employee: any = null;
     let isAllowded: boolean = false;
 
@@ -389,9 +390,13 @@ class UserController extends BaseController<UserService> {
         permissions = [];
       }
 
+      // Session info for client to show "Session expires at..."
+      const decoded = jwt.decode(token as string) as { exp?: number } | null;
+      const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null;
+
       // Always include permissions array and unitIds in response
       if (employee) {
-        return res.json({ token, employee, permissions, unitIds });
+        return res.json({ token, employee, permissions, unitIds, expiresIn, expiresAt });
       }
 
       // Log login activity
@@ -415,7 +420,7 @@ class UserController extends BaseController<UserService> {
         console.error("Error logging login activity:", logError);
       }
 
-      return res.json({ token, permissions, unitIds });
+      return res.json({ token, permissions, unitIds, expiresIn, expiresAt });
     } else {
       return res
         .status(401)
