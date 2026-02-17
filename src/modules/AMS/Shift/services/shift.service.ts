@@ -116,11 +116,46 @@ class ShiftService {
   }
 
   async deleteShift(id: string): Promise<void> {
-    await prisma.shift.gpSoftDelete(id);
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.shiftAssignment.updateMany({
+        where: { shiftId: id },
+        data: { isDeleted: now, updatedAt: now },
+      }),
+      prisma.shiftTimetable.updateMany({
+        where: { shiftId: id },
+        data: { isDeleted: now, updatedAt: now },
+      }),
+      prisma.shiftTimetableBlock.updateMany({
+        where: { shiftId: id },
+        data: { isDeleted: now, updatedAt: now },
+      }),
+      prisma.shift.update({
+        where: { id },
+        data: { isDeleted: now, updatedAt: now },
+      }),
+    ]);
   }
 
   async restoreShift(id: string): Promise<void> {
-    await prisma.shift.gpRestore(id);
+    await prisma.$transaction([
+      prisma.shiftAssignment.updateMany({
+        where: { shiftId: id },
+        data: { isDeleted: null, updatedAt: new Date() },
+      }),
+      prisma.shiftTimetable.updateMany({
+        where: { shiftId: id },
+        data: { isDeleted: null, updatedAt: new Date() },
+      }),
+      prisma.shiftTimetableBlock.updateMany({
+        where: { shiftId: id },
+        data: { isDeleted: null, updatedAt: new Date() },
+      }),
+      prisma.shift.update({
+        where: { id },
+        data: { isDeleted: null, updatedAt: new Date() },
+      }),
+    ]);
   }
 
   private timeToMinutes(d: Date): number {
@@ -165,6 +200,7 @@ class ShiftService {
         employeeId: { in: employeeIds },
         isDeleted: null,
         shiftId: { not: shiftId },
+        shift: { isDeleted: null },
       },
       include: { shift: true },
     });
@@ -258,7 +294,7 @@ class ShiftService {
 
   async getAssignmentsByEmployeeId(employeeId: string): Promise<any[]> {
     const assignments = await prisma.shiftAssignment.findMany({
-      where: { employeeId, isDeleted: null },
+      where: { employeeId, isDeleted: null, shift: { isDeleted: null } },
       include: {
         shift: {
           select: {

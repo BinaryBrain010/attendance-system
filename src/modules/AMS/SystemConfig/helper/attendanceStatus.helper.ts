@@ -21,6 +21,7 @@ async function getShiftStartOnDate(
     where: {
       employeeId,
       isDeleted: null,
+      shift: { isDeleted: null },
       startDate: { lte: dayEnd },
       OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
     },
@@ -54,6 +55,7 @@ export async function getShiftEndOnDate(
     where: {
       employeeId,
       isDeleted: null,
+      shift: { isDeleted: null },
       startDate: { lte: dayEnd },
       OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
     },
@@ -91,6 +93,7 @@ export async function getShiftEndForAbsentCheck(
     where: {
       employeeId,
       isDeleted: null,
+      shift: { isDeleted: null },
       startDate: { lte: dayEnd },
       OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
     },
