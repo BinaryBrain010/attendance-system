@@ -97,7 +97,7 @@ const employeeModel = prisma.$extends({
           where: {
             isDeleted: null,
             status: {
-              not: "RESIGNED",
+              notIn: ["RESIGNED", "FIRE"],
             },
           },
           select: {
@@ -671,11 +671,14 @@ const employeeModel = prisma.$extends({
           }
         }
 
-        // Check if filter is "true" for limited field selection
+        // Check if filter is "true" for limited field selection (e.g. dropdowns)
         const isFilterMode = filter === "true";
 
-        // Add status filter if provided and not in filter mode
-        if (filter && !isFilterMode) {
+        // In filter mode, exclude resigned/fired so only assignable employees are returned
+        if (isFilterMode) {
+          where.status = { notIn: ["RESIGNED", "FIRE"] };
+        } else if (filter) {
+          // Explicit status filter (e.g. ACTIVE, RESIGNED)
           where.status = filter;
         }
 

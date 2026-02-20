@@ -57,13 +57,13 @@ const attendanceScheduleModel = prisma.$extends({
         const todayStart = getStartOfDayPakistan(today); // Start of the day in Pakistan timezone
         const todayEnd = getEndOfDayPakistan(today);
 
-        // Find all employees who have not been deleted and are not RESIGNED
+        // Find all employees who have not been deleted and are not RESIGNED/FIRE
         const allEmployees = await prisma.employee.findMany({
           select: { id: true },
           where: {
             isDeleted: null,
             status: {
-              not: "RESIGNED",
+              notIn: ["RESIGNED", "FIRE"],
             },
           },
         });
@@ -106,7 +106,7 @@ const attendanceScheduleModel = prisma.$extends({
           where: {
             isDeleted: null,
             status: {
-              not: "RESIGNED",
+              notIn: ["RESIGNED", "FIRE"],
             },
           },
         });

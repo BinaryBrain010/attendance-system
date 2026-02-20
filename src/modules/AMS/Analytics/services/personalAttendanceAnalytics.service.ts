@@ -362,7 +362,11 @@ export class PersonalAttendanceAnalyticsService {
     if (employeeIds.length === 0) return [];
 
     const employees = await prisma.employee.findMany({
-      where: { id: { in: employeeIds }, isDeleted: null },
+      where: {
+        id: { in: employeeIds },
+        isDeleted: null,
+        status: { notIn: ["RESIGNED", "FIRE"] },
+      },
       select: { id: true, name: true, surname: true },
     });
     const nameById = new Map(employees.map((e) => [e.id, `${e.name} ${e.surname}`.trim()]));

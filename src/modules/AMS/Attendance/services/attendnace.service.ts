@@ -302,6 +302,7 @@ return await attendanceModel.attendance.markFaceAttendance(image);
       prisma.employee.count({
         where: {
           isDeleted: null,
+          status: { notIn: ["RESIGNED", "FIRE"] },
           ...(Array.isArray(accessibleEmployeeIds)
             ? { id: { in: accessibleEmployeeIds } }
             : {}),

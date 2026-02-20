@@ -298,7 +298,7 @@ const holidayModel = prisma.$extends({
         const employees = await prisma.employee.findMany({
           where: {
             isDeleted: null,
-            status: { not: 'RESIGNED' },
+            status: { notIn: ['RESIGNED', 'FIRE'] },
           },
           select: { id: true },
         });

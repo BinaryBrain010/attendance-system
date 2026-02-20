@@ -324,7 +324,10 @@ const attendanceModel = prisma.$extends({
             // If attendance already exists, mark it as a checkout
             if ((existingAttendance.status === "PRESENT" || existingAttendance.status === "LATE") && existingAttendance.checkIn && !existingAttendance.checkOut) {
               const checkOutTime = new Date();
+              const checkInTime = existingAttendance.checkIn instanceof Date ? existingAttendance.checkIn : new Date(existingAttendance.checkIn);
               let checkoutComment = attendanceFields.comment || existingAttendance.comment || '';
+
+              let effectiveStatus = existingAttendance.status as string;
 
               try {
                 const { getShiftEndOnDate } = await import('../../SystemConfig/helper/attendanceStatus.helper');
@@ -340,14 +343,22 @@ const attendanceModel = prisma.$extends({
                       : 'Early check-out';
                   }
                 }
+
+                // Half-day vs full day: if hours worked < halfDayThresholdHours, mark as HALF_DAY
+                const halfDayThresholdHours = await SystemConfigService.getHalfDayThresholdHours();
+                const hoursWorked = (checkOutTime.getTime() - checkInTime.getTime()) / (60 * 60 * 1000);
+                if (hoursWorked < halfDayThresholdHours) {
+                  effectiveStatus = 'HALF_DAY';
+                }
               } catch (e) {
-                // If config/shift lookup fails, leave comment as-is
+                // If config/shift lookup fails, leave comment and status as-is
               }
 
               const updatedAttendance = await tx.attendance.update({
                 where: { id: existingAttendance.id },
                 data: {
                   checkOut: checkOutTime,
+                  status: effectiveStatus,
                   comment: checkoutComment,
                   updatedBy: updatedByUserId || null,
                   updatedAt: new Date(),
@@ -1091,7 +1102,10 @@ ORDER BY
 
       async markFaceAttendance(this: any, image: string) {
         const employees = await prisma.employee.findMany({
-          where: { isDeleted: null },
+          where: {
+            isDeleted: null,
+            status: { notIn: ["RESIGNED", "FIRE"] },
+          },
           select: { id: true, image: true },
         });
       

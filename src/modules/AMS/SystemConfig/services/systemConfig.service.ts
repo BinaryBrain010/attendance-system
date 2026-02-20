@@ -71,6 +71,14 @@ class SystemConfigService {
     const config = await this.getConfig();
     return config.earlyCheckOutGraceMinutes ?? DEFAULT_SYSTEM_CONFIG.earlyCheckOutGraceMinutes;
   }
+
+  /**
+   * Hours worked below this count as half-day (e.g. 4). Used when processing check-out.
+   */
+  async getHalfDayThresholdHours(): Promise<number> {
+    const config = await this.getConfig();
+    return config.halfDayThresholdHours ?? DEFAULT_SYSTEM_CONFIG.halfDayThresholdHours;
+  }
 }
 
 export default new SystemConfigService();

@@ -23,6 +23,7 @@ enum EmployeeStatus {
   ACTIVE
   RESIGNED
   REJOINED
+  FIRE
 }
 
 model Customer {
