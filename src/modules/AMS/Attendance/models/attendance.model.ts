@@ -184,10 +184,21 @@ const attendanceModel = prisma.$extends({
           };
         }
 
+        // No attendance for today: show "not checked in" and mention absent marking if applicable
+        let notMarkedMessage = `${employeeName} has not checked in yet! Do you want to mark attendance for ${employeeName} as ${status}?`;
+        try {
+          const SystemConfigService = (await import('../../SystemConfig/services/systemConfig.service')).default;
+          const { hour, minute } = await SystemConfigService.getAbsentMarkingTime();
+          const absentTimeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+          notMarkedMessage += `\nIf not marked, ${employeeName} will be marked absent at ${absentTimeStr}.`;
+        } catch {
+          // If config unavailable, keep message without absent note
+        }
+
         return {
           success: true,
           status: null,
-          message: `${employeeName} has not checked in yet! Do you want to mark attendance for ${employeeName} as ${status}?`,
+          message: notMarkedMessage,
         };
       },
  

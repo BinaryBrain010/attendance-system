@@ -2,9 +2,11 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import SystemConfigService from "../services/systemConfig.service";
 import { SystemConfigData } from "../types/systemConfig";
+import AttendanceScheduleService from "../../Attendance/services/schedule.service";
 
 const READ_FEATURE = "systemConfig.read.*";
 const UPDATE_FEATURE = "systemConfig.update.*";
+const SCHEDULER_LOGS_READ_FEATURE = "systemConfig.schedulerLogs.read.*";
 
 class SystemConfigController extends BaseController<typeof SystemConfigService> {
   protected service = SystemConfigService;
@@ -56,6 +58,31 @@ class SystemConfigController extends BaseController<typeof SystemConfigService> 
         metadata: { keys: Object.keys(updates || {}) },
       },
       req,
+    });
+  }
+
+  async getSchedulerLogs(req: Request, res: Response) {
+    const hasPermission =
+      (await this.checkPermission(req, SCHEDULER_LOGS_READ_FEATURE)) ||
+      (await this.checkPermission(req, "systemConfig.*"));
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to view scheduler logs.",
+        statusCode: 403,
+      });
+    }
+    const page = Math.max(1, parseInt(String(req.query.page), 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize), 10) || 20));
+    const scheduleService = new AttendanceScheduleService();
+    const operation = async () => {
+      const result = await scheduleService.getAttendanceSchedules(page, pageSize);
+      const data = (result?.data || []).slice();
+      data.sort((a: any, b: any) => new Date(b.runTime).getTime() - new Date(a.runTime).getTime());
+      return { ...result, data };
+    };
+    await this.handleRequest(operation, res, {
+      successMessage: "Scheduler logs retrieved successfully.",
     });
   }
 }

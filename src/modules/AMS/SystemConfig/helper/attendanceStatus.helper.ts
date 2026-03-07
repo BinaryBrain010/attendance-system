@@ -1,11 +1,33 @@
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import SystemConfigService from "../services/systemConfig.service";
 
 /** Transaction-like client with shiftAssignment (from prisma.$transaction or extended client). */
 type TransactionClient = { shiftAssignment: { findFirst: (args: any) => Promise<any> } };
 
 /**
- * Get employee's shift start time on a given date (in local date terms).
+ * Build a moment on the attendance date at the given time-of-day, in the system timezone.
+ * Fixes LATE/PRESENT by using the same calendar day as attendance (e.g. Pakistan) instead of UTC day.
+ */
+async function buildMomentOnDateInTimezone(
+  date: Date,
+  timeOfDay: Date,
+  timezone: string
+): Promise<Date> {
+  const y = parseInt(formatInTimeZone(date, timezone, "yyyy"), 10);
+  const month = parseInt(formatInTimeZone(date, timezone, "MM"), 10) - 1;
+  const d = parseInt(formatInTimeZone(date, timezone, "dd"), 10);
+  const zoned = toZonedTime(timeOfDay, timezone);
+  const h = zoned.getHours();
+  const min = zoned.getMinutes();
+  const sec = zoned.getSeconds();
+  // Interpret (y, month, d, h, min, sec) as local time in timezone -> UTC
+  return fromZonedTime(new Date(y, month, d, h, min, sec, 0), timezone);
+}
+
+/**
+ * Get employee's shift start time on the attendance date (in system timezone).
  * Uses ShiftAssignment (startDate <= date <= endDate) and Shift.startTime.
+ * Shift time is interpreted in the system timezone (e.g. Asia/Karachi) so 10:00 = 10 AM on that day.
  */
 async function getShiftStartOnDate(
   tx: TransactionClient,
@@ -30,15 +52,14 @@ async function getShiftStartOnDate(
 
   if (!assignment?.shift) return null;
 
-  const shiftStart = new Date(assignment.shift.startTime);
-  const startOnDay = new Date(date);
-  startOnDay.setUTCHours(shiftStart.getUTCHours(), shiftStart.getUTCMinutes(), 0, 0);
-
-  return startOnDay;
+  const config = await SystemConfigService.getConfig();
+  const timezone = config.timezone ?? "Asia/Karachi";
+  const shiftStartTime = new Date(assignment.shift.startTime);
+  return buildMomentOnDateInTimezone(date, shiftStartTime, timezone);
 }
 
 /**
- * Get employee's shift end time on a given date.
+ * Get employee's shift end time on the attendance date (in system timezone).
  * Uses ShiftAssignment and Shift.endTime for that day.
  */
 export async function getShiftEndOnDate(
@@ -64,11 +85,10 @@ export async function getShiftEndOnDate(
 
   if (!assignment?.shift) return null;
 
-  const shiftEnd = new Date(assignment.shift.endTime);
-  const endOnDay = new Date(date);
-  endOnDay.setUTCHours(shiftEnd.getUTCHours(), shiftEnd.getUTCMinutes(), 0, 0);
-
-  return endOnDay;
+  const config = await SystemConfigService.getConfig();
+  const timezone = config.timezone ?? "Asia/Karachi";
+  const shiftEndTime = new Date(assignment.shift.endTime);
+  return buildMomentOnDateInTimezone(date, shiftEndTime, timezone);
 }
 
 /**
@@ -102,12 +122,12 @@ export async function getShiftEndForAbsentCheck(
 
   if (!assignment?.shift) return null;
 
-  const shiftStart = new Date(assignment.shift.startTime);
-  const shiftEnd = new Date(assignment.shift.endTime);
-  const startOnDay = new Date(todayDate);
-  startOnDay.setUTCHours(shiftStart.getUTCHours(), shiftStart.getUTCMinutes(), 0, 0);
-  const endOnDay = new Date(todayDate);
-  endOnDay.setUTCHours(shiftEnd.getUTCHours(), shiftEnd.getUTCMinutes(), 0, 0);
+  const config = await SystemConfigService.getConfig();
+  const timezone = config.timezone ?? "Asia/Karachi";
+  const shiftStartTime = new Date(assignment.shift.startTime);
+  const shiftEndTime = new Date(assignment.shift.endTime);
+  const startOnDay = await buildMomentOnDateInTimezone(todayDate, shiftStartTime, timezone);
+  const endOnDay = await buildMomentOnDateInTimezone(todayDate, shiftEndTime, timezone);
 
   const isOvernight = endOnDay.getTime() <= startOnDay.getTime();
 
@@ -121,8 +141,7 @@ export async function getShiftEndForAbsentCheck(
 
   const tomorrow = new Date(todayDate);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const endTomorrow = new Date(tomorrow);
-  endTomorrow.setUTCHours(shiftEnd.getUTCHours(), shiftEnd.getUTCMinutes(), 0, 0);
+  const endTomorrow = await buildMomentOnDateInTimezone(tomorrow, shiftEndTime, timezone);
   return endTomorrow;
 }
 

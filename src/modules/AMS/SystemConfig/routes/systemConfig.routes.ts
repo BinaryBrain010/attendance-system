@@ -14,6 +14,7 @@ class SystemConfigRoutes {
   private initializeRoutes(): void {
     this.router.get("/get", this.controller.getConfig.bind(this.controller));
     this.router.put("/update", this.controller.updateConfig.bind(this.controller));
+    this.router.get("/schedulerLogs", this.controller.getSchedulerLogs.bind(this.controller));
   }
 
   getRouter(): Router {

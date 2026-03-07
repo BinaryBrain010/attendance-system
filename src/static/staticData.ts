@@ -386,6 +386,7 @@ export const features: AppFeature[] = [
 { name: "systemConfig.*", label: "System Config (Nav)" },
 { name: "systemConfig.read.*", parentFeatureId: "systemConfig.*", label: "Read" },
 { name: "systemConfig.update.*", parentFeatureId: "systemConfig.*", label: "Update" },
+{ name: "systemConfig.schedulerLogs.read.*", parentFeatureId: "systemConfig.*", label: "View Scheduler Logs" },
 
 //activityLog
 { name: "activityLog.*", label: "Activity Log (Nav)" },
