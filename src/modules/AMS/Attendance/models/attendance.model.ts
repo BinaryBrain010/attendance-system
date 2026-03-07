@@ -1,6 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
-import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { toZonedTime, formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { Attendance } from "../types/Attendance";
 import {
   formatTime,
@@ -73,6 +73,35 @@ function getEndOfDayPakistan(date: Date): Date {
   
   return pakistanEndOfDay;
 }
+
+/**
+ * Parse a date/datetime string as local time in the given timezone (e.g. Asia/Karachi).
+ * Use this so Vercel (or any server) timezone never affects attendance.
+ * - "YYYY-MM-DD" → start of that day in timezone
+ * - "YYYY-MM-DDTHH:mm:ss" or with .sss (no Z or offset) → that moment in timezone
+ * - If string has 'Z' or ends with +/-offset, parse as UTC and return as-is.
+ */
+function parseInSystemTimezone(value: string | Date | null | undefined, timezone: string): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  const s = String(value).trim();
+  if (!s) return null;
+  const hasOffset = /Z|[+-]\d{2}:?\d{2}$/.test(s);
+  if (hasOffset) return new Date(s);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  if (dateOnly) {
+    const [y, m, d] = s.split('-').map(Number);
+    return fromZonedTime(new Date(y, m - 1, d, 0, 0, 0, 0), timezone);
+  }
+  const dateTime = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+  if (dateTime) {
+    const [, y, mo, d, h, min, sec, ms] = dateTime;
+    const msNum = ms ? parseInt(ms.padEnd(3, '0').slice(0, 3), 10) : 0;
+    return fromZonedTime(new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(min), Number(sec), msNum), timezone);
+  }
+  return new Date(s);
+}
+
 // import { FaceComparisonService } from "../../Face-api/services/face-api.service";
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -277,11 +306,20 @@ const attendanceModel = prisma.$extends({
               }
             }
           }
-          
-          // Use Pakistan timezone for date filtering
-          const targetDate = attendanceFields.date
-            ? new Date(attendanceFields.date)
-            : new Date();
+
+          // Use system timezone (e.g. Asia/Karachi) so Vercel/frontend and New York server never conflict
+          const SystemConfigService = (await import('../../SystemConfig/services/systemConfig.service')).default;
+          const config = await SystemConfigService.getConfig();
+          const systemTimezone = config.timezone ?? PAKISTAN_TIMEZONE;
+
+          let targetDate: Date;
+          const dateOnlyStr = typeof attendanceFields.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(String(attendanceFields.date).trim());
+          if (attendanceFields.date != null && dateOnlyStr) {
+            const parsed = parseInSystemTimezone(attendanceFields.date, systemTimezone);
+            targetDate = parsed ?? new Date();
+          } else {
+            targetDate = attendanceFields.date ? new Date(attendanceFields.date) : new Date();
+          }
           const todayStart = getStartOfDayPakistan(targetDate);
           const todayEnd = getEndOfDayPakistan(targetDate);
         
@@ -295,8 +333,15 @@ const attendanceModel = prisma.$extends({
           }
         
           // Normalize the date to start of day in Pakistan timezone for consistent storage
-          // This ensures the date field always represents the day in Pakistan timezone
-          const normalizedDate = getStartOfDayPakistan(targetDate);
+          const normalizedDate = dateOnlyStr && attendanceFields.date != null
+            ? (parseInSystemTimezone(attendanceFields.date, systemTimezone) ?? getStartOfDayPakistan(targetDate))
+            : getStartOfDayPakistan(targetDate);
+
+          // Parse check-in in system timezone so server (e.g. New York) never misinterprets "14:12" as local
+          const rawCheckIn = attendanceFields.checkIn;
+          const normalizedCheckIn: Date | null = rawCheckIn == null
+            ? null
+            : parseInSystemTimezone(rawCheckIn, systemTimezone) ?? (rawCheckIn instanceof Date ? rawCheckIn : new Date(rawCheckIn));
           
           // Check for existing attendance within the same day (Pakistan timezone)
           const existingAttendance = await tx.attendance.findFirst({
@@ -442,7 +487,7 @@ const attendanceModel = prisma.$extends({
           // If no existing attendance, resolve PRESENT vs LATE using shift + system config
           let effectiveStatus = attendanceFields.status;
           if (effectiveStatus === 'PRESENT' && !shouldClearTimes(effectiveStatus)) {
-            const checkInForCompare = attendanceFields.checkIn || new Date();
+            const checkInForCompare = normalizedCheckIn ?? new Date();
             try {
               const { getEffectiveStatusForCheckIn } = await import('../../SystemConfig/helper/attendanceStatus.helper');
               effectiveStatus = await getEffectiveStatusForCheckIn(
@@ -465,7 +510,7 @@ const attendanceModel = prisma.$extends({
               date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
               checkIn: clearTimesOnCreate
                 ? null
-                : attendanceFields.checkIn || new Date(),
+                : normalizedCheckIn ?? new Date(),
               comment: attendanceFields.comment || '',
               createdBy: createdByUserId || null,
               previousUpdates: [],
