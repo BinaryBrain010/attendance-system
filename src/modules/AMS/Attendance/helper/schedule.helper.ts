@@ -5,11 +5,9 @@ import { Attendance } from "../types/Attendance";
 import { AttendanceScheduler } from "../types/schedule";
 import {
   AttendanceStatus,
-  Employee,
   ScheduleParent,
   ScheduleStatus,
 } from "@prisma/client";
-import { startOfDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import AttendanceService from "../services/attendnace.service";
 import { getCurrentTimeInPST } from "../../../../helper/date.helper";
@@ -34,32 +32,16 @@ function getStartOfDayPakistan(date: Date): Date {
   return pakistanMidnight;
 }
 
-// Helper function to get end of day in Pakistan timezone, then convert to UTC for database query
-function getEndOfDayPakistan(date: Date): Date {
-  const year = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'yyyy'));
-  const month = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'MM')) - 1;
-  const day = parseInt(formatInTimeZone(date, PAKISTAN_TIMEZONE, 'dd'));
-  const pakistanEndOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
-  pakistanEndOfDay.setUTCHours(pakistanEndOfDay.getUTCHours() - 5);
-  return pakistanEndOfDay;
-}
-
 class AttendanceSchedulerHelper {
   private service: AttendanceScheduleService = new AttendanceScheduleService();
   private attendanceService: AttendanceService = new AttendanceService();
   private attendanceSchedulerService: AttendanceScheduleService =
     new AttendanceScheduleService();
   private attendanceSchedule: schedule.Job;
-  private nonCheckedOutCommentSchedule: schedule.Job;
   constructor() {
     this.attendanceSchedule = schedule.scheduleJob(
       "*/1 * * * *", // Runs every minute
       this.cleanup.bind(this)
-    );
-
-    this.nonCheckedOutCommentSchedule = schedule.scheduleJob(
-       "*/1 * * * *",// Runs every minute from 11:50 PM to 11:55 PM
-      this.markNonCheckedOutComments.bind(this)
     );
   }
 
@@ -174,100 +156,6 @@ class AttendanceSchedulerHelper {
       );
       console.error("Error during attendance cleanup:", error);
     }
-  }
-
-  private async markNonCheckedOutComments() {
-    const now = getCurrentTimeInPST();
-    const todayDate = getStartOfDayPakistan(now);
-    const todayEnd = getEndOfDayPakistan(now);
-
-    let scheduleReport: AttendanceScheduler = {
-      log: "Error occurred during non-checked-out comment marking.",
-      parent: ScheduleParent.CHECK_OUT,
-      status: ScheduleStatus.FAIL,
-      employeeIds: [],
-      runTime: now,
-    };
-
-    try {
-      const { default: SystemConfigService } = await import('../../SystemConfig/services/systemConfig.service');
-      const { getShiftEndOnDate } = await import('../../SystemConfig/helper/attendanceStatus.helper');
-
-      const requireCheckOut = await SystemConfigService.getRequireCheckOut();
-      if (!requireCheckOut) {
-        scheduleReport = {
-          log: "Check-out reminder is disabled (Require check-out is off).",
-          parent: ScheduleParent.CHECK_OUT,
-          status: ScheduleStatus.SUCCESS,
-          employeeIds: [],
-          runTime: now,
-        };
-        await this.attendanceSchedulerService.createAttendanceSchedule(scheduleReport);
-        return;
-      }
-
-      const reminderMinutes = await SystemConfigService.getCheckOutReminderAfterShiftMinutes();
-
-      const nonCheckedOutEmployeeIds =
-        await this.service.getNonCheckoutEmployees();
-
-      if (nonCheckedOutEmployeeIds.length === 0) {
-        scheduleReport = {
-          log: "No non-checked-out employees found.",
-          parent: ScheduleParent.CHECK_OUT,
-          status: ScheduleStatus.SUCCESS,
-          employeeIds: [],
-          runTime: now,
-        };
-        await this.attendanceSchedulerService.createAttendanceSchedule(scheduleReport);
-        return;
-      }
-
-      const commentedIds: string[] = [];
-
-      for (const employeeId of nonCheckedOutEmployeeIds) {
-        const shiftEnd = await getShiftEndOnDate(prisma, employeeId, todayDate);
-        if (!shiftEnd) continue;
-
-        const reminderThreshold = new Date(
-          shiftEnd.getTime() + reminderMinutes * 60 * 1000
-        );
-        if (now < reminderThreshold) continue;
-
-        const attendance = await prisma.attendance.findFirst({
-          where: {
-            employeeId,
-            date: { gte: todayDate, lte: todayEnd },
-            checkOut: null,
-            status: "PRESENT",
-          },
-        });
-
-        if (attendance) {
-          await prisma.attendance.update({
-            where: { id: attendance.id },
-            data: { comment: "Checked Out not marked" },
-          });
-          commentedIds.push(employeeId);
-        }
-      }
-
-      scheduleReport = {
-        log: commentedIds.length > 0
-          ? `Successfully added "forgot to check out" comments for ${commentedIds.length} employee(s) (after ${reminderMinutes} min past shift end).`
-          : "No employees past check-out reminder threshold.",
-        parent: ScheduleParent.CHECK_OUT,
-        status: ScheduleStatus.SUCCESS,
-        employeeIds: commentedIds,
-        runTime: now,
-      };
-    } catch (error) {
-      console.log("Error marking check-out reminders:", error);
-    }
-
-    await this.attendanceSchedulerService.createAttendanceSchedule(
-      scheduleReport
-    );
   }
 }
 

@@ -413,6 +413,10 @@ const holidayModel = prisma.$extends({
 
               // Mark all employees' attendance as HOLIDAYS
               await this.markHolidayAttendance(sundayDate);
+            } else if (existingHoliday.isActive !== false) {
+              // Holiday already exists (likely from a previous run). Re-apply holiday attendance
+              // so newly added employees (or missing attendance rows) also get Sundays marked.
+              await this.markHolidayAttendance(sundayDate);
             }
           }
           currentDate.setDate(currentDate.getDate() + 1);
