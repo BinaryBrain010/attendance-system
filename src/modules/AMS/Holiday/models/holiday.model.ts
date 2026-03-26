@@ -28,6 +28,16 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
   }
 }
 
+/** Local calendar key for matching loop dates with DB holiday dates (same as setHours(0,0,0,0) normalization). */
+function localYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const CREATE_ATTENDANCE_CHUNK = 500;
+
 const holidayModel = prisma.$extends({
   model: {
     holiday: {
@@ -294,7 +304,6 @@ const holidayModel = prisma.$extends({
       },
 
       async markHolidayAttendance(this: any, date: Date) {
-        // Get all active employees
         const employees = await prisma.employee.findMany({
           where: {
             isDeleted: null,
@@ -303,45 +312,50 @@ const holidayModel = prisma.$extends({
           select: { id: true },
         });
 
+        const employeeIds = employees.map((e) => e.id);
+        if (employeeIds.length === 0) {
+          return;
+        }
+
         const dateStart = new Date(date);
         dateStart.setHours(0, 0, 0, 0);
         const dateEnd = new Date(date);
         dateEnd.setHours(23, 59, 59, 999);
 
-        // Mark attendance as HOLIDAYS for all employees on this date
-        for (const employee of employees) {
-          // Check if attendance already exists
-          const existingAttendance = await prisma.attendance.findFirst({
-            where: {
-              employeeId: employee.id,
-              date: {
-                gte: dateStart,
-                lte: dateEnd,
-              },
-              isDeleted: null,
+        const existingRows = await prisma.attendance.findMany({
+          where: {
+            employeeId: { in: employeeIds },
+            date: { gte: dateStart, lte: dateEnd },
+            isDeleted: null,
+          },
+          select: { id: true, employeeId: true },
+        });
+
+        const now = new Date();
+        const idsToHoliday = existingRows.map((r) => r.id);
+        if (idsToHoliday.length > 0) {
+          await prisma.attendance.updateMany({
+            where: { id: { in: idsToHoliday } },
+            data: {
+              status: AttendanceStatus.HOLIDAYS,
+              updatedAt: now,
             },
           });
+        }
 
-          if (existingAttendance) {
-            // Update existing attendance to HOLIDAYS
-            await prisma.attendance.update({
-              where: { id: existingAttendance.id },
-              data: {
-                status: AttendanceStatus.HOLIDAYS,
-                updatedAt: new Date(),
-              },
-            });
-          } else {
-            // Create new attendance record as HOLIDAYS
-            await prisma.attendance.create({
-              data: {
-                employeeId: employee.id,
-                date: dateStart,
-                status: AttendanceStatus.HOLIDAYS,
-                createdAt: new Date(),
-              },
-            });
-          }
+        const withRow = new Set(existingRows.map((r) => r.employeeId));
+        const missingEmployeeIds = employeeIds.filter((id) => !withRow.has(id));
+
+        for (let i = 0; i < missingEmployeeIds.length; i += CREATE_ATTENDANCE_CHUNK) {
+          const chunk = missingEmployeeIds.slice(i, i + CREATE_ATTENDANCE_CHUNK);
+          await prisma.attendance.createMany({
+            data: chunk.map((employeeId) => ({
+              employeeId,
+              date: dateStart,
+              status: AttendanceStatus.HOLIDAYS,
+              createdAt: now,
+            })),
+          });
         }
       },
 
@@ -378,24 +392,34 @@ const holidayModel = prisma.$extends({
         const holidays: any[] = [];
         const startDate = new Date(year, 0, 1); // January 1
         const endDate = new Date(year, 11, 31); // December 31
+        endDate.setHours(23, 59, 59, 999);
 
-        // Find all Sundays in the year
+        const existingYearHolidays = await prisma.holiday.findMany({
+          where: {
+            isDeleted: null,
+            date: { gte: startDate, lte: endDate },
+          },
+          select: { id: true, date: true, isActive: true },
+        });
+
+        const holidayByLocalDay = new Map<
+          string,
+          { id: string; date: Date; isActive: boolean | null }
+        >();
+        for (const h of existingYearHolidays) {
+          const d = new Date(h.date);
+          d.setHours(0, 0, 0, 0);
+          holidayByLocalDay.set(localYmd(d), h);
+        }
+
         const currentDate = new Date(startDate);
         while (currentDate <= endDate) {
-          if (currentDate.getDay() === 0) { // Sunday
+          if (currentDate.getDay() === 0) {
             const sundayDate = new Date(currentDate);
             sundayDate.setHours(0, 0, 0, 0);
 
-            // Check if holiday already exists for this date
-            const existingHoliday = await prisma.holiday.findFirst({
-              where: {
-                date: {
-                  gte: sundayDate,
-                  lte: new Date(sundayDate.getTime() + 24 * 60 * 60 * 1000 - 1),
-                },
-                isDeleted: null,
-              },
-            });
+            const dayKey = localYmd(sundayDate);
+            const existingHoliday = holidayByLocalDay.get(dayKey);
 
             if (!existingHoliday) {
               const holiday = await prisma.holiday.create({
@@ -410,12 +434,10 @@ const holidayModel = prisma.$extends({
               });
 
               holidays.push(holiday);
+              holidayByLocalDay.set(dayKey, holiday);
 
-              // Mark all employees' attendance as HOLIDAYS
               await this.markHolidayAttendance(sundayDate);
             } else if (existingHoliday.isActive !== false) {
-              // Holiday already exists (likely from a previous run). Re-apply holiday attendance
-              // so newly added employees (or missing attendance rows) also get Sundays marked.
               await this.markHolidayAttendance(sundayDate);
             }
           }
