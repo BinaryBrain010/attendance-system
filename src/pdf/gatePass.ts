@@ -126,22 +126,16 @@ export class GatePassPDF {
     
     yPosition = columnY - 30;
     
-    // Items Section
-    page.drawText("Items", {
-      x: 50,
-      y: yPosition,
-      size: 14,
-      font: helveticaBoldFont,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 20;
-    
-    // Draw items
+    // Items Section (header drawn lazily so we don't orphan it on an empty page)
     let currentPage = page;
     const bottomMargin = 60; // keep clear of pagination/footer
     const serialLineHeight = 14;
     const serialPrefix = "Serial Numbers: ";
     const maxSerialWidth = width - 110;
+    const itemTopPadding = 5;
+    const itemBaseHeightForOneSerialLine = 52; // matches rowHeight when serialLines.length === 1
+    let itemsHeaderDrawnForPageIndex = -1;
+    let hasRenderedAnyItem = false;
 
     const buildSerialLines = (serialNos: string[]) => {
       const lines: string[] = [];
@@ -165,19 +159,30 @@ export class GatePassPDF {
       return lines;
     };
 
-    const ensurePageSpace = (requiredHeight: number) => {
-      if (yPosition - requiredHeight < bottomMargin) {
-        currentPage = pdfDoc.addPage([595, 842]);
-        yPosition = height - 50;
-        currentPage.drawText("Items (continued)", {
-          x: 50,
-          y: yPosition,
-          size: 14,
-          font: helveticaBoldFont,
-          color: rgb(0, 0, 0),
-        });
-        yPosition -= 20;
-      }
+    const startNewItemsPage = () => {
+      currentPage = pdfDoc.addPage([595, 842]);
+      yPosition = height - 50;
+      itemsHeaderDrawnForPageIndex = -1; // force redraw header on this new page
+    };
+
+    const ensureItemsHeader = (continued: boolean) => {
+      const pageIndex = pdfDoc.getPages().indexOf(currentPage);
+      if (itemsHeaderDrawnForPageIndex === pageIndex) return;
+      currentPage.drawText(continued ? "Items (continued)" : "Items", {
+        x: 50,
+        y: yPosition,
+        size: 14,
+        font: helveticaBoldFont,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 20;
+      itemsHeaderDrawnForPageIndex = pageIndex;
+    };
+
+    const getMaxSerialLinesThatFit = () => {
+      const remainingHeight = yPosition - bottomMargin;
+      if (remainingHeight < itemBaseHeightForOneSerialLine) return 0;
+      return 1 + Math.floor((remainingHeight - itemBaseHeightForOneSerialLine) / serialLineHeight);
     };
 
     data.items.forEach((item: Item, index: number) => {
@@ -192,65 +197,108 @@ export class GatePassPDF {
       });
 
       const serialLines = buildSerialLines(sortedSerialNos);
-      const serialBlockHeight = (serialLines.length - 1) * serialLineHeight;
-      const rowHeight = 40 + serialBlockHeight + 12;
-      const requiredHeight = rowHeight + 10;
+      let lineCursor = 0;
+      let isFirstChunk = true;
 
-      ensurePageSpace(requiredHeight);
+      while (lineCursor < serialLines.length) {
+        let maxLines = getMaxSerialLinesThatFit();
+        if (maxLines === 0) {
+          startNewItemsPage();
+          continue;
+        }
 
-      // Background color for alternating rows
-      if (index % 2 === 0) {
-        currentPage.drawRectangle({
-          x: 50,
-          y: yPosition - rowHeight + 5,
-          width: width - 100,
-          height: rowHeight,
-          color: rgb(0.95, 0.95, 0.95),
-        });
-      }
+        // If this chunk starts on a fresh page (or after customer info), draw header now.
+        // First page: use "Items". Subsequent pages: "Items (continued)".
+        ensureItemsHeader(hasRenderedAnyItem || !isFirstChunk ? true : false);
 
-      // Item name
-      currentPage.drawText(`${index + 1}. ${item.name}`, {
-        x: 55,
-        y: yPosition - 10,
-        size: 12,
-        font: helveticaBoldFont,
-        color: rgb(0, 0, 0),
-      });
+        // Recalculate after header was drawn (yPosition changed)
+        maxLines = getMaxSerialLinesThatFit();
+        if (maxLines === 0) {
+          startNewItemsPage();
+          continue;
+        }
 
-      // Quantity
-      currentPage.drawText(`Quantity: ${item.quantity}`, {
-        x: 55,
-        y: yPosition - 25,
-        size: 10,
-        font: helveticaFont,
-        color: rgb(0, 0, 0),
-      });
+        const chunkCount = Math.min(maxLines, serialLines.length - lineCursor);
+        const chunkSerialBlockHeight = (chunkCount - 1) * serialLineHeight;
+        const rowHeight = 40 + chunkSerialBlockHeight + 12;
 
-      // Serial numbers (wrapped)
-      let lineY = yPosition - 40;
-      serialLines.forEach((line) => {
-        currentPage.drawText(line, {
+        // Background color for alternating rows (keep the same shading across chunks of the same item)
+        if (index % 2 === 0) {
+          currentPage.drawRectangle({
+            x: 50,
+            y: yPosition - rowHeight + itemTopPadding,
+            width: width - 100,
+            height: rowHeight,
+            color: rgb(0.95, 0.95, 0.95),
+          });
+        }
+
+        // Item name (repeat on continued chunks so it doesn't look like a cut card)
+        currentPage.drawText(
+          `${index + 1}. ${item.name}${isFirstChunk ? "" : " (continued)"}`,
+          {
+            x: 55,
+            y: yPosition - 10,
+            size: 12,
+            font: helveticaBoldFont,
+            color: rgb(0, 0, 0),
+          }
+        );
+
+        // Quantity (repeat too)
+        currentPage.drawText(`Quantity: ${item.quantity}`, {
           x: 55,
-          y: lineY,
-          size: 11,
-          font: helveticaBoldFont,
+          y: yPosition - 25,
+          size: 10,
+          font: helveticaFont,
           color: rgb(0, 0, 0),
         });
-        lineY -= serialLineHeight;
-      });
 
-      yPosition -= rowHeight;
+        // Serial numbers (wrapped + chunked)
+        let lineY = yPosition - 40;
+        for (let i = 0; i < chunkCount; i++) {
+          let line = serialLines[lineCursor + i];
 
-      // Draw border line
-      currentPage.drawLine({
-        start: { x: 50, y: yPosition },
-        end: { x: width - 50, y: yPosition },
-        thickness: 0.5,
-        color: rgb(0.8, 0.8, 0.8),
-      });
+          // If we're continuing serials on a new chunk/page, label the first line to avoid ambiguity.
+          if (!isFirstChunk && i === 0 && !line.startsWith(serialPrefix)) {
+            const contPrefix = "Serial Numbers (cont.): ";
+            const candidate = contPrefix + line;
+            const candidateWidth = helveticaBoldFont.widthOfTextAtSize(candidate, 11);
+            line = candidateWidth > maxSerialWidth ? line : candidate;
+          }
 
-      yPosition -= 10;
+          currentPage.drawText(line, {
+            x: 55,
+            y: lineY,
+            size: 11,
+            font: helveticaBoldFont,
+            color: rgb(0, 0, 0),
+          });
+          lineY -= serialLineHeight;
+        }
+
+        yPosition -= rowHeight;
+
+        // Draw border line
+        currentPage.drawLine({
+          start: { x: 50, y: yPosition },
+          end: { x: width - 50, y: yPosition },
+          thickness: 0.5,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+
+        yPosition -= 10;
+
+        hasRenderedAnyItem = true;
+        isFirstChunk = false;
+        lineCursor += chunkCount;
+
+        // If the item still has remaining serial lines, force a new page so the card doesn't look cut.
+        // (This keeps each chunk visually self-contained on a page.)
+        if (lineCursor < serialLines.length) {
+          startNewItemsPage();
+        }
+      }
     });
     
     // Signature section if exists
