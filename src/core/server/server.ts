@@ -48,6 +48,9 @@ import SystemConfigRoutes from "../../modules/AMS/SystemConfig/routes/systemConf
 import AnalyticsRoutes from "../../modules/AMS/Analytics/routes/analytics.routes";
 import ActivityLogRoutes from "../../modules/ActivityLog/routes/activityLog.routes";
 
+//Frontdesk
+import VisitorRoutes from "../../modules/Frontdesk/Visitor/routes/visitor.routes";
+
 class App {
   private app: Express;
   private server: http.Server | null = null;
@@ -192,7 +195,10 @@ class App {
       AnalyticsRoutes,
 
       //ActivityLog
-      ActivityLogRoutes
+      ActivityLogRoutes,
+
+      //Frontdesk
+      VisitorRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

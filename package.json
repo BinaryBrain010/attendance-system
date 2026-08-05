@@ -16,6 +16,8 @@
     "preview-employee-codes": "ts-node updateEmployeeCodes.ts --preview",
     "delete-orphaned-users": "ts-node deleteOrphanedUsers.ts",
     "setup-office-employees": "ts-node setupOfficeEmployees.ts",
+    "import-reception-visitors": "ts-node importReceptionVisitors.ts",
+    "preview-reception-visitors": "ts-node importReceptionVisitors.ts --preview",
     "tsc": "tsc -w"
   },
   "author": "ahad",

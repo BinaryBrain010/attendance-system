@@ -248,6 +248,7 @@ model Employee {
   todos             Todo[]
   managedUnits      Unit[]              @relation("UnitAttendanceManager")
   unitEmployees     UnitEmployee[]
+  visitorsReferred  Visitor[]           @relation("VisitorReferredTo")
 }
 
 enum Company {
@@ -567,4 +568,46 @@ model ActivityLog {
   @@index([entityType, entityId])
   @@index([action])
   @@index([createdAt])
+}
+
+enum VisitorOutcome {
+  ENQUIRY
+  PURCHASED
+  REPLACED
+  RECEIVED
+  NO_ACTION
+  OTHER
+}
+
+model Visitor {
+  id                   String         @id @default(uuid()) @db.VarChar(36)
+  name                 String
+  phone                String?
+  cnic                 String?
+  vehicleNo            String?
+  company              String?
+  purpose              String?
+  // Host the visitor was referred to: optional link to an Employee, with free-text fallback
+  referredToText       String?
+  referredToEmployeeId String?        @db.VarChar(36)
+  referredToEmployee   Employee?      @relation("VisitorReferredTo", fields: [referredToEmployeeId], references: [id])
+  visitDate            DateTime
+  timeIn               DateTime?
+  timeOut              DateTime?
+  // Visit outcome / purchase tracking
+  outcome              VisitorOutcome @default(ENQUIRY)
+  purchased            Boolean        @default(false)
+  purchaseAmount       Float?
+  notes                String?
+  createdAt            DateTime?      @default(now())
+  updatedAt            DateTime?      @updatedAt
+  isDeleted            DateTime?
+  createdBy            String?        @db.VarChar(36)
+  updatedBy            String?        @db.VarChar(36)
+  previousUpdates      Json?          @db.JsonB
+
+  @@index([visitDate])
+  @@index([referredToEmployeeId])
+  @@index([outcome])
+  @@index([isDeleted])
 }

@@ -215,6 +215,7 @@ export const features: AppFeature[] = [
   { name: "appModules.quickPass.*", parentFeatureId: "appModules.*", label: "Quick Pass" },
   { name: "appModules.quickMark.*", parentFeatureId: "appModules.*", label: "Quick Mark" },
   { name: "appModules.accessControl.*", parentFeatureId: "appModules.*", label: "Access Control" },
+  { name: "appModules.frontdesk.*", parentFeatureId: "appModules.*", label: "Frontdesk" },
   
   
 
@@ -367,6 +368,18 @@ export const features: AppFeature[] = [
 { name: "holiday.restore.*", parentFeatureId: "holiday.*", label: "Restore" },
 { name: "holiday.markSundays.*", parentFeatureId: "holiday.*", label: "Mark Sundays" },
 { name: "holiday.viewPreviousUpdate.*", parentFeatureId: "holiday.*", label: "View Previous Update" },
+
+//visitor (Frontdesk / Reception)
+{ name: "visitor.*", label: "Visitor (Nav)" },
+{ name: "visitor.create.*", parentFeatureId: "visitor.*", label: "Create" },
+{ name: "visitor.read.*", parentFeatureId: "visitor.*", label: "Read" },
+{ name: "visitor.update.*", parentFeatureId: "visitor.*", label: "Update" },
+{ name: "visitor.delete.*", parentFeatureId: "visitor.*", label: "Delete" },
+{ name: "visitor.restore.*", parentFeatureId: "visitor.*", label: "Restore" },
+{ name: "visitor.checkout.*", parentFeatureId: "visitor.*", label: "Check Out" },
+{ name: "visitor.import.*", parentFeatureId: "visitor.*", label: "Import" },
+{ name: "visitor.export.*", parentFeatureId: "visitor.*", label: "Export" },
+{ name: "visitor.viewPreviousUpdate.*", parentFeatureId: "visitor.*", label: "View Previous Update" },
 
 //unit
 { name: "unit.*", label: "Unit (Nav)" },
