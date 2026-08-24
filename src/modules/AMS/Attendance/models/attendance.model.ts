@@ -1258,6 +1258,17 @@ ORDER BY
           previousUpdates: updatedPreviousUpdates,
         };
 
+        // Preserve the existing comment/location when the update carries an empty/missing value.
+        // Editing other fields (or approving an edit request) must NOT wipe a previously saved
+        // comment — this matches markAttendance's `comment || existingComment` behaviour and
+        // fixes comments disappearing for past days.
+        if (updateData.comment === undefined || updateData.comment === null || updateData.comment === '') {
+          delete updateData.comment;
+        }
+        if (updateData.location === undefined || updateData.location === null || updateData.location === '') {
+          delete updateData.location;
+        }
+
         // Update the attendance data
         const updatedData = await prisma.attendance.update({
           where: { id: updateId },

@@ -245,9 +245,10 @@ const attendanceRequestModel = prisma.$extends({
             location: attendanceRequest.proposedLocation,
           };
 
-          // Remove undefined fields
+          // Remove empty/undefined/null fields so approving a request never wipes an
+          // existing value (e.g. clearing a saved comment/location with a blank proposal).
           Object.keys(updateData).forEach(key => {
-            if (updateData[key] === undefined || updateData[key] === null) {
+            if (updateData[key] === undefined || updateData[key] === null || updateData[key] === "") {
               delete updateData[key];
             }
           });
@@ -261,10 +262,15 @@ const attendanceRequestModel = prisma.$extends({
           // Create new attendance with proposed data
           const { employeeId, proposedDate, proposedCheckIn, proposedStatus, proposedLocation, proposedComment } = attendanceRequest;
 
+          // Use the time the employee actually submitted the request (createdAt) as the
+          // fallback — NOT the approval time — so approving a request later does not shift
+          // the marked date/check-in to "now".
+          const requestedAt = attendanceRequest.createdAt || new Date();
+
           const attendanceData = {
             employeeId,
-            date: proposedDate || new Date(),
-            checkIn: proposedCheckIn || new Date(),
+            date: proposedDate || requestedAt,
+            checkIn: proposedCheckIn || requestedAt,
             status: (proposedStatus as AttendanceStatus) || AttendanceStatus.PRESENT,
             location: proposedLocation,
             comment: proposedComment,

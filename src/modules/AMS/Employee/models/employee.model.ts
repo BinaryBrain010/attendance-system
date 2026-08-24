@@ -574,6 +574,43 @@ const employeeModel = prisma.$extends({
           }
         }
 
+        // Backfill HOLIDAYS attendance for holidays that were already marked (e.g. Sundays)
+        // BEFORE this employee existed, so a newly-created employee also gets those holidays
+        // on their attendance calendar. Only holidays on/after the joining date are applied.
+        try {
+          const emp = createdData[0];
+          const holidayWhere: any = { isDeleted: null, isActive: true };
+          if (emp?.joiningDate) {
+            const jd = new Date(emp.joiningDate);
+            jd.setHours(0, 0, 0, 0);
+            holidayWhere.date = { gte: jd };
+          }
+          const holidays = await prisma.holiday.findMany({
+            where: holidayWhere,
+            select: { date: true },
+          });
+          if (holidays.length > 0) {
+            const now = new Date();
+            const rows = holidays.map((h: any) => {
+              const d = new Date(h.date);
+              d.setHours(0, 0, 0, 0);
+              return {
+                employeeId: emp.id,
+                date: d,
+                status: "HOLIDAYS" as any,
+                createdAt: now,
+              };
+            });
+            // New employee has no attendance yet, so a plain createMany is safe.
+            await prisma.attendance.createMany({ data: rows as any });
+          }
+        } catch (err: any) {
+          console.error(
+            `Error backfilling holiday attendance for new employee ${createdData?.[0]?.id}:`,
+            err
+          );
+        }
+
         return createdData;
       },
 
