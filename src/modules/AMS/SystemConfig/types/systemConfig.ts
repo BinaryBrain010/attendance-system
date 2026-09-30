@@ -11,6 +11,9 @@ export interface SystemConfigData {
   logoUrl: string;
   /** Minutes after shift start before marking as LATE (e.g. 20) */
   lateGraceMinutes: number;
+  /** Minutes after shift start beyond which a check-in is marked HALF_DAY instead of LATE
+   *  (e.g. 90 -> for a 10:00 shift, checking in after 11:30 is a half day) */
+  halfDayLateMinutes: number;
   /** Hour (0-23) when absent marking job runs (e.g. 23 = 11 PM) */
   absentMarkingHour: number;
   /** Minute (0-59) when absent marking job runs (e.g. 55) */
@@ -38,6 +41,7 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfigData = {
   homeScreen: "Individual dashboard",
   logoUrl: "",
   lateGraceMinutes: 20,
+  halfDayLateMinutes: 90,
   absentMarkingHour: 23,
   absentMarkingMinute: 55,
   earlyCheckOutGraceMinutes: 5,

@@ -146,20 +146,34 @@ export async function getShiftEndForAbsentCheck(
 }
 
 /**
- * Resolve effective attendance status (PRESENT vs LATE) based on check-in time,
- * employee's shift start, and system config lateGraceMinutes.
+ * Resolve effective attendance status based on check-in time, the employee's shift
+ * start, and system config thresholds:
+ *   - on time  (<= shiftStart + lateGraceMinutes)      -> PRESENT
+ *   - late     (<= shiftStart + halfDayLateMinutes)     -> LATE
+ *   - too late (>  shiftStart + halfDayLateMinutes)     -> HALF_DAY
+ *
+ * Example (shift start 10:00, lateGraceMinutes 5, halfDayLateMinutes 90):
+ *   up to 10:05 -> PRESENT, 10:05–11:30 -> LATE, after 11:30 -> HALF_DAY.
  */
 export async function getEffectiveStatusForCheckIn(
   tx: TransactionClient,
   employeeId: string,
   date: Date,
   checkInTime: Date
-): Promise<"PRESENT" | "LATE"> {
+): Promise<"PRESENT" | "LATE" | "HALF_DAY"> {
   const shiftStart = await getShiftStartOnDate(tx, employeeId, date);
   if (!shiftStart) return "PRESENT";
 
   const lateGraceMinutes = await SystemConfigService.getLateGraceMinutes();
-  const lateThreshold = new Date(shiftStart.getTime() + lateGraceMinutes * 60 * 1000);
+  const halfDayLateMinutes = await SystemConfigService.getHalfDayLateMinutes();
 
-  return checkInTime > lateThreshold ? "LATE" : "PRESENT";
+  const lateThreshold = new Date(shiftStart.getTime() + lateGraceMinutes * 60 * 1000);
+  const halfDayThreshold = new Date(shiftStart.getTime() + halfDayLateMinutes * 60 * 1000);
+
+  if (checkInTime <= lateThreshold) return "PRESENT";
+  // Only escalate to HALF_DAY when a sensible threshold (> grace) is configured.
+  if (halfDayLateMinutes > lateGraceMinutes && checkInTime > halfDayThreshold) {
+    return "HALF_DAY";
+  }
+  return "LATE";
 }

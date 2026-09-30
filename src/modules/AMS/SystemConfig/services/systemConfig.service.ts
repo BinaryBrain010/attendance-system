@@ -38,6 +38,15 @@ class SystemConfigService {
   }
 
   /**
+   * Get only halfDayLateMinutes (minutes after shift start beyond which a
+   * check-in counts as HALF_DAY instead of LATE).
+   */
+  async getHalfDayLateMinutes(): Promise<number> {
+    const config = await this.getConfig();
+    return config.halfDayLateMinutes ?? DEFAULT_SYSTEM_CONFIG.halfDayLateMinutes;
+  }
+
+  /**
    * Get absent marking time (hour, minute) for scheduler.
    */
   async getAbsentMarkingTime(): Promise<{ hour: number; minute: number }> {
