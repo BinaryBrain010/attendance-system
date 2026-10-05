@@ -137,7 +137,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
         action: status === "APPROVED" ? "APPROVE" : status === "REJECTED" ? "REJECT" : "UPDATE",
         entityType: "AttendanceRequest",
         entityId: id,
-        description: `Attendance request ${status.toLowerCase()}`,
+        description: `Attendance request ${status?.toLowerCase() || 'updated'}`,
         metadata: {
           requestId: id,
           status,

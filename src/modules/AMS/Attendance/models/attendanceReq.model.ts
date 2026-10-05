@@ -3,6 +3,7 @@ import { AttendanceStatus, LeaveStatus, Prisma } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
 import { AttendanceRequest } from "../types/AttendanceRequest";
 import attendanceModel from "./attendance.model";
+import { AppError } from "../../../../core/errors/app.error";
 
 // Helper function to get username from userId
 async function getUpdatedByName(updatedBy: string | null): Promise<string | null> {
@@ -223,6 +224,14 @@ const attendanceRequestModel = prisma.$extends({
 
         if (!attendanceRequest) {
           throw new Error(`Attendance request with ID ${requestId} not found.`);
+        }
+
+        // Only a PENDING request can be approved or rejected (no double-apply).
+        if (
+          attendanceRequest.status !== LeaveStatus.PENDING &&
+          (status === LeaveStatus.APPROVED || status === LeaveStatus.REJECTED)
+        ) {
+          throw new AppError(409, `Attendance request is already ${String(attendanceRequest.status).toLowerCase()} and cannot be ${status === LeaveStatus.APPROVED ? "approved" : "rejected"} again.`);
         }
 
         // Update the request status

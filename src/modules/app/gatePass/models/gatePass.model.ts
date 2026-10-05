@@ -1,6 +1,7 @@
 import prisma from "../../../../core/models/base.model";
 import { Prisma } from "@prisma/client";
 import { Status } from "../../../../enums/schema";
+import { AppError } from "../../../../core/errors/app.error";
 import { DetailedGatePass } from "../../../../types/paginatedData";
 import {
   CreateGatePassItem,
@@ -436,6 +437,15 @@ WHERE
       },
       async gpApprovePass(id: string, signature?: string | null) {
         try {
+            // Only a pending gate pass can be approved (no double-apply / re-approval).
+            const existingPass = await prisma.gatePass.findUnique({ where: { id } });
+            if (!existingPass) {
+                return { success: false, message: `Gate pass with ID ${id} not found.` };
+            }
+            if (existingPass.status !== Status.PENDING) {
+                throw new AppError(409, `Gate pass is already ${existingPass.status} and cannot be approved again.`);
+            }
+
             const gatePassItems = await prisma.gatePassItem.findMany({
                 where: { gatePassId: id },
             });
@@ -502,10 +512,9 @@ WHERE
                 message: "Gate pass approved successfully.",
             };
         } catch (error) {
+            if (error instanceof AppError) throw error; // let the 409 (not-pending) reach the client
             console.error("Error approving gate pass:", error);
             return { success: false, message: "Error approving gate pass." };
-        } finally {
-            await prisma.$disconnect();
         }
     }
     

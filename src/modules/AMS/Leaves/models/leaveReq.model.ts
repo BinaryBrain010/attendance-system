@@ -3,6 +3,7 @@ import prisma from "../../../../core/models/base.model";
 import { LeaveStatus } from "@prisma/client";
 import { addDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+import { AppError } from "../../../../core/errors/app.error";
 
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = "Asia/Karachi";
@@ -138,6 +139,14 @@ const leaveReqModel = prisma.$extends({
 
         if (!currentRequest) {
           throw new Error(`Leave request with ID ${requestId} not found.`);
+        }
+
+        // Only a PENDING leave request can be approved or rejected (no double-apply).
+        if (
+          currentRequest.status !== LeaveStatus.PENDING &&
+          (status === LeaveStatus.APPROVED || status === LeaveStatus.REJECTED)
+        ) {
+          throw new AppError(409, `Leave request is already ${String(currentRequest.status).toLowerCase()} and cannot be ${status === LeaveStatus.APPROVED ? "approved" : "rejected"} again.`);
         }
 
         // Calculate the number of days for the leave

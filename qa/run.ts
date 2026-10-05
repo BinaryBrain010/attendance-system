@@ -519,6 +519,11 @@ async function testWorkflows() {
   const areq2Id = idOf(areq2);
   const rej = await api("POST", "/attendanceReq/updateStatus", tokenOf("QA_AttendanceApprover"), { id: areq2Id, status: "REJECTED" });
   recordMatrix({ module: "Workflow/AttendanceReq", persona: "QA_AttendanceApprover", scenario: "reject attendance request", steps: "POST /attendanceReq/updateStatus {REJECTED}", expected: "2xx", actual: String(rej.status), status: rej.status, result: (rej.status >= 200 && rej.status < 300) ? "Pass" : "Fail" });
+  // Re-approving the already-approved request must be blocked with 409.
+  if (areqId) {
+    const reAppr = await api("POST", "/attendanceReq/updateStatus", tokenOf("QA_AttendanceApprover"), { id: areqId, status: "APPROVED" });
+    recordMatrix({ module: "Workflow/AttendanceReq", persona: "QA_AttendanceApprover", scenario: "re-approve an already-approved request is blocked (409)", steps: "POST /attendanceReq/updateStatus {APPROVED} on an approved request", expected: "409 conflict", actual: String(reAppr.status), status: reAppr.status, result: reAppr.status === 409 ? "Pass" : "Fail", notes: reAppr.status === 409 ? "" : (reAppr.message || "").slice(0, 100) });
+  }
 
   // Leave request: create -> approve -> reject
   const lreqTok = tokenOf("QA_Mod_leaveReq");
@@ -528,8 +533,9 @@ async function testWorkflows() {
   if (lrId) {
     const la = await api("POST", "/leave/leave-requests/updateStatus", lreqTok, { id: lrId, status: "APPROVED" });
     recordMatrix({ module: "Workflow/Leave", persona: "QA_Mod_leaveReq", scenario: "approve leave request", steps: "POST /leave/leave-requests/updateStatus {APPROVED}", expected: "2xx", actual: String(la.status), status: la.status, result: (la.status >= 200 && la.status < 300) ? "Pass" : "Fail", notes: (la.status >= 200 && la.status < 300) ? "approval also syncs attendance to ON_LEAVE for the range" : (la.message || "").slice(0, 100) });
+    // Re-acting on an already-approved record must be rejected with 409 (no double-apply).
     const lrej = await api("POST", "/leave/leave-requests/updateStatus", lreqTok, { id: lrId, status: "REJECTED" });
-    recordMatrix({ module: "Workflow/Leave", persona: "QA_Mod_leaveReq", scenario: "reject (previously approved) leave request", steps: "POST /leave/leave-requests/updateStatus {REJECTED}", expected: "2xx", actual: String(lrej.status), status: lrej.status, result: (lrej.status >= 200 && lrej.status < 300) ? "Pass" : "Fail" });
+    recordMatrix({ module: "Workflow/Leave", persona: "QA_Mod_leaveReq", scenario: "reject an already-approved leave is blocked (409)", steps: "POST /leave/leave-requests/updateStatus {REJECTED} on an approved request", expected: "409 conflict", actual: String(lrej.status), status: lrej.status, result: lrej.status === 409 ? "Pass" : "Fail", notes: lrej.status === 409 ? "" : (lrej.message || "").slice(0, 100) });
   }
 
   // Gate pass: create -> approve (with signature) -> PDF. Use a QA customer + QA item (high stock)
@@ -556,6 +562,9 @@ async function testWorkflows() {
       const pres = await http("POST", "/gatePass/pdf", { token: vTok, body: { id: gpId } });
       const isPdf = pres.status >= 200 && pres.status < 300 && typeof pres.text === "string" && pres.text.startsWith("%PDF");
       recordMatrix({ module: "Workflow/GatePass", persona: "QA_Mod_voucher", scenario: "generate gate pass PDF", steps: "POST /gatePass/pdf {id}", expected: "application/pdf (%PDF...)", actual: `${pres.status} ${isPdf ? "PDF bytes" : (pres.text || "").slice(0, 40)}`, status: pres.status, result: isPdf ? "Pass" : "Fail" });
+      // Re-approving an already-approved gate pass must be blocked with 409.
+      const reAp = await api("POST", "/gatePass/approve", vTok, { id: gpId, signature: sig });
+      recordMatrix({ module: "Workflow/GatePass", persona: "QA_Mod_voucher", scenario: "re-approve an already-approved gate pass is blocked (409)", steps: "POST /gatePass/approve on an approved pass", expected: "409 conflict", actual: `${reAp.status} ${(reAp.message || "").slice(0, 40)}`, status: reAp.status, result: reAp.status === 409 ? "Pass" : "Fail" });
     }
   } else {
     recordMatrix({ module: "Workflow/GatePass", persona: "QA_Mod_voucher", scenario: "gate pass flow", steps: "create QA customer + QA item", expected: "both created", actual: `cust=${WF_CUST || "-"} item=${WF_ITEM || "-"}`, status: 0, result: "Blocked" });
@@ -638,7 +647,7 @@ async function testMultiUser(wfEmpId?: string) {
     }
   }
 
-  if (noLocking) gap("NoOptimisticLocking", "Concurrent approve/edit of the same gate pass / attendance request / leave request are all accepted with no row-version or optimistic-lock check", "Last write wins silently; a record can be approved twice (double-apply), and an edit can overwrite a concurrent approval. For allocation-backed leave this can double-decrement balance. ERP needs optimistic locking (version column) or transactional guards on approve.");
+  if (noLocking) gap("NoOptimisticLocking", "Sequential re-approval is now blocked with 409 (not-pending guard), but two TRULY simultaneous approvals can still both read PENDING and both apply (the check is read-then-write, not atomic), and a concurrent edit can still overwrite a concurrent approval", "The status guard prevents accidental double-apply in normal use, but a race window remains. For allocation-backed leave a simultaneous double-approve could still double-decrement. ERP needs a transaction or optimistic-lock (version column) around approve, not just the status read.");
 }
 
 async function testStability() {

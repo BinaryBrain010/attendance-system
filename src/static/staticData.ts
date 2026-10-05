@@ -305,6 +305,11 @@ export const features: AppFeature[] = [
     parentFeatureId: "shift.timetable.*",
     label: "Delete",
   },
+  { name: "shift.timetableBlock.*", parentFeatureId: "shift.*", label: "Timetable Block" },
+  { name: "shift.timetableBlock.read.*", parentFeatureId: "shift.timetableBlock.*", label: "Read" },
+  { name: "shift.timetableBlock.create.*", parentFeatureId: "shift.timetableBlock.*", label: "Create" },
+  { name: "shift.timetableBlock.update.*", parentFeatureId: "shift.timetableBlock.*", label: "Update" },
+  { name: "shift.timetableBlock.delete.*", parentFeatureId: "shift.timetableBlock.*", label: "Delete" },
 
 
   //attendance
@@ -318,6 +323,9 @@ export const features: AppFeature[] = [
 { name: "attendance.update.*", parentFeatureId: "attendance.*", label: "Update Attendance" },
 { name: "attendance.update.direct.*", parentFeatureId: "attendance.update.*", label: "Update Attendance Directly (No Approval Required)" },
 { name: "attendance.read.*", parentFeatureId: "attendance.*", label: "Read Attendance" },
+{ name: "attendance.create.*", parentFeatureId: "attendance.*", label: "Create Attendance" },
+{ name: "attendance.delete.*", parentFeatureId: "attendance.*", label: "Delete Attendance" },
+{ name: "attendance.restore.*", parentFeatureId: "attendance.*", label: "Restore Attendance" },
 { name: "attendance.export.*", parentFeatureId: "attendance.*", label: "Export Attendance" },
 { name: "attendance.excelImport.*", parentFeatureId: "attendance.*", label: "Excel Import" },
 { name: "attendance.viewPreviousUpdate.*", parentFeatureId: "attendance.*", label: "View Previous Update" },
@@ -328,6 +336,7 @@ export const features: AppFeature[] = [
 { name: "attendanceReq.update.*", parentFeatureId: "attendanceReq.*", label: "Update" },
 { name: "attendanceReq.delete.*", parentFeatureId: "attendanceReq.*", label: "Delete" },
 { name: "attendanceReq.restore.*", parentFeatureId: "attendanceReq.*", label: "Restore" },
+{ name: "attendanceReq.approve.*", parentFeatureId: "attendanceReq.*", label: "Approve (admin UI feature string)" },
 { name: "attendance.request.approve.*", parentFeatureId: "attendanceReq.*", label: "Approve/Reject Attendance Requests" },
 
 //leave
@@ -341,6 +350,9 @@ export const features: AppFeature[] = [
 { name: "leaveReq.create.*", parentFeatureId: "leaveReq.*", label: "Create" },
 { name: "leaveReq.read.*", parentFeatureId: "leaveReq.*", label: "Read" },
 { name: "leaveReq.update.*", parentFeatureId: "leaveReq.*", label: "Update" },
+{ name: "leaveReq.approve.*", parentFeatureId: "leaveReq.*", label: "Approve" },
+{ name: "leaveReq.reject.*", parentFeatureId: "leaveReq.*", label: "Reject" },
+{ name: "leaveReq.delete.*", parentFeatureId: "leaveReq.*", label: "Delete" },
 { name: "leaveReq.restore.*", parentFeatureId: "leaveReq.*", label: "Restore" },
 
 //leave Alloc

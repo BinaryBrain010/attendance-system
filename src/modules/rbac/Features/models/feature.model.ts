@@ -26,6 +26,21 @@ const featureModel = prisma.$extends({
           return count;
         },
 
+        // AppFeature PK is `name`; soft delete / restore by setting or clearing isDeleted.
+        async gpSoftDelete(this: any, name: string) {
+          return await this.update({
+            where: { name },
+            data: { isDeleted: new Date() },
+          });
+        },
+
+        async gpRestore(this: any, name: string) {
+          return await this.update({
+            where: { name },
+            data: { isDeleted: null },
+          });
+        },
+
         async gpGetByParent(this: any, parent: string): Promise<AppFeature[]> {
           const getParentAndChildren = async (
             parent: string

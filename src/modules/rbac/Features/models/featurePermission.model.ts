@@ -28,17 +28,24 @@ const featurePermissionModel = prisma.$extends({
         parentId: string
       ) {
         try {
-          const permission: {id:string, allowedFeatures: string[] }[] = await prisma.$queryRaw(
+          // Only active (not soft-deleted) permission rows, and union the allowed features
+          // across ALL active rows for this parent (not just the first), so revoking a
+          // permission actually removes it and multiple rows are honoured.
+          const rows: {id:string, allowedFeatures: string[] }[] = await prisma.$queryRaw(
             Prisma.sql`SELECT id, COALESCE(permissions->'allowedFeatures', '[]'::jsonb) AS "allowedFeatures"
             FROM public."FeaturePermission"
-            WHERE "parentId" = ${parentId} AND "parentType" = ${parentType}::"ParentType"`
+            WHERE "parentId" = ${parentId} AND "parentType" = ${parentType}::"ParentType" AND "isDeleted" IS NULL`
           );
- 
-      
-          if (permission.length === 0) {
+
+          if (!rows || rows.length === 0) {
             return [];
           }
-          return permission[0];
+          const merged = new Set<string>();
+          for (const row of rows) {
+            const arr = Array.isArray(row.allowedFeatures) ? row.allowedFeatures : [];
+            for (const f of arr) merged.add(f);
+          }
+          return { id: rows[0].id, allowedFeatures: Array.from(merged) };
         } catch (error) {
           console.error("Error fetching allowed features:", error);
           throw error;
