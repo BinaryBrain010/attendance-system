@@ -18,6 +18,9 @@
     "setup-office-employees": "ts-node setupOfficeEmployees.ts",
     "import-reception-visitors": "ts-node importReceptionVisitors.ts",
     "preview-reception-visitors": "ts-node importReceptionVisitors.ts --preview",
+    "qa:rbac": "ts-node qa/run.ts",
+    "qa:report": "ts-node qa/report.ts",
+    "qa:cleanup": "ts-node qa/cleanup.ts",
     "tsc": "tsc -w"
   },
   "author": "ahad",

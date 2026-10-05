@@ -1,0 +1,29 @@
+{
+  "performedAt": "2026-10-05",
+  "target": "http://localhost:3001 (admin, Next.js) against backend http://localhost:3002",
+  "method": "Live login via the browser as each persona (clean provision-only personas, run suffix e7ack); nav read from the DOM header and the post-login landing page observed.",
+  "navGatingMap": {
+    "Analytics group": "analytics.*",
+    "Access Control group": "appModules.accessControl.* (then user.* / role.* / group.* for items)",
+    "Quick Mark group": "appModules.quickMark.* (then employee.* / attendance.* / holiday.* / shift.* / unit.* / leave.* / attendance.markAttendance.* / systemConfig.* for items)",
+    "Frontdesk group": "visitor.*  (NOTE: gated directly on the functional feature, unlike the others which use appModules.*)",
+    "Profile": "profile.*"
+  },
+  "personas": [
+    { "persona": "QA_NoAccess", "login": "DENIED", "expectedNav": "cannot enter admin (no login.*)", "actualNav": "login refused: 'You don't have permission to login! contact ERP'", "match": "MATCH" },
+    { "persona": "QA_AdminLogin_NoModules", "login": "OK", "expectedNav": "no module menus (login.admin.* only)", "actualNav": "no nav groups; lands on 404 'Page Not Found'", "match": "MATCH (nav); landing is a 404" },
+    { "persona": "QA_GatePassViewer", "login": "OK", "expectedNav": "a gate-pass view", "actualNav": "no nav groups; 404 landing (gate pass / voucher has no admin UI page)", "match": "MISMATCH - no gate-pass UI exists in admin" },
+    { "persona": "QA_HR", "login": "OK", "expectedNav": "Quick Mark group with employee / attendance / holiday / shift / leave / attendance-request", "actualNav": "NO nav groups at all; landed on /ams/attendance-request (data loads, but no menu)", "match": "MISMATCH - has the module features but not appModules.quickMark.* umbrella, so the menu is hidden" },
+    { "persona": "QA_Frontdesk", "login": "OK", "expectedNav": "Frontdesk menu", "actualNav": "Frontdesk menu visible; /frontdesk/visitor page fully works (3706 visitors, Add/Export/Import/Check-out)", "match": "MATCH" },
+    { "persona": "QA_Mixed", "login": "OK", "expectedNav": "employee / holiday / shift (read) under Quick Mark", "actualNav": "no nav groups; 404 landing", "match": "MISMATCH - has functional read features but not appModules.quickMark.* umbrella" },
+    { "persona": "QA_Revoked", "login": "OK", "expectedNav": "Frontdesk (granted state)", "actualNav": "Frontdesk menu visible; visitor page works", "match": "MATCH (granted). After revoke the menu would still show because of BUG002 (revoke not reflected in the permission list)." }
+  ],
+  "bugs": [
+    { "severity": "Medium", "module": "Admin/Navigation", "description": "The post-login home route is hardcoded to /analytics (src/lib/routes.ts home:'/analytics'), which returns the 404 'Page Not Found' screen for any user who does not have analytics.*. Observed live: QA_AdminLogin_NoModules, QA_GatePassViewer, QA_Mixed and QA_Frontdesk all land on a 404 immediately after a successful login. Also the sidebar/nav hrefs point at /admin/... while the real routes are bare (/ams/..., /analytics); middleware strips /admin, so nav links and deep links are fragile.", "repro": "Log in as any user without analytics.* -> redirected to /analytics -> 404.", "fix": "Redirect to the first route the user actually has access to (or a neutral landing page), not a fixed /analytics; align nav hrefs with the real route paths.", "files": "codes/admin/src/lib/routes.ts, codes/admin/src/middleware.ts, codes/admin/src/components/shared/navbar/navbar-modern.tsx" }
+  ],
+  "gaps": [
+    { "kind": "NavRequiresUmbrellaFeature", "detail": "Top-nav groups Access Control and Quick Mark are gated by umbrella features appModules.accessControl.* and appModules.quickMark.*, which are separate from the functional module features (employee.*, user.*, etc.). A role granted only functional features sees NO navigation to those modules (confirmed live: QA_HR and QA_Mixed have the module features but an empty top nav).", "impact": "Roles must be given the appModules.* umbrella in addition to the module features or users cannot navigate. This is an easy mis-configuration; the RBAC model should either derive group visibility from the child features or document the umbrella requirement clearly." },
+    { "kind": "NavGatingInconsistent", "detail": "Most top-nav groups gate on appModules.* umbrella features, but the Frontdesk group gates directly on visitor.* (navbar-modern.tsx line ~553).", "impact": "Inconsistent permission model between modules; Frontdesk behaves differently from Quick Mark / Access Control." },
+    { "kind": "NoAdminUIForAppModules", "detail": "The admin panel has pages only for AMS (attendance, employee, leave, holiday, shift, unit, attendance-request, system-config), analytics, frontdesk/visitor, and RBAC (user/role/group). There are no admin pages for Customer, Item, or Gate Pass/voucher.", "impact": "A voucher-only user (QA_GatePassViewer) has nothing to see or do in the admin panel even though the API exposes those modules." }
+  ]
+}
