@@ -57,6 +57,7 @@ class App {
   private helper: typeof routesHelper;
 
   constructor() {
+    this.installProcessGuards();
     this.app = express();
     this.helper = routesHelper;
     this.accessControl();
@@ -65,6 +66,20 @@ class App {
     this.startServer();
     TokenCleanHelper;
     AttendanceSchedulerHelper;
+  }
+
+  /**
+   * Keep the process alive when a request handler (or anything else) throws asynchronously.
+   * Node >= 15 exits the process on an unhandled promise rejection by default, so a single
+   * malformed request could take the whole server down. We log and keep serving instead.
+   */
+  private installProcessGuards(): void {
+    process.on('unhandledRejection', (reason: any) => {
+      logger.error(`unhandledRejection: ${reason?.stack || reason?.message || reason}`);
+    });
+    process.on('uncaughtException', (err: Error) => {
+      logger.error(`uncaughtException: ${err?.stack || err?.message || err}`);
+    });
   }
 
   private accessControl() {

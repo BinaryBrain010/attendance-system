@@ -95,7 +95,7 @@ class GroupController extends BaseController<GroupService> {
         action: "UPDATE",
         entityType: "Group",
         entityId: id,
-        description: `Group updated: ${data.name || 'N/A'}`,
+        description: `Group updated: ${data?.name || 'N/A'}`,
         metadata: {
           changes: data,
           groupId: id

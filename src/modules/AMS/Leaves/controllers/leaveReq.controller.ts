@@ -147,7 +147,7 @@ class LeaveReqController extends BaseController<LeaveReqService> {
         action: status === "APPROVED" ? "APPROVE" : status === "REJECTED" ? "REJECT" : "UPDATE",
         entityType: "LeaveRequest",
         entityId: id,
-        description: `Leave request ${status.toLowerCase()}`,
+        description: `Leave request ${status?.toLowerCase() || 'updated'}`,
         metadata: {
           requestId: id,
           status,

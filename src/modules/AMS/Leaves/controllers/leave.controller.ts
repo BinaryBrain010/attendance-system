@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import BaseController from "../../../../core/controllers/base.controller";
 import LeaveService from "../services/leave.service";
 import { LeaveConfiguration } from "../types/leave";
@@ -45,17 +46,30 @@ class LeaveController extends BaseController<LeaveService> {
   }
 
   async updateLeaveConfiguration(req: Request, res: Response) {
-    const { id, leaveConfigData } = req.body;
+    // Validate so a body without leaveConfigData returns 400 instead of throwing.
+    const schema = z.object({
+      id: z.string().min(1),
+      leaveConfigData: z.object({
+        name: z.string().optional(),
+        description: z.string().optional(),
+        maxDays: z.number().optional(),
+      }).passthrough(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid leave configuration update request", errors: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) });
+    }
+    const { id, leaveConfigData } = parsed.data;
     const operation = () =>
-      this.service.updateLeaveConfiguration(id, leaveConfigData);
+      this.service.updateLeaveConfiguration(id, leaveConfigData as any);
     const successMessage = "Leave configuration updated successfully!";
-    await this.handleRequest(operation, res, { 
+    await this.handleRequest(operation, res, {
       successMessage,
       logActivity: {
         action: "UPDATE",
         entityType: "LeaveConfiguration",
         entityId: id,
-        description: `Leave configuration updated: ${leaveConfigData.name || 'N/A'}`,
+        description: `Leave configuration updated: ${leaveConfigData?.name || 'N/A'}`,
         metadata: {
           changes: leaveConfigData,
           leaveConfigId: id

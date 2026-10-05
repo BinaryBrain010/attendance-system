@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import BaseController from "../../../../core/controllers/base.controller";
 import { User, UserData } from "../types/user";
 import UserService from "../service/user.service";
@@ -200,7 +201,7 @@ class UserController extends BaseController<UserService> {
         action: "UPDATE",
         entityType: "User",
         entityId: id,
-        description: `User updated: ${data.username || 'N/A'}`,
+        description: `User updated: ${data?.username || 'N/A'}`,
         metadata: {
           changes: data,
           userId: id
@@ -255,10 +256,23 @@ class UserController extends BaseController<UserService> {
   }
 
   async loginUser(req: Request, res: Response) {
-    let { username, password, rememberMe, platform } = req.body;
+    // Validate the body so a malformed payload returns 400 instead of throwing deeper.
+    const loginSchema = z.object({
+      username: z.string().min(1),
+      password: z.string().min(1),
+      platform: z.string().min(1),
+      rememberMe: z.boolean().optional(),
+    });
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid login request", errors: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) });
+    }
+    const { username, password, platform } = parsed.data;
+    // Default rememberMe so loggedInUsers.create (rememberMe is required, no default) never fails.
+    const rememberMe: boolean = parsed.data.rememberMe ?? false;
     // Security: Never log passwords or sensitive data
     // Using logger instead of console.log
-    
+
     let user: User | null = await this.service.getUserByUsername(username);
     const roleIds: string[] = await accessModel.role.getRoleIds(user?.id || "");
     // const isAdmin = roleIds.includes("2d9c89e7-466d-4b1c-b1b3-3ef5be815ed4");

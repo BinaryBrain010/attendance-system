@@ -113,7 +113,7 @@ class RoleController extends BaseController<RoleService> {
         action: "UPDATE",
         entityType: "Role",
         entityId: id,
-        description: `Role updated: ${data.name || 'N/A'}`,
+        description: `Role updated: ${data?.name || 'N/A'}`,
         metadata: {
           changes: data,
           roleId: id

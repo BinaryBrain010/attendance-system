@@ -55,7 +55,7 @@ class AppFeatureController extends BaseController<AppFeatureService> {
         action: "UPDATE",
         entityType: "Feature",
         entityId: id,
-        description: `Feature updated: ${data.name || 'N/A'}`,
+        description: `Feature updated: ${data?.name || 'N/A'}`,
         metadata: {
           changes: data,
           featureId: id

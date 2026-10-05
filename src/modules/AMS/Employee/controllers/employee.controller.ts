@@ -273,7 +273,7 @@ class EmployeeController extends BaseController<EmployeeService> {
         action: "UPDATE",
         entityType: "Employee",
         entityId: id,
-        description: `Employee updated: ${data.name || 'N/A'} ${data.surname || ''}`,
+        description: `Employee updated: ${data?.name || 'N/A'} ${data?.surname || ''}`,
         metadata: {
           changes: data,
           employeeId: id
