@@ -525,6 +525,8 @@ model Unit {
   contactNo           String?
   email               String?
   attendanceManagerId String?     @db.VarChar(36)
+  lateGraceMinutes    Int?        // per-unit override; null = use global SystemConfig
+  halfDayLateMinutes  Int?        // per-unit override; null = use global SystemConfig
   createdAt           DateTime?   @default(now())
   updatedAt           DateTime?   @updatedAt
   isDeleted           DateTime?

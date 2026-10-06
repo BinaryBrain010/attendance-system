@@ -10,6 +10,8 @@ export interface Unit {
   contactNo?: string | null;
   email?: string | null;
   attendanceManagerId?: string | null;
+  lateGraceMinutes?: number | null;
+  halfDayLateMinutes?: number | null;
   createdAt?: Date | null;
   updatedAt?: Date | null;
   isDeleted?: Date | null;

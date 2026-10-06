@@ -2,7 +2,10 @@ import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import SystemConfigService from "../services/systemConfig.service";
 
 /** Transaction-like client with shiftAssignment (from prisma.$transaction or extended client). */
-type TransactionClient = { shiftAssignment: { findFirst: (args: any) => Promise<any> } };
+type TransactionClient = {
+  shiftAssignment: { findFirst: (args: any) => Promise<any> };
+  unitEmployee: { findMany: (args: any) => Promise<any[]> };
+};
 
 /**
  * Build a moment on the attendance date at the given time-of-day, in the system timezone.
@@ -155,6 +158,25 @@ export async function getShiftEndForAbsentCheck(
  * Example (shift start 10:00, lateGraceMinutes 5, halfDayLateMinutes 90):
  *   up to 10:05 -> PRESENT, 10:05–11:30 -> LATE, after 11:30 -> HALF_DAY.
  */
+/**
+ * Per-unit lateness override. An employee's unit can set its own lateGraceMinutes /
+ * halfDayLateMinutes; null fields fall back to the global SystemConfig. If the employee
+ * belongs to several units, the first unit that defines an override is used.
+ */
+async function getUnitTimingOverride(
+  tx: TransactionClient,
+  employeeId: string
+): Promise<{ lateGraceMinutes: number | null; halfDayLateMinutes: number | null } | null> {
+  const links = await tx.unitEmployee.findMany({
+    where: { employeeId, isDeleted: null, unit: { isDeleted: null } },
+    include: { unit: { select: { lateGraceMinutes: true, halfDayLateMinutes: true } } },
+  });
+  const unit = links
+    .map((l: any) => l.unit)
+    .find((u: any) => u && (u.lateGraceMinutes != null || u.halfDayLateMinutes != null));
+  return unit ? { lateGraceMinutes: unit.lateGraceMinutes, halfDayLateMinutes: unit.halfDayLateMinutes } : null;
+}
+
 export async function getEffectiveStatusForCheckIn(
   tx: TransactionClient,
   employeeId: string,
@@ -164,8 +186,10 @@ export async function getEffectiveStatusForCheckIn(
   const shiftStart = await getShiftStartOnDate(tx, employeeId, date);
   if (!shiftStart) return "PRESENT";
 
-  const lateGraceMinutes = await SystemConfigService.getLateGraceMinutes();
-  const halfDayLateMinutes = await SystemConfigService.getHalfDayLateMinutes();
+  // Per-unit override first, then global config.
+  const override = await getUnitTimingOverride(tx, employeeId);
+  const lateGraceMinutes = override?.lateGraceMinutes ?? (await SystemConfigService.getLateGraceMinutes());
+  const halfDayLateMinutes = override?.halfDayLateMinutes ?? (await SystemConfigService.getHalfDayLateMinutes());
 
   const lateThreshold = new Date(shiftStart.getTime() + lateGraceMinutes * 60 * 1000);
   const halfDayThreshold = new Date(shiftStart.getTime() + halfDayLateMinutes * 60 * 1000);
