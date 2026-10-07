@@ -175,6 +175,9 @@ const accessModel = prisma.$extends({
           );
 
           if (!feature) {
+            // Unknown/unregistered feature: deny when enforcing, otherwise allow (preserves
+            // legacy behaviour under RBAC_ENFORCE=off|log).
+            if ((process.env.RBAC_ENFORCE || "off").toLowerCase() === "on") return false;
             return true;
           }
 

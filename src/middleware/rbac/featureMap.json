@@ -1,0 +1,1607 @@
+{
+  "POST /access/checkPermission": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /access/checkPermissions": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /access/getPermission": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /access/getUserGroup": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /access/getUserRole": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /activityLog/count": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "GET /activityLog/get": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "POST /activityLog/get": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "POST /activityLog/getByEntity": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "POST /activityLog/getById": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "POST /activityLog/getByUnit": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "POST /activityLog/getByUser": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "GET /activityLog/me": {
+    "access": "self",
+    "feature": "activityLog.read.own.*",
+    "kind": "self"
+  },
+  "POST /activityLog/me": {
+    "access": "feature",
+    "feature": "activityLog.read.*",
+    "kind": "read"
+  },
+  "GET /analytics/personalAttendance": {
+    "access": "self",
+    "feature": "analytics.read.*",
+    "kind": "self"
+  },
+  "POST /analytics/personalAttendance": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "GET /analytics/topAttendance": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "POST /appFeature/create": {
+    "access": "god",
+    "feature": "-",
+    "kind": "create"
+  },
+  "POST /appFeature/delete": {
+    "access": "god",
+    "feature": "-",
+    "kind": "delete"
+  },
+  "GET /appFeature/get": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /appFeature/get": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /appFeature/getByParent": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /appFeature/hierarchy": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /appFeature/restore": {
+    "access": "god",
+    "feature": "-",
+    "kind": "restore"
+  },
+  "GET /appFeature/total": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "PUT /appFeature/update": {
+    "access": "god",
+    "feature": "-",
+    "kind": "update"
+  },
+  "POST /attendance/bulkMarkAttendance": {
+    "access": "feature",
+    "feature": "attendance.markAttendance.*",
+    "kind": "create"
+  },
+  "POST /attendance/bulkMarkAttendanceByEmployee": {
+    "access": "feature",
+    "feature": "attendance.markAttendance.*",
+    "kind": "create"
+  },
+  "POST /attendance/bulkMarkLeave": {
+    "access": "feature",
+    "feature": "attendance.markAttendance.*",
+    "kind": "create"
+  },
+  "POST /attendance/checkAttendance": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/create": {
+    "access": "feature",
+    "feature": "attendance.create.*",
+    "kind": "create"
+  },
+  "POST /attendance/delete": {
+    "access": "feature",
+    "feature": "attendance.delete.*",
+    "kind": "delete"
+  },
+  "POST /attendance/excel": {
+    "access": "feature",
+    "feature": "attendance.export.*",
+    "kind": "export"
+  },
+  "POST /attendance/face-attendance": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "GET /attendance/get": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/get": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/getById": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/getDate": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/getEmployeeAttendance": {
+    "access": "self",
+    "feature": "attendance.read.*",
+    "kind": "self"
+  },
+  "POST /attendance/history": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/import": {
+    "access": "feature",
+    "feature": "attendance.excelImport.*",
+    "kind": "import"
+  },
+  "POST /attendance/markAttendance": {
+    "access": "self",
+    "feature": "attendance.markAttendance.*",
+    "kind": "self"
+  },
+  "POST /attendance/pdf": {
+    "access": "feature",
+    "feature": "attendance.export.*",
+    "kind": "export"
+  },
+  "GET /attendance/requestSummary": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/restore": {
+    "access": "feature",
+    "feature": "attendance.restore.*",
+    "kind": "restore"
+  },
+  "POST /attendance/search": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/specific": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "POST /attendance/summary": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "GET /attendance/total": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
+  "PUT /attendance/update": {
+    "access": "feature",
+    "feature": "attendance.update.*",
+    "kind": "update"
+  },
+  "POST /attendanceReq/bulkUpdateStatus": {
+    "access": "feature",
+    "feature": "attendance.request.approve.*",
+    "kind": "approve"
+  },
+  "POST /attendanceReq/create": {
+    "access": "self",
+    "feature": "attendanceReq.create.*",
+    "kind": "self"
+  },
+  "POST /attendanceReq/delete": {
+    "access": "feature",
+    "feature": "attendanceReq.delete.*",
+    "kind": "delete"
+  },
+  "GET /attendanceReq/deleted": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "GET /attendanceReq/get": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "POST /attendanceReq/get": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "POST /attendanceReq/getById": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "POST /attendanceReq/getEmployee": {
+    "access": "self",
+    "feature": "attendanceReq.read.*",
+    "kind": "self"
+  },
+  "POST /attendanceReq/restore": {
+    "access": "feature",
+    "feature": "attendanceReq.restore.*",
+    "kind": "restore"
+  },
+  "POST /attendanceReq/search": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "GET /attendanceReq/total": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "PUT /attendanceReq/update": {
+    "access": "feature",
+    "feature": "attendanceReq.update.*",
+    "kind": "update"
+  },
+  "POST /attendanceReq/updateStatus": {
+    "access": "feature",
+    "feature": "attendance.request.approve.*",
+    "kind": "approve"
+  },
+  "POST /auth/login": {
+    "access": "open",
+    "feature": "-",
+    "kind": "open"
+  },
+  "GET /auth/logout": {
+    "access": "open",
+    "feature": "-",
+    "kind": "open"
+  },
+  "GET /auth/logoutOfAllDevices": {
+    "access": "open",
+    "feature": "-",
+    "kind": "open"
+  },
+  "POST /auth/logoutUserOfAllDevices": {
+    "access": "open",
+    "feature": "-",
+    "kind": "open"
+  },
+  "POST /customer/create": {
+    "access": "feature",
+    "feature": "customer.create.*",
+    "kind": "create"
+  },
+  "POST /customer/delete": {
+    "access": "feature",
+    "feature": "customer.delete.*",
+    "kind": "delete"
+  },
+  "GET /customer/get": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "POST /customer/get": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "POST /customer/getById": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "POST /customer/getDeleted": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "GET /customer/getFrequent": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "POST /customer/restore": {
+    "access": "feature",
+    "feature": "customer.restore.*",
+    "kind": "restore"
+  },
+  "POST /customer/search": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "GET /customer/total": {
+    "access": "feature",
+    "feature": "customer.read.*",
+    "kind": "read"
+  },
+  "PUT /customer/update": {
+    "access": "feature",
+    "feature": "customer.update.*",
+    "kind": "update"
+  },
+  "POST /employee/create": {
+    "access": "feature",
+    "feature": "employee.create.*",
+    "kind": "create"
+  },
+  "POST /employee/delete": {
+    "access": "feature",
+    "feature": "employee.delete.*",
+    "kind": "delete"
+  },
+  "POST /employee/files": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/filesDel": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "GET /employee/get": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/get": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/getByCode": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/getById": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/getByUserId": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/getCard": {
+    "access": "feature",
+    "feature": "employee.excel.*",
+    "kind": "export"
+  },
+  "POST /employee/getDeleted": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "GET /employee/getExcel": {
+    "access": "feature",
+    "feature": "employee.excel.*",
+    "kind": "export"
+  },
+  "GET /employee/getFaceRecognitionData": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/getHistoryById": {
+    "access": "feature",
+    "feature": "employee.viewPreviousUpdate.*",
+    "kind": "history"
+  },
+  "POST /employee/getLinkedUser": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/restore": {
+    "access": "feature",
+    "feature": "employee.restore.*",
+    "kind": "restore"
+  },
+  "POST /employee/search": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/stats": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "GET /employee/total": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "PUT /employee/update": {
+    "access": "feature",
+    "feature": "employee.update.*",
+    "kind": "update"
+  },
+  "POST /employee/updateFile": {
+    "access": "feature",
+    "feature": "employee.update.*",
+    "kind": "update"
+  },
+  "POST /featurePermission/allowedFeatures": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.read.*",
+    "kind": "read"
+  },
+  "POST /featurePermission/create": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.update.*",
+    "kind": "update"
+  },
+  "POST /featurePermission/delete": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.update.*",
+    "kind": "update"
+  },
+  "GET /featurePermission/get": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.read.*",
+    "kind": "read"
+  },
+  "POST /featurePermission/get": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.read.*",
+    "kind": "read"
+  },
+  "POST /featurePermission/restore": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.update.*",
+    "kind": "update"
+  },
+  "PUT /featurePermission/update": {
+    "access": "dynamic",
+    "feature": "(dynamic) {parentType}.update.*",
+    "kind": "update"
+  },
+  "POST /gatePass/approve": {
+    "access": "feature",
+    "feature": "voucher.post.*",
+    "kind": "approve"
+  },
+  "POST /gatePass/create": {
+    "access": "feature",
+    "feature": "voucher.create.*",
+    "kind": "create"
+  },
+  "POST /gatePass/customerId": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/date": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/delete": {
+    "access": "feature",
+    "feature": "voucher.delete.*",
+    "kind": "delete"
+  },
+  "GET /gatePass/get": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/get": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/getById": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/getDeleted": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/itemId": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/pdf": {
+    "access": "feature",
+    "feature": "voucher.pdf.*",
+    "kind": "export"
+  },
+  "GET /gatePass/report": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/restore": {
+    "access": "feature",
+    "feature": "voucher.restore.*",
+    "kind": "restore"
+  },
+  "POST /gatePass/status": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "GET /gatePass/total": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "PUT /gatePass/update": {
+    "access": "feature",
+    "feature": "voucher.update.*",
+    "kind": "update"
+  },
+  "POST /gatePassItem/create": {
+    "access": "feature",
+    "feature": "voucher.create.*",
+    "kind": "create"
+  },
+  "POST /gatePassItem/delete": {
+    "access": "feature",
+    "feature": "voucher.delete.*",
+    "kind": "delete"
+  },
+  "GET /gatePassItem/get": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePassItem/get": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePassItem/getById": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePassItem/restore": {
+    "access": "feature",
+    "feature": "voucher.restore.*",
+    "kind": "restore"
+  },
+  "GET /gatePassItem/total": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "PUT /gatePassItem/update": {
+    "access": "feature",
+    "feature": "voucher.update.*",
+    "kind": "update"
+  },
+  "POST /group/create": {
+    "access": "feature",
+    "feature": "group.create.*",
+    "kind": "create"
+  },
+  "POST /group/delete": {
+    "access": "feature",
+    "feature": "group.delete.*",
+    "kind": "delete"
+  },
+  "GET /group/get": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /group/get": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /group/getById": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /group/getByName": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /group/getGroupById": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /group/restore": {
+    "access": "feature",
+    "feature": "group.delete.*",
+    "kind": "restore"
+  },
+  "POST /group/search": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "GET /group/total": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "PUT /group/update": {
+    "access": "feature",
+    "feature": "group.update.*",
+    "kind": "update"
+  },
+  "POST /groupRole/create": {
+    "access": "feature",
+    "feature": "group.update.*",
+    "kind": "update"
+  },
+  "POST /groupRole/delete": {
+    "access": "feature",
+    "feature": "group.update.*",
+    "kind": "update"
+  },
+  "GET /groupRole/get": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /groupRole/get": {
+    "access": "feature",
+    "feature": "group.read.*",
+    "kind": "read"
+  },
+  "POST /groupRole/restore": {
+    "access": "feature",
+    "feature": "group.update.*",
+    "kind": "update"
+  },
+  "PUT /groupRole/update": {
+    "access": "feature",
+    "feature": "group.update.*",
+    "kind": "update"
+  },
+  "POST /holiday/create": {
+    "access": "feature",
+    "feature": "holiday.create.*",
+    "kind": "create"
+  },
+  "POST /holiday/delete": {
+    "access": "feature",
+    "feature": "holiday.delete.*",
+    "kind": "delete"
+  },
+  "GET /holiday/deleted": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
+  "GET /holiday/get": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
+  "GET /holiday/getAll": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
+  "GET /holiday/getById": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
+  "POST /holiday/getHistoryById": {
+    "access": "feature",
+    "feature": "holiday.viewPreviousUpdate.*",
+    "kind": "history"
+  },
+  "POST /holiday/markSundays": {
+    "access": "feature",
+    "feature": "holiday.markSundays.*",
+    "kind": "create"
+  },
+  "POST /holiday/restore": {
+    "access": "feature",
+    "feature": "holiday.restore.*",
+    "kind": "restore"
+  },
+  "POST /holiday/search": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
+  "GET /holiday/total": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
+  "PUT /holiday/update": {
+    "access": "feature",
+    "feature": "holiday.update.*",
+    "kind": "update"
+  },
+  "POST /item/create": {
+    "access": "feature",
+    "feature": "item.create.*",
+    "kind": "create"
+  },
+  "POST /item/delete": {
+    "access": "feature",
+    "feature": "item.delete.*",
+    "kind": "delete"
+  },
+  "GET /item/get": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "POST /item/get": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "POST /item/getById": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "POST /item/getBySerialNo": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "POST /item/getDeleted": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "GET /item/getOutOfStock": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "POST /item/restore": {
+    "access": "feature",
+    "feature": "item.restore.*",
+    "kind": "restore"
+  },
+  "POST /item/search": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "GET /item/total": {
+    "access": "feature",
+    "feature": "item.read.*",
+    "kind": "read"
+  },
+  "PUT /item/update": {
+    "access": "feature",
+    "feature": "item.update.*",
+    "kind": "update"
+  },
+  "POST /leave/leave-allocations/assignToAll": {
+    "access": "feature",
+    "feature": "leaveAlloc.create.*",
+    "kind": "create"
+  },
+  "POST /leave/leave-allocations/create": {
+    "access": "feature",
+    "feature": "leaveAlloc.create.*",
+    "kind": "create"
+  },
+  "POST /leave/leave-allocations/delete": {
+    "access": "feature",
+    "feature": "leaveAlloc.delete.*",
+    "kind": "delete"
+  },
+  "GET /leave/leave-allocations/deleted": {
+    "access": "feature",
+    "feature": "leaveAlloc.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-allocations/get": {
+    "access": "feature",
+    "feature": "leaveAlloc.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-allocations/get": {
+    "access": "feature",
+    "feature": "leaveAlloc.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-allocations/getByEmployeeId": {
+    "access": "self",
+    "feature": "leaveAlloc.read.*",
+    "kind": "self"
+  },
+  "GET /leave/leave-allocations/getById": {
+    "access": "feature",
+    "feature": "leaveAlloc.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-allocations/restore": {
+    "access": "feature",
+    "feature": "leaveAlloc.restore.*",
+    "kind": "restore"
+  },
+  "POST /leave/leave-allocations/search": {
+    "access": "feature",
+    "feature": "leaveAlloc.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-allocations/total": {
+    "access": "feature",
+    "feature": "leaveAlloc.read.*",
+    "kind": "read"
+  },
+  "PUT /leave/leave-allocations/update": {
+    "access": "feature",
+    "feature": "leaveAlloc.update.*",
+    "kind": "update"
+  },
+  "POST /leave/leave-configurations/create": {
+    "access": "feature",
+    "feature": "leaveConfig.create.*",
+    "kind": "create"
+  },
+  "POST /leave/leave-configurations/delete": {
+    "access": "feature",
+    "feature": "leaveConfig.delete.*",
+    "kind": "delete"
+  },
+  "POST /leave/leave-configurations/get": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-configurations/getAll": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-configurations/getById": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-configurations/getDeleted": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-configurations/restore": {
+    "access": "feature",
+    "feature": "leaveConfig.restore.*",
+    "kind": "restore"
+  },
+  "POST /leave/leave-configurations/search": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-configurations/total": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
+  "PUT /leave/leave-configurations/update": {
+    "access": "feature",
+    "feature": "leaveConfig.update.*",
+    "kind": "update"
+  },
+  "POST /leave/leave-requests/create": {
+    "access": "self",
+    "feature": "leaveReq.create.*",
+    "kind": "self"
+  },
+  "POST /leave/leave-requests/delete": {
+    "access": "feature",
+    "feature": "leaveReq.delete.*",
+    "kind": "delete"
+  },
+  "GET /leave/leave-requests/deleted": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-requests/get": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-requests/get": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-requests/getById": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-requests/getEmployee": {
+    "access": "self",
+    "feature": "leaveReq.read.*",
+    "kind": "self"
+  },
+  "POST /leave/leave-requests/overviewByEmployee": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "POST /leave/leave-requests/restore": {
+    "access": "feature",
+    "feature": "leaveReq.restore.*",
+    "kind": "restore"
+  },
+  "POST /leave/leave-requests/search": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "GET /leave/leave-requests/total": {
+    "access": "feature",
+    "feature": "leaveReq.read.*",
+    "kind": "read"
+  },
+  "PUT /leave/leave-requests/update": {
+    "access": "feature",
+    "feature": "leaveReq.update.*",
+    "kind": "update"
+  },
+  "POST /leave/leave-requests/updateStatus": {
+    "access": "feature",
+    "feature": "leaveReq.approve.*",
+    "kind": "approve"
+  },
+  "PUT /role/changeRole": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "POST /role/create": {
+    "access": "feature",
+    "feature": "role.create.*",
+    "kind": "create"
+  },
+  "POST /role/delete": {
+    "access": "feature",
+    "feature": "role.delete.*",
+    "kind": "delete"
+  },
+  "GET /role/get": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "POST /role/get": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "POST /role/getById": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "POST /role/getByName": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "POST /role/getRoleById": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "POST /role/restore": {
+    "access": "feature",
+    "feature": "role.delete.*",
+    "kind": "restore"
+  },
+  "POST /role/search": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "GET /role/total": {
+    "access": "feature",
+    "feature": "role.read.*",
+    "kind": "read"
+  },
+  "PUT /role/update": {
+    "access": "feature",
+    "feature": "role.update.*",
+    "kind": "update"
+  },
+  "POST /shift/assignedEmployees": {
+    "access": "feature",
+    "feature": "shift.assignments.assignedEmployees.*",
+    "kind": "special"
+  },
+  "POST /shift/assignmentsByEmployee": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "POST /shift/assignToEmployee": {
+    "access": "feature",
+    "feature": "shift.assignments.assignToEmployee.*",
+    "kind": "special"
+  },
+  "POST /shift/assignToEmployees": {
+    "access": "feature",
+    "feature": "shift.assignments.assignToEmployee.*",
+    "kind": "special"
+  },
+  "POST /shift/assignToUnit": {
+    "access": "feature",
+    "feature": "shift.assignments.assignToUnit.*",
+    "kind": "special"
+  },
+  "POST /shift/checkAssignmentConflicts": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "POST /shift/create": {
+    "access": "feature",
+    "feature": "shift.create.*",
+    "kind": "create"
+  },
+  "POST /shift/delete": {
+    "access": "feature",
+    "feature": "shift.delete.*",
+    "kind": "delete"
+  },
+  "GET /shift/deleted": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "GET /shift/get": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "GET /shift/getAll": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "GET /shift/getById": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "POST /shift/removeAssignment": {
+    "access": "feature",
+    "feature": "shift.assignments.removeAssignment.*",
+    "kind": "special"
+  },
+  "POST /shift/restore": {
+    "access": "feature",
+    "feature": "shift.restore.*",
+    "kind": "restore"
+  },
+  "POST /shift/search": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "POST /shift/timetable/delete": {
+    "access": "feature",
+    "feature": "shift.delete.*",
+    "kind": "delete"
+  },
+  "POST /shift/timetable/get": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "POST /shift/timetable/upsert": {
+    "access": "feature",
+    "feature": "shift.create.*",
+    "kind": "create"
+  },
+  "POST /shift/timetableBlock/create": {
+    "access": "feature",
+    "feature": "shift.timetableBlock.create.*",
+    "kind": "create"
+  },
+  "POST /shift/timetableBlock/delete": {
+    "access": "feature",
+    "feature": "shift.timetableBlock.delete.*",
+    "kind": "delete"
+  },
+  "POST /shift/timetableBlock/get": {
+    "access": "feature",
+    "feature": "shift.timetableBlock.read.*",
+    "kind": "read"
+  },
+  "POST /shift/timetableBlock/update": {
+    "access": "feature",
+    "feature": "shift.timetableBlock.update.*",
+    "kind": "update"
+  },
+  "GET /shift/total": {
+    "access": "feature",
+    "feature": "shift.read.*",
+    "kind": "read"
+  },
+  "PUT /shift/update": {
+    "access": "feature",
+    "feature": "shift.update.*",
+    "kind": "update"
+  },
+  "GET /stats/customer": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "GET /stats/dashboard": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /stats/dateRange": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "GET /stats/gatePass": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "GET /stats/item": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "GET /stats/widgets": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "GET /systemConfig/get": {
+    "access": "feature",
+    "feature": "systemConfig.read.*",
+    "kind": "read"
+  },
+  "GET /systemConfig/schedulerLogs": {
+    "access": "feature",
+    "feature": "systemConfig.read.*",
+    "kind": "read"
+  },
+  "PUT /systemConfig/update": {
+    "access": "feature",
+    "feature": "systemConfig.update.*",
+    "kind": "update"
+  },
+  "POST /unit/create": {
+    "access": "feature",
+    "feature": "unit.create.*",
+    "kind": "create"
+  },
+  "POST /unit/delete": {
+    "access": "feature",
+    "feature": "unit.delete.*",
+    "kind": "delete"
+  },
+  "GET /unit/deleted": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "GET /unit/get": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "GET /unit/getAll": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "POST /unit/getAttendanceAndStats": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "GET /unit/getById": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "POST /unit/getHistoryById": {
+    "access": "feature",
+    "feature": "unit.viewPreviousUpdate.*",
+    "kind": "history"
+  },
+  "POST /unit/restore": {
+    "access": "feature",
+    "feature": "unit.restore.*",
+    "kind": "restore"
+  },
+  "POST /unit/search": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "GET /unit/total": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "PUT /unit/update": {
+    "access": "feature",
+    "feature": "unit.update.*",
+    "kind": "update"
+  },
+  "POST /unitEmployee/addEmployeesToUnit": {
+    "access": "feature",
+    "feature": "unit.create.*",
+    "kind": "create"
+  },
+  "POST /unitEmployee/assignEmployeesToUnit": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "POST /unitEmployee/getEmployeesByUnitId": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "POST /unitEmployee/getUnitsByEmployeeId": {
+    "access": "feature",
+    "feature": "unit.read.*",
+    "kind": "read"
+  },
+  "POST /unitEmployee/removeEmployeeFromUnit": {
+    "access": "feature",
+    "feature": "unit.delete.*",
+    "kind": "delete"
+  },
+  "POST /unitEmployee/removeEmployeesFromUnit": {
+    "access": "feature",
+    "feature": "unit.delete.*",
+    "kind": "delete"
+  },
+  "POST /user/changePassword": {
+    "access": "self",
+    "feature": "(own account)",
+    "kind": "self"
+  },
+  "POST /user/changeUserPassword": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/checkPassword": {
+    "access": "self",
+    "feature": "(own account)",
+    "kind": "self"
+  },
+  "POST /user/create": {
+    "access": "feature",
+    "feature": "user.create.*",
+    "kind": "create"
+  },
+  "POST /user/delete": {
+    "access": "feature",
+    "feature": "user.delete.*",
+    "kind": "delete"
+  },
+  "GET /user/get": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/get": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/getById": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/getDetaileUserById": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "GET /user/getLoggedInUser": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "GET /user/getNonAssociatedUsers": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/restore": {
+    "access": "feature",
+    "feature": "user.delete.*",
+    "kind": "restore"
+  },
+  "POST /user/search": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "GET /user/total": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "PUT /user/update": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "POST /userGroup/create": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "POST /userGroup/delete": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "GET /userGroup/get": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /userGroup/getById": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /userGroup/getByUserId": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /userGroup/restore": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "PUT /userGroup/update": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "POST /userRole/create": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "POST /userRole/delete": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "GET /userRole/get": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /userRole/getById": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /userRole/getByUserId": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /userRole/restore": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "PUT /userRole/update": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "POST /visitor/checkout": {
+    "access": "feature",
+    "feature": "visitor.checkout.*",
+    "kind": "update"
+  },
+  "POST /visitor/create": {
+    "access": "feature",
+    "feature": "visitor.create.*",
+    "kind": "create"
+  },
+  "POST /visitor/delete": {
+    "access": "feature",
+    "feature": "visitor.delete.*",
+    "kind": "delete"
+  },
+  "GET /visitor/deleted": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "POST /visitor/excel": {
+    "access": "feature",
+    "feature": "visitor.export.*",
+    "kind": "export"
+  },
+  "POST /visitor/filtered": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "GET /visitor/get": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "GET /visitor/getAll": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "GET /visitor/getById": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "POST /visitor/getHistoryById": {
+    "access": "feature",
+    "feature": "visitor.viewPreviousUpdate.*",
+    "kind": "history"
+  },
+  "POST /visitor/import": {
+    "access": "feature",
+    "feature": "visitor.import.*",
+    "kind": "import"
+  },
+  "POST /visitor/lookup": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "POST /visitor/personHistory": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "GET /visitor/present": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "POST /visitor/restore": {
+    "access": "feature",
+    "feature": "visitor.restore.*",
+    "kind": "restore"
+  },
+  "POST /visitor/search": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "POST /visitor/stats": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "POST /visitor/suggest": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "GET /visitor/template": {
+    "access": "feature",
+    "feature": "visitor.export.*",
+    "kind": "export"
+  },
+  "GET /visitor/total": {
+    "access": "feature",
+    "feature": "visitor.read.*",
+    "kind": "read"
+  },
+  "PUT /visitor/update": {
+    "access": "feature",
+    "feature": "visitor.update.*",
+    "kind": "update"
+  },
+  "GET /webhook/permissions": {
+    "access": "open",
+    "feature": "-",
+    "kind": "open"
+  },
+  "POST /webhook/permissions": {
+    "access": "open",
+    "feature": "-",
+    "kind": "open"
+  }
+}

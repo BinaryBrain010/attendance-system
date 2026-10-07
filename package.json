@@ -21,6 +21,9 @@
     "qa:rbac": "ts-node qa/run.ts",
     "qa:report": "ts-node qa/report.ts",
     "qa:cleanup": "ts-node qa/cleanup.ts",
+    "qa:routes": "ts-node qa/routewalk.ts",
+    "qa:featuremap": "ts-node qa/featuremap2.ts",
+    "qa:impact": "ts-node qa/impact.ts",
     "tsc": "tsc -w"
   },
   "author": "ahad",

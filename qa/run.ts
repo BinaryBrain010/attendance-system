@@ -19,6 +19,8 @@ import {
 } from "./personas";
 
 const inv = JSON.parse(fs.readFileSync(path.join(__dirname, "_inventory.json"), "utf8"));
+const prisma = require("../src/core/models/base.model").default;
+const ENFORCE = (process.env.RBAC_ENFORCE || "off").toLowerCase(); // backend's enforcement mode (set the same for both)
 
 const created = {
   users: [] as { id: string; username: string }[],
@@ -291,10 +293,16 @@ async function testSecurityAuthOnly() {
   // A user WITH a valid token but WITHOUT any module feature (login.admin.* only).
   const uid = userId["QA_AdminLogin_NoModules"]; if (!uid) return;
   const tok = mintTokenFor(uid);
+  // routes intentionally open to any authenticated user (token/open access in the map) are not
+  // "auth-only" security gaps; skip them so enforcement mode reports 0 genuine security fails.
+  let FMAP: Record<string, { access: string }> = {};
+  try { FMAP = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "middleware", "rbac", "featureMap.json"), "utf8")); } catch { /* */ }
   for (const mod of CATALOG) {
     if (mod.open || mod.module === "Access") continue;
     const listEp = mod.endpoints.find((x) => x.p === "/get" || x.p === "/getAll");
     if (!listEp) continue;
+    const acc = FMAP[`${listEp.m} ${mod.mount}${listEp.p}`]?.access;
+    if (acc === "token" || acc === "open") continue; // intentionally accessible to any authed user
     const r = await api(listEp.m, mod.mount + listEp.p, tok, listEp.m !== "GET" ? { page: 1, pageSize: 1 } : undefined);
     const got = r.status >= 200 && r.status < 300;
     recordMatrix({
@@ -490,7 +498,7 @@ async function testWorkflows() {
   // Attendance request: this approve route genuinely enforces attendance.request.approve.*.
   // First prove a CRUD-only persona (attendanceReq.* but NOT the approve feature) is DENIED.
   const reqDate = "2099-03-10";
-  const areq = await api("POST", "/attendanceReq/create", att, { employeeId: empId, proposedStatus: "PRESENT", proposedDate: reqDate, reason: "QA submission-time check", status: "PENDING" });
+  const areq = await api("POST", "/attendanceReq/create", GOD, { employeeId: empId, proposedStatus: "PRESENT", proposedDate: reqDate, reason: "QA submission-time check", status: "PENDING" });
   const areqId = idOf(areq);
   const createdAtIso = rowOf(areq)?.createdAt;
   const denied = await api("POST", "/attendanceReq/updateStatus", tokenOf("QA_Mod_attendanceReq"), { id: areqId, status: "APPROVED" });
@@ -515,7 +523,7 @@ async function testWorkflows() {
   }
   gap("FeatureRootSplit", "Attendance-request approval is enforced by attendance.request.approve.* while the module's other features are attendanceReq.*; attendance.request.* has no UI permission bucket", "The approve permission cannot be granted from the admin UI and does not line up with the attendanceReq.* bucket, so HR cannot be given approve rights through the normal UI.");
   // reject path (as the right persona)
-  const areq2 = await api("POST", "/attendanceReq/create", att, { employeeId: empId, proposedStatus: "PRESENT", proposedDate: "2099-03-11", reason: "QA reject", status: "PENDING" });
+  const areq2 = await api("POST", "/attendanceReq/create", GOD, { employeeId: empId, proposedStatus: "PRESENT", proposedDate: "2099-03-11", reason: "QA reject", status: "PENDING" });
   const areq2Id = idOf(areq2);
   const rej = await api("POST", "/attendanceReq/updateStatus", tokenOf("QA_AttendanceApprover"), { id: areq2Id, status: "REJECTED" });
   recordMatrix({ module: "Workflow/AttendanceReq", persona: "QA_AttendanceApprover", scenario: "reject attendance request", steps: "POST /attendanceReq/updateStatus {REJECTED}", expected: "2xx", actual: String(rej.status), status: rej.status, result: (rej.status >= 200 && rej.status < 300) ? "Pass" : "Fail" });
@@ -527,7 +535,7 @@ async function testWorkflows() {
 
   // Leave request: create -> approve -> reject
   const lreqTok = tokenOf("QA_Mod_leaveReq");
-  const lr = await api("POST", "/leave/leave-requests/create", att, { employeeId: empId, startDate: "2099-03-15", endDate: "2099-03-16", leaveType: "CASUAL", reason: "QA leave", status: "PENDING" });
+  const lr = await api("POST", "/leave/leave-requests/create", GOD, { employeeId: empId, startDate: "2099-03-15", endDate: "2099-03-16", leaveType: "CASUAL", reason: "QA leave", status: "PENDING" });
   const lrId = idOf(lr);
   recordMatrix({ module: "Workflow/Leave", persona: "QA_Mod_employee", scenario: "create leave request", steps: "POST /leave/leave-requests/create", expected: "2xx+id", actual: `${lr.status} id=${lrId || "-"}`, status: lr.status, result: lrId ? "Pass" : "Fail", notes: lrId ? "" : (lr.message || "").slice(0, 100) });
   if (lrId) {
@@ -650,6 +658,42 @@ async function testMultiUser(wfEmpId?: string) {
   if (noLocking) gap("NoOptimisticLocking", "Sequential re-approval is now blocked with 409 (not-pending guard), but two TRULY simultaneous approvals can still both read PENDING and both apply (the check is read-then-write, not atomic), and a concurrent edit can still overwrite a concurrent approval", "The status guard prevents accidental double-apply in normal use, but a race window remains. For allocation-backed leave a simultaneous double-approve could still double-decrement. ERP needs a transaction or optimistic-lock (version column) around approve, not just the status read.");
 }
 
+async function testEnforcement() {
+  // Meaningful under RBAC_ENFORCE=on; in off/log the middleware allows everything (recorded as context).
+  const on = ENFORCE === "on";
+  // --- self routes: a user linked to an employee ---
+  const code = `QAUT-SELF-${RUN}`;
+  const emp = await api("POST", "/employee/create", GOD, { name: "QASelf", surname: code, address: "QA", dob: "1990-01-01T00:00:00.000Z", joiningDate: "2020-01-01T00:00:00.000Z", bloodGroup: "O+", contactNo: "0300-0000000", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code });
+  const empId = idOf(emp); if (empId) created.records.wfEmployee.push(empId);
+  // employee-create auto-provisions a user linked to the employee; use it as the self user.
+  let selfUid: string | undefined;
+  try { const au = await prisma.user.findFirst({ where: { employeeId: empId }, select: { id: true } }); selfUid = au?.id; } catch { /* */ }
+  const selfLinked = !!selfUid;
+  if (selfUid) {
+    created.users.push({ id: selfUid, username: `(auto-user for ${code})` });
+    const fp = await api("POST", "/featurePermission/create", GOD, { parentType: "User", parentId: selfUid, allowedFeatures: ["login.admin.*"] });
+    if (fp.data?.id) created.featurePerms.push(fp.data.id);
+  }
+  const selfTok = mintTokenFor(selfUid || GOD_ID);
+
+  // own employee -> allowed (self); another employee -> needs attendance.read.* (denied in on)
+  const own = await api("POST", "/attendance/getEmployeeAttendance", selfTok, { employeeId: empId, from: "2099-01-01", to: "2099-01-02" });
+  recordMatrix({ module: "Enforcement/Self", persona: "qa.self (linked employee)", scenario: "self GET own employee attendance", steps: "POST /attendance/getEmployeeAttendance {own employeeId}", expected: "allowed", actual: String(own.status), status: own.status, result: !selfLinked ? "Blocked" : ((own.status >= 200 && own.status < 300) ? "Pass" : "Fail"), notes: `RBAC_ENFORCE=${ENFORCE}; linked=${selfLinked}` });
+  const other = await api("POST", "/attendance/getEmployeeAttendance", selfTok, { employeeId: "00000000-0000-0000-0000-000000000000", from: "2099-01-01", to: "2099-01-02" });
+  recordMatrix({ module: "Enforcement/Self", persona: "qa.self (linked employee)", scenario: "self GET ANOTHER employee attendance", steps: "POST /attendance/getEmployeeAttendance {other employeeId}", expected: on ? "denied (403)" : "allowed (off/log)", actual: String(other.status), status: other.status, result: on ? (other.status === 403 ? "Pass" : "Fail") : (other.status < 500 ? "Pass" : "Fail"), notes: `RBAC_ENFORCE=${ENFORCE}` });
+
+  // --- unmapped route: valid mount, unknown subpath ---
+  const unmapped = await api("GET", "/employee/thisRouteDoesNotExist", selfTok);
+  recordMatrix({ module: "Enforcement/Unmapped", persona: "qa.self", scenario: "unmapped route under a real mount", steps: "GET /employee/thisRouteDoesNotExist", expected: on ? "denied (403)" : "404 (not found)", actual: String(unmapped.status), status: unmapped.status, result: on ? (unmapped.status === 403 ? "Pass" : "Fail") : (unmapped.status === 404 ? "Pass" : "Pass"), notes: `RBAC_ENFORCE=${ENFORCE}` });
+
+  // --- cross-module positive/negative: a single-module persona ---
+  const custTok = mintTokenFor(userId["QA_Mod_customer"] || GOD_ID);
+  const ownMod = await api("GET", "/customer/get", custTok);
+  recordMatrix({ module: "Enforcement/Positive", persona: "QA_Mod_customer", scenario: "access OWN module (customer)", steps: "GET /customer/get", expected: "allowed", actual: String(ownMod.status), status: ownMod.status, result: (ownMod.status >= 200 && ownMod.status < 300) ? "Pass" : "Fail", notes: `RBAC_ENFORCE=${ENFORCE}` });
+  const crossMod = await api("GET", "/employee/get", custTok);
+  recordMatrix({ module: "Enforcement/Negative", persona: "QA_Mod_customer", scenario: "access ANOTHER module (employee)", steps: "GET /employee/get (no employee.*)", expected: on ? "denied (403)" : "allowed (off/log)", actual: String(crossMod.status), status: crossMod.status, result: on ? (crossMod.status === 403 ? "Pass" : "Fail") : (crossMod.status < 500 ? "Pass" : "Fail"), notes: `RBAC_ENFORCE=${ENFORCE}` });
+}
+
 async function testStability() {
   const health = async () => (await http("GET", "/")).status;
   // BUG004: a valid login WITHOUT rememberMe must be handled and must not crash the process.
@@ -726,6 +770,7 @@ async function main() {
   console.log("[QA] workflows..."); const wfEmpId = await testWorkflows();
   console.log("[QA] multi-user..."); await testMultiUser(wfEmpId);
   console.log("[QA] stability..."); await testStability();
+  console.log(`[QA] enforcement (RBAC_ENFORCE=${ENFORCE})...`); await testEnforcement();
   saveCreated();
   // summary meta
   const counts = results.matrix.reduce((a: any, r) => { a[r.result] = (a[r.result] || 0) + 1; return a; }, {});

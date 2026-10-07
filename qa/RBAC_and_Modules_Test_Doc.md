@@ -145,3 +145,68 @@ The RBAC model (the feature tree, the union resolution, the god bypass, and plat
 | qa/cleanup.ts | Teardown that removes all QA artifacts |
 | qa/_inventory.json | Baseline inventory of features, buckets, and admin and mobile permissions |
 | qa/backups/gatePassSystem_prewqa_*.sql | Pre work database backup (pg_dump) |
+
+---
+
+# Phase 3: Server-side permission enforcement (implemented)
+
+Phases 1 and 2 fixed stability and permission consistency. Phase 3 adds real server-side enforcement, built to roll out safely.
+
+## How it works
+
+- A `requirePermission` middleware runs after `authenticateToken` for every authenticated route (`src/helper/routes.helper.ts`). It is controlled by one env var:
+  - `RBAC_ENFORCE=off` (default): the middleware is a no-op. Behaviour is identical to before. **Production stays here until rollout.**
+  - `RBAC_ENFORCE=log`: evaluate every request and record would-be denials to `logs/rbac_denials.log`, but allow the request.
+  - `RBAC_ENFORCE=on`: deny (403) on failure and record it.
+- The route to feature mapping is generated from the actual runtime Express routers (not a hand list): `npm run qa:routes` then `npm run qa:featuremap` writes `src/middleware/rbac/featureMap.json` (321 routes). An unmapped route is DENIED under `on`.
+- The decision uses the same union resolver the app already uses (`AccessService.getAllowedFeaturesForUser`) with a per-request cache, plus the **parent rule**: holding a parent feature (e.g. `voucher.*`) grants all descendants (`voucher.read.*`, `voucher.post.*`).
+
+## Access kinds in the map
+
+- **open** (auth, webhook) and **token** (any logged-in user; e.g. `appFeature` reads, `access/*` checks) always pass.
+- **feature**: requires the mapped feature (parent rule applies).
+- **self**: allowed when the caller's linked employee (`User.employeeId`) matches the requested employee (`body.employeeId` or `query.employeeId`); otherwise the mapped feature is required. Routes with no employee target default to the caller's own record. Covers QuickMark's own attendance/requests/leave and `user/changePassword`.
+- **dynamic** (`featurePermission/*` writes): the required feature is chosen from the record's parent type, read from the EXISTING row for update/delete/restore (never trusted from the body), from the body for create; denied if the parent type is not Role/User/Group.
+- **god**: `appFeature` writes are god-only.
+- Unknown/unregistered feature strings are DENIED under `on` (allowed under off/log, preserving legacy behaviour).
+
+## Test results per mode (local)
+
+| Mode | Pass | Fail | Blocked | Notes |
+|---|---|---|---|---|
+| off | 285 | 26 | 0 | identical to pre-enforcement baseline (21 auth-only + unknown-feature + 4 unit-scoping) |
+| on | 306 | 1 | 3 | **0 auth-only security fails, 0 unknown-feature fails**; the 1 fail + 3 blocked are unit scoping (deferred) |
+
+Under `on`, verified: a no-feature user is denied every module; the unknown-feature check returns false; self routes allow the caller's own employee and deny another (403); unmapped routes are denied (403); approval routes are permission-enforced and still honour the submission-time and 409 not-pending rules; the full gate pass create -> approve(signature) -> PDF flow works for a holder of `voucher.*`.
+
+## Impact (run before enabling on)
+
+`npm run qa:impact` (or `IMPACT_DB_URL=... npm run qa:impact` against a restored prod copy) writes `qa/RBAC_Impact_Report.md`: for every real role/group/user, how many mapped endpoints they would lose under `on`. On the local DB, 189 of 190 users would lose at least one endpoint and most of the `*_test@phw` accounts (0 features) would lose all of them, because RBAC was never enforced and grants were never set up. **This is why log mode and fixing roles must come first.**
+
+## Mobile apps
+
+`qa/Mobile_Endpoints.md` lists every endpoint QuickPass and QuickMark call with the feature each needs:
+- **QuickMark (Attendance App)** needs NO feature grants: every endpoint it calls is open, token, or self. Enabling `on` will not break attendance-app users.
+- **QuickPass (Mobile)** needs its operators to hold `voucher.*`, `customer.*`, `item.*` and `user.*` (gate pass, customer, item, and user management).
+
+## Production rollout (do NOT run yet)
+
+1. `pg_dump` the production database and restore it into a local DB.
+2. `IMPACT_DB_URL=<restored copy> npm run qa:impact` and review `qa/RBAC_Impact_Report.md` — see exactly who loses what.
+3. Fix the real roles/groups in production (grant the features each role actually needs; QuickMark users need none, QuickPass operators need voucher/customer/item/user, admins need the admin buckets).
+4. Deploy the Phase 1-3 backend with `RBAC_ENFORCE=log` for a few days. Collect `logs/rbac_denials.log`.
+5. Review the log: every would-be denial for a legitimate user means a missing grant to fix (go back to step 3).
+6. When the log is clean (only genuine unauthorized attempts remain), switch `RBAC_ENFORCE=on`.
+
+## Phase 3 artifacts
+
+| File | Contents |
+|---|---|
+| src/middleware/rbac/requirePermission.ts | The enforcement middleware (off/log/on, self, dynamic, parent rule, per-request cache, denial log) |
+| src/middleware/rbac/featureMap.json | Generated route -> feature map the middleware loads |
+| qa/routewalk.ts | Walks the runtime Express routers and emits every route |
+| qa/featuremap2.ts | Builds the route map + held-by, emits the runtime map and Endpoint_Feature_Map.md |
+| qa/impact.ts | Per role/group/user "what would be lost under on" (DB-agnostic) |
+| qa/Endpoint_Feature_Map.md | The full 321-route mapping table with held-by |
+| qa/Mobile_Endpoints.md | QuickPass / QuickMark endpoints and required features |
+| logs/rbac_denials.log | Runtime record of (would-be) denials in log/on mode |
