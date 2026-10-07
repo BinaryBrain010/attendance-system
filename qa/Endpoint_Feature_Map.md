@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-321 routes walked from the live routers. Real DB users counted: 182.
+321 routes walked from the live routers. Real DB users counted: 175.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,9 +11,9 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 11. God-only: 4. Token-only: 10. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 11. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 182) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 175) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -48,7 +48,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /attendance/create | create | feature | `attendance.create.*` | yes | 22 |  |
 | POST | /attendance/delete | delete | feature | `attendance.delete.*` | yes | 22 |  |
 | POST | /attendance/excel | export | feature | `attendance.export.*` | yes | 22 |  |
-| POST | /attendance/face-attendance | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/face-attendance | create | feature | `attendance.markAttendance.*` | yes | 22 | marks attendance via face recognition |
 | GET | /attendance/get | read | feature | `attendance.read.*` | yes | 22 |  |
 | POST | /attendance/get | read | feature | `attendance.read.*` | yes | 22 |  |
 | POST | /attendance/getById | read | feature | `attendance.read.*` | yes | 22 |  |
@@ -96,18 +96,18 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /employee/create | create | feature | `employee.create.*` | yes | 22 |  |
 | POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 22 |  |
 | POST | /employee/files | read | feature | `employee.read.*` | yes | 22 |  |
-| POST | /employee/filesDel | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/filesDel | update | feature | `employee.update.*` | yes | 22 |  |
 | GET | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getByCode | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getById | read | feature | `employee.read.*` | yes | 22 |  |
-| POST | /employee/getByUserId | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getByUserId | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
 | POST | /employee/getCard | export | feature | `employee.excel.*` | yes | 22 |  |
 | POST | /employee/getDeleted | read | feature | `employee.read.*` | yes | 22 |  |
 | GET | /employee/getExcel | export | feature | `employee.excel.*` | yes | 22 |  |
 | GET | /employee/getFaceRecognitionData | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getHistoryById | history | feature | `employee.viewPreviousUpdate.*` | yes | 22 |  |
-| POST | /employee/getLinkedUser | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
 | POST | /employee/restore | restore | feature | `employee.restore.*` | yes | 22 |  |
 | POST | /employee/search | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/stats | read | feature | `employee.read.*` | yes | 22 |  |
@@ -221,7 +221,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /leave/leave-requests/total | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | PUT | /leave/leave-requests/update | update | feature | `leaveReq.update.*` | yes | 4 |  |
 | POST | /leave/leave-requests/updateStatus | approve | feature | `leaveReq.approve.*` | yes | 4 | covers approve and reject |
-| PUT | /role/changeRole | read | feature | `role.read.*` | yes | 2 |  |
+| PUT | /role/changeRole | update | feature | `role.update.*` | yes | 2 |  |
 | POST | /role/create | create | feature | `role.create.*` | yes | 2 |  |
 | POST | /role/delete | delete | feature | `role.delete.*` | yes | 2 |  |
 | GET | /role/get | read | feature | `role.read.*` | yes | 2 |  |
@@ -248,9 +248,9 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /shift/removeAssignment | special | feature | `shift.assignments.removeAssignment.*` | yes | 3 |  |
 | POST | /shift/restore | restore | feature | `shift.restore.*` | yes | 3 |  |
 | POST | /shift/search | read | feature | `shift.read.*` | yes | 3 |  |
-| POST | /shift/timetable/delete | delete | feature | `shift.delete.*` | yes | 3 |  |
+| POST | /shift/timetable/delete | update | feature | `shift.update.*` | yes | 3 |  |
 | POST | /shift/timetable/get | read | feature | `shift.read.*` | yes | 3 |  |
-| POST | /shift/timetable/upsert | create | feature | `shift.create.*` | yes | 3 |  |
+| POST | /shift/timetable/upsert | update | feature | `shift.update.*` | yes | 3 |  |
 | POST | /shift/timetableBlock/create | create | feature | `shift.timetableBlock.create.*` | yes | 3 |  |
 | POST | /shift/timetableBlock/delete | delete | feature | `shift.timetableBlock.delete.*` | yes | 3 |  |
 | POST | /shift/timetableBlock/get | read | feature | `shift.timetableBlock.read.*` | yes | 3 |  |
@@ -278,14 +278,14 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /unit/search | read | feature | `unit.read.*` | yes | 3 |  |
 | GET | /unit/total | read | feature | `unit.read.*` | yes | 3 |  |
 | PUT | /unit/update | update | feature | `unit.update.*` | yes | 3 |  |
-| POST | /unitEmployee/addEmployeesToUnit | create | feature | `unit.create.*` | yes | 3 |  |
-| POST | /unitEmployee/assignEmployeesToUnit | read | feature | `unit.read.*` | yes | 3 |  |
+| POST | /unitEmployee/addEmployeesToUnit | update | feature | `unit.update.*` | yes | 3 |  |
+| POST | /unitEmployee/assignEmployeesToUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /unitEmployee/getEmployeesByUnitId | read | feature | `unit.read.*` | yes | 3 |  |
 | POST | /unitEmployee/getUnitsByEmployeeId | read | feature | `unit.read.*` | yes | 3 |  |
-| POST | /unitEmployee/removeEmployeeFromUnit | delete | feature | `unit.delete.*` | yes | 3 |  |
-| POST | /unitEmployee/removeEmployeesFromUnit | delete | feature | `unit.delete.*` | yes | 3 |  |
+| POST | /unitEmployee/removeEmployeeFromUnit | update | feature | `unit.update.*` | yes | 3 |  |
+| POST | /unitEmployee/removeEmployeesFromUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /user/changePassword | self | self | `(own account)` | - | - | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /user/changeUserPassword | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/changeUserPassword | update | feature | `user.update.*` | yes | 2 |  |
 | POST | /user/checkPassword | self | self | `(own account)` | - | - | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /user/create | create | feature | `user.create.*` | yes | 2 |  |
 | POST | /user/delete | delete | feature | `user.delete.*` | yes | 2 |  |
@@ -293,7 +293,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /user/get | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/getById | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/getDetaileUserById | read | feature | `user.read.*` | yes | 2 |  |
-| GET | /user/getLoggedInUser | read | feature | `user.read.*` | yes | 2 |  |
+| GET | /user/getLoggedInUser | read | token | `-` | - | - | every logged-in user needs their own profile |
 | GET | /user/getNonAssociatedUsers | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/restore | restore | feature | `user.delete.*` | yes | 2 | restore mapped to delete feature |
 | POST | /user/search | read | feature | `user.read.*` | yes | 2 |  |

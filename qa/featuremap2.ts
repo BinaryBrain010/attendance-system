@@ -69,8 +69,26 @@ const kindFromName = (p: string): string => {
 };
 
 // pick the most specific existing feature for a route, else fall back to root.kind.*
+// Explicit per-route overrides (checked first). Fix routes the heuristic maps wrong.
+const OVERRIDE: Record<string, { feature: string; kind: string; access: string; note?: string }> = {
+  "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
+  "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
+  "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
+  "POST /user/changeUserPassword": { feature: "user.update.*", kind: "update", access: "feature" },
+  "PUT /role/changeRole": { feature: "role.update.*", kind: "update", access: "feature" },
+  "POST /employee/filesDel": { feature: "employee.update.*", kind: "update", access: "feature" },
+  "POST /unitEmployee/assignEmployeesToUnit": { feature: "unit.update.*", kind: "update", access: "feature" },
+  "POST /unitEmployee/addEmployeesToUnit": { feature: "unit.update.*", kind: "update", access: "feature" },
+  "POST /unitEmployee/removeEmployeeFromUnit": { feature: "unit.update.*", kind: "update", access: "feature" },
+  "POST /unitEmployee/removeEmployeesFromUnit": { feature: "unit.update.*", kind: "update", access: "feature" },
+  "POST /shift/timetable/upsert": { feature: "shift.update.*", kind: "update", access: "feature" },
+  "POST /shift/timetable/delete": { feature: "shift.update.*", kind: "update", access: "feature" },
+  "POST /attendance/face-attendance": { feature: "attendance.markAttendance.*", kind: "create", access: "feature", note: "marks attendance via face recognition" },
+};
+
 function resolveFeature(method: string, p: string): { feature: string; kind: string; access: string; note?: string } {
   const key = `${method} ${p}`;
+  if (OVERRIDE[key]) return OVERRIDE[key];
   const seg = p.split("/");
   const last = seg[seg.length - 1];
 

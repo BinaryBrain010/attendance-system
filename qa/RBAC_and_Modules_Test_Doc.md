@@ -4,9 +4,9 @@
 
 **Environment.** Local only. Backend at http://localhost:3002, admin UI at http://localhost:3001, database gatePassSystem. The harness refuses to run if DATABASE_URL is not localhost. Production was never touched.
 
-**Date of run.** 2026-10-05.
+**Date of run.** 2026-10-08.
 
-**Result.** 271 pass and 30 fail across 301 checks, plus a live UI check of 7 personas in the browser. 8 bugs and 34 gaps were logged. Every one of the 30 fails is a real finding, not a test artifact. No business logic was changed. Findings are logged only and wait for your approval before any fix.
+**Result.** Phases 1 to 3 are implemented. With enforcement off (the default) the suite is 285 pass / 26 fail (the original baseline findings). With `RBAC_ENFORCE=on` it is 306 pass / 1 fail / 3 blocked, with **0 auth-only security fails and 0 unknown-feature fails**; the remaining fail and blocked rows are unit scoping (deferred). A live UI check of 7 personas was also run. The original Phases 1 and 2 findings (8 bugs) have been fixed; what remains is the deferred unit-scoping work and the production rollout. See the Phase 3 section for details.
 
 ---
 

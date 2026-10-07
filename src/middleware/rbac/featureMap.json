@@ -166,8 +166,8 @@
   },
   "POST /attendance/face-attendance": {
     "access": "feature",
-    "feature": "attendance.read.*",
-    "kind": "read"
+    "feature": "attendance.markAttendance.*",
+    "kind": "create"
   },
   "GET /attendance/get": {
     "access": "feature",
@@ -406,8 +406,8 @@
   },
   "POST /employee/filesDel": {
     "access": "feature",
-    "feature": "employee.read.*",
-    "kind": "read"
+    "feature": "employee.update.*",
+    "kind": "update"
   },
   "GET /employee/get": {
     "access": "feature",
@@ -430,7 +430,7 @@
     "kind": "read"
   },
   "POST /employee/getByUserId": {
-    "access": "feature",
+    "access": "self",
     "feature": "employee.read.*",
     "kind": "read"
   },
@@ -460,7 +460,7 @@
     "kind": "history"
   },
   "POST /employee/getLinkedUser": {
-    "access": "feature",
+    "access": "self",
     "feature": "employee.read.*",
     "kind": "read"
   },
@@ -1031,8 +1031,8 @@
   },
   "PUT /role/changeRole": {
     "access": "feature",
-    "feature": "role.read.*",
-    "kind": "read"
+    "feature": "role.update.*",
+    "kind": "update"
   },
   "POST /role/create": {
     "access": "feature",
@@ -1166,8 +1166,8 @@
   },
   "POST /shift/timetable/delete": {
     "access": "feature",
-    "feature": "shift.delete.*",
-    "kind": "delete"
+    "feature": "shift.update.*",
+    "kind": "update"
   },
   "POST /shift/timetable/get": {
     "access": "feature",
@@ -1176,8 +1176,8 @@
   },
   "POST /shift/timetable/upsert": {
     "access": "feature",
-    "feature": "shift.create.*",
-    "kind": "create"
+    "feature": "shift.update.*",
+    "kind": "update"
   },
   "POST /shift/timetableBlock/create": {
     "access": "feature",
@@ -1316,13 +1316,13 @@
   },
   "POST /unitEmployee/addEmployeesToUnit": {
     "access": "feature",
-    "feature": "unit.create.*",
-    "kind": "create"
+    "feature": "unit.update.*",
+    "kind": "update"
   },
   "POST /unitEmployee/assignEmployeesToUnit": {
     "access": "feature",
-    "feature": "unit.read.*",
-    "kind": "read"
+    "feature": "unit.update.*",
+    "kind": "update"
   },
   "POST /unitEmployee/getEmployeesByUnitId": {
     "access": "feature",
@@ -1336,13 +1336,13 @@
   },
   "POST /unitEmployee/removeEmployeeFromUnit": {
     "access": "feature",
-    "feature": "unit.delete.*",
-    "kind": "delete"
+    "feature": "unit.update.*",
+    "kind": "update"
   },
   "POST /unitEmployee/removeEmployeesFromUnit": {
     "access": "feature",
-    "feature": "unit.delete.*",
-    "kind": "delete"
+    "feature": "unit.update.*",
+    "kind": "update"
   },
   "POST /user/changePassword": {
     "access": "self",
@@ -1351,8 +1351,8 @@
   },
   "POST /user/changeUserPassword": {
     "access": "feature",
-    "feature": "user.read.*",
-    "kind": "read"
+    "feature": "user.update.*",
+    "kind": "update"
   },
   "POST /user/checkPassword": {
     "access": "self",
@@ -1390,8 +1390,8 @@
     "kind": "read"
   },
   "GET /user/getLoggedInUser": {
-    "access": "feature",
-    "feature": "user.read.*",
+    "access": "token",
+    "feature": "-",
     "kind": "read"
   },
   "GET /user/getNonAssociatedUsers": {

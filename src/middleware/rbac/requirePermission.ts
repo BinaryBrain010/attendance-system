@@ -93,12 +93,16 @@ export default async function requirePermission(req: Request, res: Response, nex
       const body: any = req.body || {};
       const query: any = req.query || {};
       const reqEmp = body.employeeId ?? query.employeeId ?? null;
-      if (reqEmp === null) return next();            // no target -> defaults to the caller's own record
-      const ownEmp = await callerEmployeeId(userId);
-      if (ownEmp && String(ownEmp) === String(reqEmp)) return next();
+      const reqUser = body.userId ?? query.userId ?? null;
+      if (reqEmp === null && reqUser === null) return next();   // no target -> the caller's own record
+      if (reqUser !== null && String(reqUser) === String(userId)) return next(); // own user account
+      if (reqEmp !== null) {
+        const ownEmp = await callerEmployeeId(userId);
+        if (ownEmp && String(ownEmp) === String(reqEmp)) return next();           // own employee
+      }
       const s = await permSet(req, userId);
-      if (holds(s, feature)) return next();          // acting on another employee needs the feature
-      return deny(`self: not own employee and missing ${feature}`);
+      if (holds(s, feature)) return next();          // acting on another employee/user needs the feature
+      return deny(`self: not own and missing ${feature}`);
     }
 
     if (access === "dynamic") {
