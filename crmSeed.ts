@@ -188,31 +188,67 @@ async function seedCatalogue() {
   }
 }
 
+// token helpers for fuzzy name/username matching
+const toks = (s: string) => (s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const tokMatch = (a: string, b: string) => a === b || (Math.min(a.length, b.length) >= 4 && a.slice(0, 4) === b.slice(0, 4));
+const score = (nameToks: string[], candToks: string[]) => nameToks.filter((nt) => candToks.some((ct) => tokMatch(nt, ct))).length;
+
+/**
+ * Candidate-based agent mapping. For each agent code we gather candidates from BOTH Employees
+ * (name+surname) and Users (username local-part), score them by fuzzy token overlap, show them, and
+ * auto-link ONLY on a single unambiguous strong match (>=2 name tokens matched). Ambiguous or
+ * weak-only -> reported, not linked. Never creates users.
+ */
 async function seedAgents() {
-  console.log("\n[crmSeed] --- Agent mapping (map to EXISTING employees by name; no users created) ---");
+  console.log("\n[crmSeed] --- Agent mapping (Employees + User usernames, fuzzy; no users created) ---");
+  const unmatched: string[] = [];
   for (const a of AGENTS) {
-    const [first, ...rest] = a.full.split(" ");
-    const surname = rest.join(" ");
-    const emp = await prisma.employee.findFirst({
-      where: {
-        isDeleted: null,
-        name: { equals: first, mode: "insensitive" },
-        ...(surname ? { surname: { contains: surname.split(" ")[rest.length - 1] || surname, mode: "insensitive" } } : {}),
-      },
-      select: { id: true, name: true, surname: true },
-    });
-    if (!emp) {
-      console.log(`  GAP   ${a.code}  "${a.full}" -> no matching Employee (resolve manually)`);
-      continue;
+    const nameToks = toks(a.full);
+    const orName = nameToks.flatMap((t) => [{ name: { contains: t, mode: "insensitive" as const } }, { surname: { contains: t, mode: "insensitive" as const } }]);
+    const orUser = nameToks.map((t) => ({ username: { contains: t, mode: "insensitive" as const } }));
+    const [emps, users] = await Promise.all([
+      prisma.employee.findMany({ where: { isDeleted: null, OR: orName }, select: { id: true, name: true, surname: true }, take: 50 }),
+      prisma.user.findMany({ where: { isDeleted: null, OR: orUser }, select: { id: true, username: true, employeeId: true }, take: 50 }),
+    ]);
+    // candidate map keyed by employeeId (the human)
+    const cand: Record<string, { empId: string | null; label: string; username?: string; userId?: string; score: number }> = {};
+    for (const e of emps) {
+      const sc = score(nameToks, toks(`${e.name} ${e.surname}`));
+      if (sc < 1) continue;
+      const key = e.id;
+      cand[key] = { empId: e.id, label: `${e.name} ${e.surname}`, score: Math.max(sc, cand[key]?.score || 0) };
     }
-    const user = await prisma.user.findFirst({ where: { employeeId: emp.id, isDeleted: null }, select: { id: true, username: true } });
-    await prisma.salesAgent.upsert({
-      where: { agentCode: a.code },
-      update: { employeeId: emp.id, userId: user?.id ?? null, isDeleted: null },
-      create: { agentCode: a.code, employeeId: emp.id, userId: user?.id ?? null, scope: "OWN", company: "OKASHASMART" },
-    });
-    console.log(`  MATCH ${a.code}  "${a.full}" -> ${emp.name} ${emp.surname} (emp ${emp.id.slice(0, 8)}; user ${user ? user.username : "NONE — no login"})`);
+    for (const u of users) {
+      const sc = score(nameToks, toks(u.username.split("@")[0]));
+      if (sc < 1) continue;
+      const key = u.employeeId || `user:${u.id}`;
+      const prev = cand[key];
+      cand[key] = { empId: u.employeeId, label: prev?.label || u.username, username: u.username, userId: u.id, score: Math.max(sc, prev?.score || 0) };
+    }
+    const all = Object.values(cand).sort((x, y) => y.score - x.score);
+    const strong = all.filter((c) => c.score >= 2);
+    const show = all.slice(0, 4).map((c) => `${c.username || c.label}${c.empId ? "" : " (no emp)"} score${c.score}`).join("; ") || "none";
+    console.log(`  ${a.code} "${a.full}" candidates: ${show}`);
+
+    if (strong.length === 1 && strong[0].empId) {
+      const empId = strong[0].empId;
+      const user = strong[0].userId ? { id: strong[0].userId, username: strong[0].username! }
+        : await prisma.user.findFirst({ where: { employeeId: empId, isDeleted: null }, select: { id: true, username: true } });
+      await prisma.salesAgent.upsert({
+        where: { agentCode: a.code },
+        update: { employeeId: empId, userId: user?.id ?? null, isDeleted: null },
+        create: { agentCode: a.code, employeeId: empId, userId: user?.id ?? null, scope: "OWN", company: "OKASHASMART" },
+      });
+      console.log(`     -> LINKED emp ${empId.slice(0, 8)} / user ${user ? user.username : "NONE — needs login"}`);
+    } else if (strong.length > 1) {
+      console.log(`     -> AMBIGUOUS (${strong.length} strong candidates) — not linked, resolve manually`);
+      unmatched.push(`${a.code} (${a.full}) ambiguous`);
+    } else {
+      console.log(`     -> UNMATCHED (no strong candidate) — resolve manually`);
+      unmatched.push(`${a.code} (${a.full})`);
+    }
   }
+  if (unmatched.length) console.log(`  [crmSeed] UNRESOLVED agents (user action): ${unmatched.join(", ")}`);
 }
 
 async function regenerateLiveFeatures() {
