@@ -51,6 +51,18 @@ import ActivityLogRoutes from "../../modules/ActivityLog/routes/activityLog.rout
 //Frontdesk
 import VisitorRoutes from "../../modules/Frontdesk/Visitor/routes/visitor.routes";
 
+//CRM (Sales CRM — Okasha Smart)
+import CrmCategoryRoutes from "../../modules/CRM/Catalogue/Category/routes/category.routes";
+import CrmBrandRoutes from "../../modules/CRM/Catalogue/Brand/routes/brand.routes";
+import CrmProductRoutes from "../../modules/CRM/Catalogue/Product/routes/product.routes";
+import CrmPriceListRoutes from "../../modules/CRM/Catalogue/PriceList/routes/pricelist.routes";
+import CrmBundleRoutes from "../../modules/CRM/Catalogue/Bundle/routes/bundle.routes";
+import SalesAgentRoutes from "../../modules/CRM/SalesAgent/routes/salesAgent.routes";
+import LeadRoutes from "../../modules/CRM/Lead/routes/lead.routes";
+import QuotationRoutes from "../../modules/CRM/Quotation/routes/quotation.routes";
+import SalesOrderRoutes from "../../modules/CRM/SalesOrder/routes/salesOrder.routes";
+import CrmReportRoutes from "../../modules/CRM/Report/routes/report.routes";
+
 class App {
   private app: Express;
   private server: http.Server | null = null;
@@ -213,7 +225,19 @@ class App {
       ActivityLogRoutes,
 
       //Frontdesk
-      VisitorRoutes
+      VisitorRoutes,
+
+      //CRM
+      CrmCategoryRoutes,
+      CrmBrandRoutes,
+      CrmProductRoutes,
+      CrmPriceListRoutes,
+      CrmBundleRoutes,
+      SalesAgentRoutes,
+      LeadRoutes,
+      QuotationRoutes,
+      SalesOrderRoutes,
+      CrmReportRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

@@ -1,0 +1,233 @@
+/**
+ * CRM Phase 1 seed (LOCAL ONLY):
+ *   1. Registers the crm.* AppFeature tree (+ appModules.crm.*).
+ *   2. Seeds the curated catalogue (categories, products, a retail+cost price each, a couple of
+ *      variants, one starter bundle) from Docs/SalesCRM_Design.md §10.
+ *   3. Maps sales agents AG001..AG008 to EXISTING Employee+User rows BY NAME (never creates users);
+ *      prints a match/gap report. Gaps are left for the user to resolve.
+ *   4. Rewrites qa/_livefeatures.json from the DB so the featureMap generator sees the new features.
+ *
+ *   npx ts-node crmSeed.ts
+ */
+import fs from "fs";
+import path from "path";
+import prisma from "./src/core/models/base.model";
+
+// ---- hard local guard ----
+const DB = process.env.DATABASE_URL || "";
+const host = (() => { try { return DB.split("://")[1].split("@").pop()!.split("/")[0].split(":")[0]; } catch { return ""; } })();
+if (!["localhost", "127.0.0.1", "[::1]"].includes(host)) {
+  console.error(`[crmSeed] REFUSING — DATABASE_URL host "${host}" is not local.`); process.exit(2);
+}
+
+type F = [name: string, parent: string | null, label: string];
+function leaves(root: string, parent: string, kinds: string[], labels: Record<string, string>): F[] {
+  return kinds.map((k) => [`${root}.${k}.*`, parent, labels[k] || k] as F);
+}
+
+const CRUD = ["read", "create", "update", "delete", "restore"];
+const CRUDL: Record<string, string> = { read: "View", create: "Create", update: "Edit", delete: "Delete", restore: "Restore" };
+
+const FEATURES: F[] = [
+  ["crm.*", null, "CRM"],
+  ["appModules.crm.*", "appModules.*", "CRM (menu)"],
+
+  ["crm.catalogue.*", "crm.*", "Catalogue"],
+  ...leaves("crm.catalogue", "crm.catalogue.*", [...CRUD, "import", "export", "cost"],
+    { ...CRUDL, import: "Import", export: "Export", cost: "View cost & margin" }),
+
+  ["crm.agent.*", "crm.*", "Sales Agents"],
+  ...leaves("crm.agent", "crm.agent.*", CRUD, CRUDL),
+
+  ["crm.lead.*", "crm.*", "Leads"],
+  ["crm.lead.read.*", "crm.lead.*", "View leads (all scopes)"],
+  ["crm.lead.read.own.*", "crm.lead.read.*", "View own leads"],
+  ["crm.lead.read.team.*", "crm.lead.read.*", "View team leads"],
+  ["crm.lead.read.all.*", "crm.lead.read.*", "View all leads"],
+  ...leaves("crm.lead", "crm.lead.*", ["create", "update", "delete", "restore", "transition", "assign", "import", "export", "timeline"],
+    { ...CRUDL, transition: "Change stage", assign: "Assign agent", import: "Import", export: "Export", timeline: "View timeline" }),
+
+  ["crm.quotation.*", "crm.*", "Quotations"],
+  ["crm.quotation.read.*", "crm.quotation.*", "View quotations (all scopes)"],
+  ["crm.quotation.read.own.*", "crm.quotation.read.*", "View own quotations"],
+  ["crm.quotation.read.team.*", "crm.quotation.read.*", "View team quotations"],
+  ["crm.quotation.read.all.*", "crm.quotation.read.*", "View all quotations"],
+  ...leaves("crm.quotation", "crm.quotation.*", ["create", "update", "delete", "restore", "transition", "export"],
+    { ...CRUDL, transition: "Change status", export: "Export" }),
+
+  ["crm.order.*", "crm.*", "Sales Orders"],
+  ["crm.order.read.*", "crm.order.*", "View orders (all scopes)"],
+  ["crm.order.read.own.*", "crm.order.read.*", "View own orders"],
+  ["crm.order.read.team.*", "crm.order.read.*", "View team orders"],
+  ["crm.order.read.all.*", "crm.order.read.*", "View all orders"],
+  ...leaves("crm.order", "crm.order.*", ["create", "update", "delete", "restore", "transition", "reattempt", "export"],
+    { ...CRUDL, transition: "Change status", reattempt: "Reattempt delivery", export: "Export" }),
+
+  ["crm.return.*", "crm.*", "Returns"],
+  ["crm.return.read.*", "crm.return.*", "View returns (all scopes)"],
+  ["crm.return.read.own.*", "crm.return.read.*", "View own returns"],
+  ["crm.return.read.team.*", "crm.return.read.*", "View team returns"],
+  ["crm.return.read.all.*", "crm.return.read.*", "View all returns"],
+  ...leaves("crm.return", "crm.return.*", ["create", "update", "transition", "import", "export"],
+    { ...CRUDL, transition: "Change status", import: "Import", export: "Export" }),
+
+  ["crm.report.*", "crm.*", "Reports"],
+  ["crm.report.read.*", "crm.report.*", "View reports"],
+  ["crm.report.export.*", "crm.report.*", "Export reports"],
+];
+
+// ---- curated catalogue (Docs/SalesCRM_Design.md §10); prices are placeholder PKR ----
+const CATEGORIES = ["Smart Locks", "Smart Switches & Panels", "Smart Plugs & Power", "Cameras & Security", "Lighting", "Appliances & Sensors", "Services & Bundles"];
+type P = { cat: string; name: string; protocol?: string; price: number; cost: number };
+const PRODUCTS: P[] = [
+  { cat: "Smart Locks", name: "Super Smart Door Lock (Bluetooth)", protocol: "BLUETOOTH", price: 45000, cost: 32000 },
+  { cat: "Smart Locks", name: "Smart Vision Door Lock", protocol: "WIFI", price: 52000, cost: 37000 },
+  { cat: "Smart Locks", name: "Glass Door Lock with Camera", protocol: "WIFI", price: 68000, cost: 49000 },
+  { cat: "Smart Locks", name: "Nova Door Lock (Matt)", protocol: "WIFI", price: 41000, cost: 29000 },
+  { cat: "Smart Locks", name: "Classic Door Lock", protocol: "WIFI", price: 38000, cost: 27000 },
+  { cat: "Smart Locks", name: "Vault Door Lock", protocol: "WIFI", price: 72000, cost: 52000 },
+  { cat: "Smart Locks", name: "Armour Door Lock (Face)", protocol: "WIFI", price: 85000, cost: 61000 },
+  { cat: "Smart Locks", name: "Travel Pad Lock", protocol: "BLUETOOTH", price: 6500, cost: 4200 },
+  { cat: "Smart Locks", name: "Smart Padlock (New Model)", protocol: "BLUETOOTH", price: 7000, cost: 4500 },
+  { cat: "Smart Switches & Panels", name: "Crystal Series Smart Switch 2 Gang", protocol: "WIFI", price: 9500, cost: 6500 },
+  { cat: "Smart Switches & Panels", name: "Crystal Series Smart Switch 4 Gang", protocol: "WIFI", price: 12500, cost: 8500 },
+  { cat: "Smart Switches & Panels", name: "Crystal Series Smart Switch 8 Gang", protocol: "WIFI", price: 18500, cost: 13000 },
+  { cat: "Smart Switches & Panels", name: "4 Gang + 1 Fan Smart Switch", protocol: "WIFI", price: 14000, cost: 9800 },
+  { cat: "Smart Switches & Panels", name: "Mini Super Smart Panel", protocol: "WIFI", price: 21000, cost: 15000 },
+  { cat: "Smart Switches & Panels", name: "Zigbee Switch", protocol: "ZIGBEE", price: 11000, cost: 7500 },
+  { cat: "Smart Switches & Panels", name: "Geyser Switch", protocol: "WIFI", price: 8500, cost: 5800 },
+  { cat: "Smart Plugs & Power", name: "10A Smart Plug", protocol: "WIFI", price: 3500, cost: 2200 },
+  { cat: "Smart Plugs & Power", name: "16A Smart Plug", protocol: "WIFI", price: 4500, cost: 2900 },
+  { cat: "Smart Plugs & Power", name: "40A Breaker (with box)", protocol: "WIFI", price: 15000, cost: 10500 },
+  { cat: "Smart Plugs & Power", name: "BT Gateway (3-in-1)", protocol: "BLUETOOTH", price: 9000, cost: 6000 },
+  { cat: "Cameras & Security", name: "Smart Camera 5MP", protocol: "WIFI", price: 11500, cost: 8000 },
+  { cat: "Cameras & Security", name: "Classic Camera", protocol: "WIFI", price: 8500, cost: 5800 },
+  { cat: "Cameras & Security", name: "Robot Camera", protocol: "WIFI", price: 13500, cost: 9500 },
+  { cat: "Cameras & Security", name: "AI Intercom & Security Kit", protocol: "WIFI", price: 42000, cost: 30000 },
+  { cat: "Cameras & Security", name: "Motion Sensor (Stand-Alone)", protocol: "WIFI", price: 4800, cost: 3100 },
+  { cat: "Cameras & Security", name: "Exit Door Bell Button", protocol: "WIRED", price: 1800, cost: 1100 },
+  { cat: "Lighting", name: "LED Light Bars", protocol: "WIFI", price: 3200, cost: 2000 },
+  { cat: "Lighting", name: "9W RGB Bulb", protocol: "WIFI", price: 2200, cost: 1300 },
+  { cat: "Lighting", name: "12W Slim RGB", protocol: "WIFI", price: 2800, cost: 1700 },
+  { cat: "Lighting", name: "6W Zigbee RGB Downlight", protocol: "ZIGBEE", price: 2600, cost: 1600 },
+  { cat: "Lighting", name: "5V Dream LED Strip (USB)", protocol: "WIFI", price: 1900, cost: 1100 },
+  { cat: "Lighting", name: "Kids Lamp", protocol: "WIFI", price: 2400, cost: 1500 },
+  { cat: "Appliances & Sensors", name: "Air Purifier X600", protocol: "WIFI", price: 38000, cost: 27000 },
+  { cat: "Appliances & Sensors", name: "Air Purifier X500", protocol: "WIFI", price: 31000, cost: 22000 },
+  { cat: "Appliances & Sensors", name: "Humidity-Temperature Sensor (WiFi)", protocol: "WIFI", price: 3800, cost: 2400 },
+  { cat: "Appliances & Sensors", name: "Pet Feeder", protocol: "WIFI", price: 14500, cost: 10000 },
+  { cat: "Appliances & Sensors", name: "Universal Remote (IR)", protocol: "WIFI", price: 4200, cost: 2700 },
+  { cat: "Services & Bundles", name: "Home Automation (Consultation)", price: 0, cost: 0 },
+  { cat: "Services & Bundles", name: "Installation", price: 5000, cost: 2000 },
+];
+
+const AGENTS: { code: string; full: string }[] = [
+  { code: "AG001", full: "Usama Liaqat" },
+  { code: "AG002", full: "Ghulam Mustafa" },
+  { code: "AG003", full: "Hur Ali" },
+  { code: "AG004", full: "Sadaf Raza" },
+  { code: "AG005", full: "Hafiz Mubashir" },
+  { code: "AG006", full: "Usman Arshad" },
+  { code: "AG007", full: "Waleed Bin Saeed" },
+  { code: "AG008", full: "Areeba Farooq" },
+];
+
+function skuFor(cat: string, n: number): string {
+  const abbr = cat.split(/[^A-Za-z]/)[0].slice(0, 4).toUpperCase();
+  return `OKS-${abbr}-${String(n).padStart(3, "0")}`;
+}
+
+async function seedFeatures() {
+  for (const [name, parentFeatureId, label] of FEATURES) {
+    await prisma.appFeature.upsert({
+      where: { name },
+      update: { parentFeatureId: parentFeatureId ?? null, label, isDeleted: null },
+      create: { name, parentFeatureId: parentFeatureId ?? null, label, createdAt: new Date() },
+    });
+  }
+  console.log(`[crmSeed] features upserted: ${FEATURES.length}`);
+}
+
+async function seedCatalogue() {
+  const catId: Record<string, string> = {};
+  for (let i = 0; i < CATEGORIES.length; i++) {
+    const c = await prisma.category.upsert({
+      where: { name: CATEGORIES[i] },
+      update: { sortOrder: i, isDeleted: null },
+      create: { name: CATEGORIES[i], sortOrder: i },
+    });
+    catId[CATEGORIES[i]] = c.id;
+  }
+  let n = 0;
+  for (const p of PRODUCTS) {
+    n++;
+    const sku = skuFor(p.cat, n);
+    const prod = await prisma.product.upsert({
+      where: { sku },
+      update: { name: p.name, categoryId: catId[p.cat], protocol: (p.protocol as any) ?? null, isDeleted: null },
+      create: { sku, name: p.name, categoryId: catId[p.cat], protocol: (p.protocol as any) ?? null, status: "ACTIVE" },
+    });
+    const existingPrice = await prisma.priceList.findFirst({ where: { productId: prod.id, tier: "RETAIL", validTo: null, isDeleted: null } });
+    if (!existingPrice) {
+      await prisma.priceList.create({ data: { productId: prod.id, tier: "RETAIL", price: p.price, cost: p.cost } });
+    }
+  }
+  console.log(`[crmSeed] categories=${CATEGORIES.length} products=${PRODUCTS.length}`);
+
+  // one starter bundle
+  const bundleProducts = await prisma.product.findMany({
+    where: { name: { in: ["10A Smart Plug", "9W RGB Bulb", "Smart Camera 5MP"] }, isDeleted: null },
+    select: { id: true },
+  });
+  const existingBundle = await prisma.bundle.findUnique({ where: { name: "Starter Home Automation Kit" } });
+  if (!existingBundle && bundleProducts.length) {
+    await prisma.bundle.create({
+      data: { name: "Starter Home Automation Kit", description: "Plug + bulb + camera starter kit", items: { create: bundleProducts.map((b) => ({ productId: b.id, quantity: 1 })) } },
+    });
+    console.log("[crmSeed] starter bundle created");
+  }
+}
+
+async function seedAgents() {
+  console.log("\n[crmSeed] --- Agent mapping (map to EXISTING employees by name; no users created) ---");
+  for (const a of AGENTS) {
+    const [first, ...rest] = a.full.split(" ");
+    const surname = rest.join(" ");
+    const emp = await prisma.employee.findFirst({
+      where: {
+        isDeleted: null,
+        name: { equals: first, mode: "insensitive" },
+        ...(surname ? { surname: { contains: surname.split(" ")[rest.length - 1] || surname, mode: "insensitive" } } : {}),
+      },
+      select: { id: true, name: true, surname: true },
+    });
+    if (!emp) {
+      console.log(`  GAP   ${a.code}  "${a.full}" -> no matching Employee (resolve manually)`);
+      continue;
+    }
+    const user = await prisma.user.findFirst({ where: { employeeId: emp.id, isDeleted: null }, select: { id: true, username: true } });
+    await prisma.salesAgent.upsert({
+      where: { agentCode: a.code },
+      update: { employeeId: emp.id, userId: user?.id ?? null, isDeleted: null },
+      create: { agentCode: a.code, employeeId: emp.id, userId: user?.id ?? null, scope: "OWN", company: "OKASHASMART" },
+    });
+    console.log(`  MATCH ${a.code}  "${a.full}" -> ${emp.name} ${emp.surname} (emp ${emp.id.slice(0, 8)}; user ${user ? user.username : "NONE — no login"})`);
+  }
+}
+
+async function regenerateLiveFeatures() {
+  const all = await prisma.appFeature.findMany({ where: { isDeleted: null }, select: { name: true } });
+  const names = all.map((f) => f.name).sort();
+  fs.writeFileSync(path.join(__dirname, "qa", "_livefeatures.json"), JSON.stringify(names, null, 2));
+  console.log(`\n[crmSeed] qa/_livefeatures.json rewritten (${names.length} features)`);
+}
+
+async function main() {
+  await seedFeatures();
+  await seedCatalogue();
+  await seedAgents();
+  await regenerateLiveFeatures();
+  await prisma.$disconnect();
+  console.log("\n[crmSeed] done.");
+}
+main().catch((e) => { console.error(e); process.exit(1); });

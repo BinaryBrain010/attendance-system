@@ -1,0 +1,31 @@
+import { Router } from "express";
+import LeadController from "../controllers/lead.controller";
+
+/** Mounts at /lead. Phase 1 = scoped reads + basic CRUD. State machine/import/timeline land in P2. */
+class LeadRoutes {
+  private router: Router;
+  private controller: LeadController;
+
+  constructor() {
+    this.router = Router();
+    this.controller = new LeadController();
+    this.initializeRoutes();
+  }
+
+  private initializeRoutes(): void {
+    this.router.post("/get", this.controller.get.bind(this.controller));
+    this.router.post("/filtered", this.controller.filtered.bind(this.controller));
+    this.router.post("/total", this.controller.total.bind(this.controller));
+    this.router.post("/getById", this.controller.getById.bind(this.controller));
+    this.router.post("/create", this.controller.create.bind(this.controller));
+    this.router.put("/update", this.controller.update.bind(this.controller));
+    this.router.post("/delete", this.controller.remove.bind(this.controller));
+    this.router.post("/restore", this.controller.restore.bind(this.controller));
+  }
+
+  public getRouter(): Router {
+    return this.router;
+  }
+}
+
+export default LeadRoutes;

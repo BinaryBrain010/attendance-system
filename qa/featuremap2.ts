@@ -86,6 +86,23 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /attendance/face-attendance": { feature: "attendance.markAttendance.*", kind: "create", access: "feature", note: "marks attendance via face recognition" },
 };
 
+// ---- CRM mounts -> feature roots (first path segment) ----
+const CRM_ROOT: Record<string, string> = {
+  "/crmCategory": "crm.catalogue", "/crmBrand": "crm.catalogue", "/crmProduct": "crm.catalogue",
+  "/crmPriceList": "crm.catalogue", "/crmBundle": "crm.catalogue", "/salesAgent": "crm.agent",
+  "/lead": "crm.lead", "/leadActivity": "crm.lead", "/quotation": "crm.quotation",
+  "/salesOrder": "crm.order", "/salesReturn": "crm.return", "/crmReport": "crm.report",
+};
+// CRM routes the kind heuristic maps wrong (sub-creates, cost view, report export).
+const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: string; note?: string }> = {
+  "POST /crmProduct/variant": { feature: "crm.catalogue.create.*", kind: "create", access: "feature" },
+  "POST /crmProduct/image": { feature: "crm.catalogue.create.*", kind: "create", access: "feature" },
+  "POST /crmPriceList/withCost": { feature: "crm.catalogue.cost.*", kind: "read", access: "feature", note: "cost/margin visibility" },
+  "POST /crmReport/margin": { feature: "crm.report.read.*", kind: "read", access: "feature", note: "cost enforced in controller via crm.catalogue.cost.*" },
+  "POST /crmReport/export": { feature: "crm.report.export.*", kind: "export", access: "feature" },
+};
+const CRM_SCOPED = new Set(["crm.lead", "crm.quotation", "crm.order"]);
+
 function resolveFeature(method: string, p: string): { feature: string; kind: string; access: string; note?: string } {
   const key = `${method} ${p}`;
   if (OVERRIDE[key]) return OVERRIDE[key];
@@ -101,6 +118,21 @@ function resolveFeature(method: string, p: string): { feature: string; kind: str
   if (p.startsWith("/appFeature/")) {
     if (/(get|getAll|hierarchy|getByParent|total|read)/i.test(last)) return { feature: "-", kind: "read", access: "token", note: "permission UI needs feature tree" };
     return { feature: "-", kind: kindFromName(p), access: "god", note: "feature tree edits are god-only" };
+  }
+
+  // ---- CRM ----
+  if (CRM_ROOT["/" + seg[1]]) {
+    if (CRM_OVERRIDE[key]) return CRM_OVERRIDE[key];
+    const crmRoot = CRM_ROOT["/" + seg[1]];
+    const k = kindFromName(p);
+    // scoped documents: base read requires the own-scope leaf; team/all widen the row filter in the
+    // service. Scopes are granted cumulatively (team implies own, all implies team+own), so every
+    // reader holds read.own.* and the middleware check passes for all three scopes.
+    if (CRM_SCOPED.has(crmRoot) && k === "read") {
+      return { feature: `${crmRoot}.read.own.*`, kind: "read", access: "feature", note: "scope from read.{own,team,all}.* leaf (cumulative)" };
+    }
+    const suffix = k === "import" ? "create" : k;
+    return { feature: `${crmRoot}.${suffix}.*`, kind: k, access: "feature" };
   }
 
   // self-service

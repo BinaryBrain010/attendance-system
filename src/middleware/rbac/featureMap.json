@@ -334,6 +334,276 @@
     "feature": "-",
     "kind": "open"
   },
+  "POST /crmBrand/create": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmBrand/delete": {
+    "access": "feature",
+    "feature": "crm.catalogue.delete.*",
+    "kind": "delete"
+  },
+  "POST /crmBrand/get": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmBrand/getAll": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmBrand/getById": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmBrand/getDeleted": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmBrand/restore": {
+    "access": "feature",
+    "feature": "crm.catalogue.restore.*",
+    "kind": "restore"
+  },
+  "POST /crmBrand/search": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmBrand/total": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "PUT /crmBrand/update": {
+    "access": "feature",
+    "feature": "crm.catalogue.update.*",
+    "kind": "update"
+  },
+  "POST /crmBundle/addItem": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmBundle/create": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmBundle/delete": {
+    "access": "feature",
+    "feature": "crm.catalogue.delete.*",
+    "kind": "delete"
+  },
+  "POST /crmBundle/get": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmBundle/getAll": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmBundle/getById": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmBundle/getDeleted": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmBundle/restore": {
+    "access": "feature",
+    "feature": "crm.catalogue.restore.*",
+    "kind": "restore"
+  },
+  "POST /crmBundle/search": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmBundle/total": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "PUT /crmBundle/update": {
+    "access": "feature",
+    "feature": "crm.catalogue.update.*",
+    "kind": "update"
+  },
+  "POST /crmCategory/create": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmCategory/delete": {
+    "access": "feature",
+    "feature": "crm.catalogue.delete.*",
+    "kind": "delete"
+  },
+  "POST /crmCategory/get": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmCategory/getAll": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmCategory/getById": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmCategory/getDeleted": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmCategory/restore": {
+    "access": "feature",
+    "feature": "crm.catalogue.restore.*",
+    "kind": "restore"
+  },
+  "POST /crmCategory/search": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmCategory/total": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "PUT /crmCategory/update": {
+    "access": "feature",
+    "feature": "crm.catalogue.update.*",
+    "kind": "update"
+  },
+  "POST /crmPriceList/byProduct": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmPriceList/create": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmPriceList/delete": {
+    "access": "feature",
+    "feature": "crm.catalogue.delete.*",
+    "kind": "delete"
+  },
+  "PUT /crmPriceList/update": {
+    "access": "feature",
+    "feature": "crm.catalogue.update.*",
+    "kind": "update"
+  },
+  "POST /crmPriceList/withCost": {
+    "access": "feature",
+    "feature": "crm.catalogue.cost.*",
+    "kind": "read"
+  },
+  "POST /crmProduct/byCategory": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmProduct/create": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmProduct/delete": {
+    "access": "feature",
+    "feature": "crm.catalogue.delete.*",
+    "kind": "delete"
+  },
+  "POST /crmProduct/get": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmProduct/getAll": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmProduct/getById": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmProduct/getDeleted": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "POST /crmProduct/image": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmProduct/restore": {
+    "access": "feature",
+    "feature": "crm.catalogue.restore.*",
+    "kind": "restore"
+  },
+  "POST /crmProduct/search": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "GET /crmProduct/total": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
+  "PUT /crmProduct/update": {
+    "access": "feature",
+    "feature": "crm.catalogue.update.*",
+    "kind": "update"
+  },
+  "POST /crmProduct/variant": {
+    "access": "feature",
+    "feature": "crm.catalogue.create.*",
+    "kind": "create"
+  },
+  "POST /crmReport/export": {
+    "access": "feature",
+    "feature": "crm.report.export.*",
+    "kind": "export"
+  },
+  "POST /crmReport/funnel": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/margin": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/pipeline": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/salesByOutlet": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
   "POST /customer/create": {
     "access": "feature",
     "feature": "customer.create.*",
@@ -854,6 +1124,46 @@
     "feature": "item.update.*",
     "kind": "update"
   },
+  "POST /lead/create": {
+    "access": "feature",
+    "feature": "crm.lead.create.*",
+    "kind": "create"
+  },
+  "POST /lead/delete": {
+    "access": "feature",
+    "feature": "crm.lead.delete.*",
+    "kind": "delete"
+  },
+  "POST /lead/filtered": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /lead/get": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /lead/getById": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /lead/restore": {
+    "access": "feature",
+    "feature": "crm.lead.restore.*",
+    "kind": "restore"
+  },
+  "POST /lead/total": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "PUT /lead/update": {
+    "access": "feature",
+    "feature": "crm.lead.update.*",
+    "kind": "update"
+  },
   "POST /leave/leave-allocations/assignToAll": {
     "access": "feature",
     "feature": "leaveAlloc.create.*",
@@ -1029,6 +1339,46 @@
     "feature": "leaveReq.approve.*",
     "kind": "approve"
   },
+  "POST /quotation/create": {
+    "access": "feature",
+    "feature": "crm.quotation.create.*",
+    "kind": "create"
+  },
+  "POST /quotation/delete": {
+    "access": "feature",
+    "feature": "crm.quotation.delete.*",
+    "kind": "delete"
+  },
+  "POST /quotation/filtered": {
+    "access": "feature",
+    "feature": "crm.quotation.read.own.*",
+    "kind": "read"
+  },
+  "POST /quotation/get": {
+    "access": "feature",
+    "feature": "crm.quotation.read.own.*",
+    "kind": "read"
+  },
+  "POST /quotation/getById": {
+    "access": "feature",
+    "feature": "crm.quotation.read.own.*",
+    "kind": "read"
+  },
+  "POST /quotation/restore": {
+    "access": "feature",
+    "feature": "crm.quotation.restore.*",
+    "kind": "restore"
+  },
+  "POST /quotation/total": {
+    "access": "feature",
+    "feature": "crm.quotation.read.own.*",
+    "kind": "read"
+  },
+  "PUT /quotation/update": {
+    "access": "feature",
+    "feature": "crm.quotation.update.*",
+    "kind": "update"
+  },
   "PUT /role/changeRole": {
     "access": "feature",
     "feature": "role.update.*",
@@ -1087,6 +1437,96 @@
   "PUT /role/update": {
     "access": "feature",
     "feature": "role.update.*",
+    "kind": "update"
+  },
+  "POST /salesAgent/create": {
+    "access": "feature",
+    "feature": "crm.agent.create.*",
+    "kind": "create"
+  },
+  "POST /salesAgent/delete": {
+    "access": "feature",
+    "feature": "crm.agent.delete.*",
+    "kind": "delete"
+  },
+  "POST /salesAgent/get": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "GET /salesAgent/getAll": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "POST /salesAgent/getById": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "GET /salesAgent/me": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "POST /salesAgent/restore": {
+    "access": "feature",
+    "feature": "crm.agent.restore.*",
+    "kind": "restore"
+  },
+  "POST /salesAgent/search": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "GET /salesAgent/total": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "PUT /salesAgent/update": {
+    "access": "feature",
+    "feature": "crm.agent.update.*",
+    "kind": "update"
+  },
+  "POST /salesOrder/create": {
+    "access": "feature",
+    "feature": "crm.order.create.*",
+    "kind": "create"
+  },
+  "POST /salesOrder/delete": {
+    "access": "feature",
+    "feature": "crm.order.delete.*",
+    "kind": "delete"
+  },
+  "POST /salesOrder/filtered": {
+    "access": "feature",
+    "feature": "crm.order.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesOrder/get": {
+    "access": "feature",
+    "feature": "crm.order.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesOrder/getById": {
+    "access": "feature",
+    "feature": "crm.order.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesOrder/restore": {
+    "access": "feature",
+    "feature": "crm.order.restore.*",
+    "kind": "restore"
+  },
+  "POST /salesOrder/total": {
+    "access": "feature",
+    "feature": "crm.order.read.own.*",
+    "kind": "read"
+  },
+  "PUT /salesOrder/update": {
+    "access": "feature",
+    "feature": "crm.order.update.*",
     "kind": "update"
   },
   "POST /shift/assignedEmployees": {

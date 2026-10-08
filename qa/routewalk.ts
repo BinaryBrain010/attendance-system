@@ -35,6 +35,16 @@ import SystemConfigRoutes from "../src/modules/AMS/SystemConfig/routes/systemCon
 import AnalyticsRoutes from "../src/modules/AMS/Analytics/routes/analytics.routes";
 import ActivityLogRoutes from "../src/modules/ActivityLog/routes/activityLog.routes";
 import VisitorRoutes from "../src/modules/Frontdesk/Visitor/routes/visitor.routes";
+import CrmCategoryRoutes from "../src/modules/CRM/Catalogue/Category/routes/category.routes";
+import CrmBrandRoutes from "../src/modules/CRM/Catalogue/Brand/routes/brand.routes";
+import CrmProductRoutes from "../src/modules/CRM/Catalogue/Product/routes/product.routes";
+import CrmPriceListRoutes from "../src/modules/CRM/Catalogue/PriceList/routes/pricelist.routes";
+import CrmBundleRoutes from "../src/modules/CRM/Catalogue/Bundle/routes/bundle.routes";
+import SalesAgentRoutes from "../src/modules/CRM/SalesAgent/routes/salesAgent.routes";
+import LeadRoutes from "../src/modules/CRM/Lead/routes/lead.routes";
+import QuotationRoutes from "../src/modules/CRM/Quotation/routes/quotation.routes";
+import SalesOrderRoutes from "../src/modules/CRM/SalesOrder/routes/salesOrder.routes";
+import CrmReportRoutes from "../src/modules/CRM/Report/routes/report.routes";
 
 const authed: any[] = [
   CustomerRoutes, GatePassRoutes, GatePassItemRoutes, ItemRoutes, StatsRoutes,
@@ -43,6 +53,8 @@ const authed: any[] = [
   EmployeeRoutes, LeaveRoutes, AttendanceReqRoutes, AttendanceRoutes, HolidayRoutes,
   UnitRoutes, UnitEmployeeRoutes, ShiftRoutes, SystemConfigRoutes, AnalyticsRoutes,
   ActivityLogRoutes, VisitorRoutes,
+  CrmCategoryRoutes, CrmBrandRoutes, CrmProductRoutes, CrmPriceListRoutes, CrmBundleRoutes,
+  SalesAgentRoutes, LeadRoutes, QuotationRoutes, SalesOrderRoutes, CrmReportRoutes,
 ];
 const open: any[] = [AuthRoutes, WebhookRoutes];
 

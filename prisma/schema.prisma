@@ -96,6 +96,7 @@ model User {
   employee        Employee?        @relation(fields: [employeeId], references: [id])
   employeeId      String?          @unique
   activityLogs    ActivityLog[]
+  salesAgent      SalesAgent?
 }
 
 model Group {
@@ -249,6 +250,7 @@ model Employee {
   managedUnits      Unit[]              @relation("UnitAttendanceManager")
   unitEmployees     UnitEmployee[]
   visitorsReferred  Visitor[]           @relation("VisitorReferredTo")
+  salesAgent        SalesAgent?
 }
 
 enum Company {
@@ -612,4 +614,428 @@ model Visitor {
   @@index([referredToEmployeeId])
   @@index([outcome])
   @@index([isDeleted])
+}
+
+// ============================================================================
+// Sales CRM (Okasha Smart) — see Docs/SalesCRM_Design.md
+// ============================================================================
+
+enum CrmProtocol {
+  WIFI
+  ZIGBEE
+  BLUETOOTH
+  RF
+  WIRED
+  OTHER
+}
+
+enum ProductStatus {
+  ACTIVE
+  DISCONTINUED
+}
+
+enum SalesChannel {
+  WALK_IN
+  PHONE
+  WHATSAPP
+  REFERRAL
+  SOCIAL_MEDIA
+  OFFLINE_MARKETING
+  ONLINE_STORE
+  OTHER
+}
+
+enum LeadStage {
+  DRAFT
+  NEW
+  CONTACTED
+  QUALIFIED
+  QUOTATION
+  NEGOTIATION
+  WON
+  LOST
+  ON_HOLD
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  PACKED
+  DISPATCHED
+  DELIVERED
+  RETURNED
+  CANCELLED
+}
+
+enum ReturnStatus {
+  REPORTED
+  RECEIVED_BACK
+  RESTOCKED
+  DAMAGED
+}
+
+enum ActivityType {
+  CALL
+  WHATSAPP
+  VISIT
+  EMAIL
+  QUOTATION_SENT
+  NOTE
+  OTHER
+}
+
+enum AgentScope {
+  OWN
+  TEAM
+  ALL
+}
+
+enum PriceTier {
+  RETAIL
+  DEALER
+  OUTLET
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  products    Product[]
+  legacyId    String?   @unique
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+  isDeleted   DateTime?
+  createdBy   String?
+  updatedBy   String?
+}
+
+model Brand {
+  id         String    @id @default(uuid())
+  name       String    @unique
+  categoryId String?
+  isActive   Boolean   @default(true)
+  products   Product[]
+  legacyId   String?   @unique
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+  isDeleted  DateTime?
+  createdBy  String?
+  updatedBy  String?
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  sku         String           @unique
+  name        String
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id])
+  brandId     String?
+  brand       Brand?           @relation(fields: [brandId], references: [id])
+  protocol    CrmProtocol?
+  description String?
+  specs       Json?            @db.JsonB
+  status      ProductStatus    @default(ACTIVE)
+  stockItemId String?          // loose link to gate-pass Item (deferred, see design §4.3)
+  variants    ProductVariant[]
+  images      ProductImage[]
+  prices      PriceList[]
+  legacyId    String?          @unique
+  createdAt   DateTime?        @default(now())
+  updatedAt   DateTime?        @updatedAt
+  isDeleted   DateTime?
+  createdBy   String?
+  updatedBy   String?
+  @@index([categoryId])
+  @@index([status])
+}
+
+model ProductVariant {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  name       String
+  attributes Json?    @db.JsonB
+  skuSuffix  String?
+  isActive   Boolean  @default(true)
+  isDeleted  DateTime?
+  @@unique([productId, name])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  url       String
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
+  isDeleted DateTime?
+}
+
+model PriceList {
+  id        String    @id @default(uuid())
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  variantId String?
+  tier      PriceTier
+  price     Int
+  cost      Int?      // cost-gated by crm.catalogue.cost.*
+  validFrom DateTime  @default(now())
+  validTo   DateTime?
+  isDeleted DateTime?
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+  createdBy String?
+  updatedBy String?
+  @@index([productId, tier, validTo])
+}
+
+model Bundle {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  price       Int?
+  isActive    Boolean      @default(true)
+  items       BundleItem[]
+  legacyId    String?      @unique
+  createdAt   DateTime?    @default(now())
+  updatedAt   DateTime?    @updatedAt
+  isDeleted   DateTime?
+  createdBy   String?
+  updatedBy   String?
+}
+
+model BundleItem {
+  id        String  @id @default(uuid())
+  bundleId  String
+  bundle    Bundle  @relation(fields: [bundleId], references: [id])
+  productId String
+  variantId String?
+  quantity  Int     @default(1)
+  isDeleted DateTime?
+}
+
+model SalesAgent {
+  id            String       @id @default(uuid())
+  agentCode     String       @unique
+  employeeId    String       @unique
+  employee      Employee     @relation(fields: [employeeId], references: [id])
+  userId        String?      @unique
+  user          User?        @relation(fields: [userId], references: [id])
+  outlet        String?
+  teamLeadId    String?
+  teamLead      SalesAgent?  @relation("AgentTeam", fields: [teamLeadId], references: [id])
+  members       SalesAgent[] @relation("AgentTeam")
+  scope         AgentScope   @default(OWN)
+  monthlyTarget Int?
+  commissionPct Float?
+  company       Company      @default(OKASHASMART)
+  isActive      Boolean      @default(true)
+  legacyId      String?      @unique
+  createdAt     DateTime?    @default(now())
+  updatedAt     DateTime?    @updatedAt
+  isDeleted     DateTime?
+  createdBy     String?
+  updatedBy     String?
+}
+
+model Lead {
+  id             String        @id @default(uuid())
+  leadNo         String?
+  customerName   String
+  phone          String?
+  city           String?
+  outlet         String?
+  channel        SalesChannel?
+  stage          LeadStage     @default(NEW)
+  priority       LeadPriority  @default(MEDIUM)
+  estimatedValue Int?
+  productId      String?
+  requirement    String?
+  agentId        String?
+  dateReceived   DateTime      @default(now())
+  lastContactAt  DateTime?
+  nextFollowUpAt DateTime?
+  stageReason    String?
+  lostReason     String?
+  outcomeRaw     String?       // raw Outcome column value for ambiguous-stage review
+  visitorId      String?       @unique
+  company        Company       @default(OKASHASMART)
+  sourceFile     String?
+  legacyId       String?
+  createdAt      DateTime?     @default(now())
+  updatedAt      DateTime?     @updatedAt
+  isDeleted      DateTime?
+  createdBy      String?
+  updatedBy      String?
+  @@unique([sourceFile, legacyId])
+  @@index([agentId])
+  @@index([stage])
+  @@index([company])
+  @@index([city])
+}
+
+model LeadActivity {
+  id             String       @id @default(uuid())
+  leadId         String
+  type           ActivityType
+  outcome        String?
+  occurredAt     DateTime     @default(now())
+  nextFollowUpAt DateTime?
+  agentId        String?
+  notes          String?
+  isDeleted      DateTime?
+  createdAt      DateTime?    @default(now())
+  createdBy      String?
+  @@index([leadId])
+}
+
+model Quotation {
+  id           String          @id @default(uuid())
+  quotationNo  String
+  version      Int             @default(1)
+  isActive     Boolean         @default(true)
+  parentId     String?
+  leadId       String?
+  customerName String
+  phone        String?
+  status       QuotationStatus @default(DRAFT)
+  tier         PriceTier       @default(RETAIL)
+  items        QuotationItem[]
+  subtotal     Int             @default(0)
+  discount     Int             @default(0)
+  total        Int             @default(0)
+  validUntil   DateTime?
+  statusReason String?
+  agentId      String?
+  outlet       String?
+  company      Company         @default(OKASHASMART)
+  legacyId     String?         @unique
+  createdAt    DateTime?       @default(now())
+  updatedAt    DateTime?       @updatedAt
+  isDeleted    DateTime?
+  createdBy    String?
+  updatedBy    String?
+  @@unique([quotationNo, version])
+  @@index([agentId])
+  @@index([status])
+  @@index([company])
+}
+
+model QuotationItem {
+  id           String    @id @default(uuid())
+  quotationId  String
+  quotation    Quotation @relation(fields: [quotationId], references: [id])
+  productId    String?
+  variantId    String?
+  description  String?
+  quantity     Int       @default(1)
+  unitPrice    Int
+  unitCost     Int?
+  lineDiscount Int       @default(0)
+  lineTotal    Int
+  isDeleted    DateTime?
+}
+
+model SalesOrder {
+  id            String           @id @default(uuid())
+  orderNo       String           @unique
+  leadId        String?
+  quotationId   String?
+  customerName  String
+  phone         String?
+  city          String?
+  outlet        String?
+  address       String?
+  status        SalesOrderStatus @default(DRAFT)
+  items         SalesOrderItem[]
+  subtotal      Int              @default(0)
+  discount      Int              @default(0)
+  total         Int              @default(0)
+  channel       SalesChannel?
+  courier       String?
+  trackingNo    String?
+  dispatchedAt  DateTime?
+  deliveredAt   DateTime?
+  reattemptCount Int             @default(0)
+  statusReason  String?
+  agentId       String?
+  company       Company          @default(OKASHASMART)
+  sourceFile    String?
+  legacyId      String?
+  createdAt     DateTime?        @default(now())
+  updatedAt     DateTime?        @updatedAt
+  isDeleted     DateTime?
+  createdBy     String?
+  updatedBy     String?
+  @@unique([sourceFile, legacyId])
+  @@index([agentId])
+  @@index([status])
+  @@index([company])
+  @@index([city])
+}
+
+model SalesOrderItem {
+  id           String     @id @default(uuid())
+  orderId      String
+  order        SalesOrder @relation(fields: [orderId], references: [id])
+  productId    String?
+  variantId    String?
+  description  String?
+  quantity     Int        @default(1)
+  unitPrice    Int
+  unitCost     Int?
+  lineDiscount Int        @default(0)
+  lineTotal    Int
+  isDeleted    DateTime?
+}
+
+model SalesReturn {
+  id           String       @id @default(uuid())
+  returnNo     String       @unique
+  orderId      String?
+  customerName String
+  phone        String?
+  city         String?
+  status       ReturnStatus @default(REPORTED)
+  reason       String
+  courier      String?
+  trackingNo   String?
+  items        ReturnItem[]
+  reportedAt   DateTime     @default(now())
+  agentId      String?
+  company      Company      @default(OKASHASMART)
+  legacyId     String?      @unique
+  createdAt    DateTime?    @default(now())
+  updatedAt    DateTime?    @updatedAt
+  isDeleted    DateTime?
+  createdBy    String?
+  updatedBy    String?
+  @@index([status])
+  @@index([city])
+}
+
+model ReturnItem {
+  id          String      @id @default(uuid())
+  returnId    String
+  return      SalesReturn @relation(fields: [returnId], references: [id])
+  productId   String?
+  description String?
+  quantity    Int         @default(1)
+  isDeleted   DateTime?
 }
