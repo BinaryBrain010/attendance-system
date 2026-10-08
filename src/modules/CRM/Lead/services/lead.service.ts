@@ -1,6 +1,6 @@
 import prisma from "../../../../core/models/base.model";
-import { resolveScope, rowInScope } from "../../shared/scope";
-import { ForbiddenError } from "../../../../core/errors/app.error";
+import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
+import { NotFoundError } from "../../../../core/errors/app.error";
 
 export interface LeadFilters {
   company?: string;
@@ -53,20 +53,40 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) return null;
-    if (!rowInScope(scope, lead.agentId)) throw new ForbiddenError("Lead is outside your scope");
+    assertRowInScope(scope, lead.agentId, "Lead");
     return lead;
   }
 
-  create(data: any) {
+  async create(userId: string, data: any) {
+    const scope = await resolveScope(userId, "lead");
+    data.agentId = resolveAssignment(scope, data.agentId); // own/team cannot assign outside scope
     return prisma.lead.gpCreate(data);
   }
-  update(id: string, data: any) {
+
+  async update(userId: string, id: string, data: any) {
+    const scope = await resolveScope(userId, "lead");
+    const existing = await prisma.lead.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Lead");
+    assertRowInScope(scope, existing.agentId, "Lead");
+    if (Object.prototype.hasOwnProperty.call(data, "agentId")) {
+      data.agentId = resolveAssignment(scope, data.agentId); // reassignment target must be in scope
+    }
     return prisma.lead.gpUpdate(id, data);
   }
-  remove(id: string) {
+
+  async remove(userId: string, id: string) {
+    const scope = await resolveScope(userId, "lead");
+    const existing = await prisma.lead.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Lead");
+    assertRowInScope(scope, existing.agentId, "Lead");
     return prisma.lead.gpSoftDelete(id);
   }
-  restore(id: string) {
+
+  async restore(userId: string, id: string) {
+    const scope = await resolveScope(userId, "lead");
+    const existing = await prisma.lead.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Lead");
+    assertRowInScope(scope, existing.agentId, "Lead");
     return prisma.lead.gpRestore(id);
   }
 }

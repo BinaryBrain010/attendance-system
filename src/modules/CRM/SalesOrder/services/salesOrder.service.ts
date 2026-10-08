@@ -1,6 +1,6 @@
 import prisma from "../../../../core/models/base.model";
-import { resolveScope, rowInScope } from "../../shared/scope";
-import { ForbiddenError } from "../../../../core/errors/app.error";
+import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
+import { NotFoundError } from "../../../../core/errors/app.error";
 
 function filterWhere(f: any = {}): Record<string, any> {
   const w: Record<string, any> = {};
@@ -37,19 +37,34 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const row = await prisma.salesOrder.findUnique({ where: { id }, include: { items: { where: { isDeleted: null } } } });
     if (!row || row.isDeleted) return null;
-    if (!rowInScope(scope, row.agentId)) throw new ForbiddenError("Order is outside your scope");
+    assertRowInScope(scope, row.agentId, "Order");
     return row;
   }
-  create(data: any) {
+  async create(userId: string, data: any) {
+    const scope = await resolveScope(userId, "order");
+    data.agentId = resolveAssignment(scope, data.agentId);
     return prisma.salesOrder.gpCreate(data);
   }
-  update(id: string, data: any) {
+  async update(userId: string, id: string, data: any) {
+    const scope = await resolveScope(userId, "order");
+    const existing = await prisma.salesOrder.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Order");
+    assertRowInScope(scope, existing.agentId, "Order");
+    if (Object.prototype.hasOwnProperty.call(data, "agentId")) data.agentId = resolveAssignment(scope, data.agentId);
     return prisma.salesOrder.gpUpdate(id, data);
   }
-  remove(id: string) {
+  async remove(userId: string, id: string) {
+    const scope = await resolveScope(userId, "order");
+    const existing = await prisma.salesOrder.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Order");
+    assertRowInScope(scope, existing.agentId, "Order");
     return prisma.salesOrder.gpSoftDelete(id);
   }
-  restore(id: string) {
+  async restore(userId: string, id: string) {
+    const scope = await resolveScope(userId, "order");
+    const existing = await prisma.salesOrder.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Order");
+    assertRowInScope(scope, existing.agentId, "Order");
     return prisma.salesOrder.gpRestore(id);
   }
 }

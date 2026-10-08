@@ -21,29 +21,31 @@ class SalesOrderController extends BaseController<SalesOrderService> {
     await this.handleRequest(() => this.service.getById((req as any).userId, id), res, { successMessage: "Order retrieved successfully!" });
   }
   async create(req: Request, res: Response) {
-    const data = { ...req.body, createdBy: (req as any).userId };
-    await this.handleRequest(() => this.service.create(data), res, {
+    const uid = (req as any).userId;
+    const data = { ...req.body, createdBy: uid };
+    await this.handleRequest(() => this.service.create(uid, data), res, {
       successMessage: "Order created successfully!", statusCode: 201,
       logActivity: { action: "CREATE", entityType: "SalesOrder", entityId: (r: any) => r?.[0]?.id, description: `Order created: ${req.body?.orderNo ?? ""}` }, req,
     });
   }
   async update(req: Request, res: Response) {
+    const uid = (req as any).userId;
     const { id, ...rest } = req.body;
-    await this.handleRequest(() => this.service.update(id, { ...rest, updatedBy: (req as any).userId }), res, {
+    await this.handleRequest(() => this.service.update(uid, id, { ...rest, updatedBy: uid }), res, {
       successMessage: "Order updated successfully!",
       logActivity: { action: "UPDATE", entityType: "SalesOrder", entityId: id, description: "Order updated" }, req,
     });
   }
   async remove(req: Request, res: Response) {
     const { id } = req.body;
-    await this.handleRequest(() => this.service.remove(id), res, {
+    await this.handleRequest(() => this.service.remove((req as any).userId, id), res, {
       successMessage: "Order deleted successfully!",
       logActivity: { action: "DELETE", entityType: "SalesOrder", entityId: id, description: "Order deleted" }, req,
     });
   }
   async restore(req: Request, res: Response) {
     const { id } = req.body;
-    await this.handleRequest(() => this.service.restore(id), res, {
+    await this.handleRequest(() => this.service.restore((req as any).userId, id), res, {
       successMessage: "Order restored successfully!",
       logActivity: { action: "RESTORE", entityType: "SalesOrder", entityId: id, description: "Order restored" }, req,
     });

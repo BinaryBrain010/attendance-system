@@ -89,9 +89,12 @@ async function main() {
   await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: [adminUser, viewerUser, umbrellaUser, agentOwnUser, teamLeadUser] }, permissions: { path: ["allowedFeatures"], array_contains: ["crm.*"] } as any } }).catch(() => {});
   await cleanupFixtures();
 
+  // write features (create/update/delete/restore) a selling agent needs; scope of WHICH rows they can
+  // touch is then enforced in the service layer, not by these features.
+  const WRITES = ENTS.flatMap((e) => [`crm.${e}.create.*`, `crm.${e}.update.*`, `crm.${e}.delete.*`, `crm.${e}.restore.*`]);
   await grant(adminUser, ["crm.*"]);
-  await grant(agentOwnUser, [...ENTS.map(OWN), "crm.catalogue.read.*", "crm.report.read.*"]);
-  await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), "crm.catalogue.read.*", "crm.report.read.*"]);
+  await grant(agentOwnUser, [...ENTS.map(OWN), ...WRITES, "crm.catalogue.read.*", "crm.report.read.*"]);
+  await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...WRITES, "crm.catalogue.read.*", "crm.report.read.*"]);
   await grant(viewerUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...ENTS.map(ALL), "crm.report.read.*", "crm.report.export.*", "crm.catalogue.read.*"]);
   await grant(umbrellaUser, ["appModules.crm.*"]);
 
@@ -103,8 +106,8 @@ async function main() {
     const l = await prisma.lead.create({ data: { customerName: `${QTAG}Lead ${agentId.slice(0, 4)}-${i}`, agentId, stage: "CONTACTED", estimatedValue: 50000, company: "OKASHASMART", ...extra } });
     createdLeads.push(l.id); return l;
   };
-  await mkLead(AG001.id, 1); await mkLead(AG001.id, 2);
-  await mkLead(AG003.id, 1); await mkLead(AG003.id, 2);
+  const ownA1 = await mkLead(AG001.id, 1); await mkLead(AG001.id, 2);
+  const teamA3 = await mkLead(AG003.id, 1); await mkLead(AG003.id, 2);
   await mkLead(AG006.id, 1);
   const outLead1 = await mkLead(AG004.id, 1); await mkLead(AG004.id, 2);
   // counts: AG001=2, AG003=2, AG006=1, AG004=2 -> OWN(AG001)=2, TEAM(AG006+AG001+AG003)=5, ALL=7
@@ -156,6 +159,46 @@ async function main() {
   check("AGENT_OWN getById AG004 lead -> 403", (await api("POST", "/lead/getById", tOwn, { id: outLead1.id })).status === 403);
   check("TEAM_LEAD getById AG004 lead -> 403", (await api("POST", "/lead/getById", tTeam, { id: outLead1.id })).status === 403);
   check("ADMIN getById AG004 lead -> 200", (await api("POST", "/lead/getById", tAdmin, { id: outLead1.id })).status === 200);
+
+  console.log("\n[crm] ===== scope: writes (update / delete / reassign) =====");
+  const upd = (t: string, body: any) => api("PUT", "/lead/update", t, body);
+  const crLead = (t: string, agentId?: string) => api("POST", "/lead/create", t, { customerName: `${QTAG}W ${Date.now()}${Math.random()}`, stage: "NEW", ...(agentId !== undefined ? { agentId } : {}) });
+  check("AGENT_OWN update own lead -> 200", (await upd(tOwn, { id: ownA1.id, requirement: "x" })).status === 200);
+  check("AGENT_OWN update out-of-scope lead -> 403", (await upd(tOwn, { id: outLead1.id, requirement: "x" })).status === 403);
+  check("AGENT_OWN delete out-of-scope lead -> 403", (await api("POST", "/lead/delete", tOwn, { id: outLead1.id })).status === 403);
+  check("AGENT_OWN create lead for self -> 201", (await crLead(tOwn, AG001.id)).status === 201);
+  check("AGENT_OWN create lead for ANOTHER agent -> 403", (await crLead(tOwn, AG004.id)).status === 403);
+  const defAssign = await crLead(tOwn); // no agentId -> defaults to own
+  check("AGENT_OWN create lead (no agent) -> 201 defaulted to own", defAssign.status === 201 && defAssign.data?.[0]?.agentId === AG001.id, `status ${defAssign.status} agent ${defAssign.data?.[0]?.agentId}`);
+  check("AGENT_OWN reassign own lead to another agent -> 403", (await upd(tOwn, { id: ownA1.id, agentId: AG004.id })).status === 403);
+  check("TEAM_LEAD update team member lead -> 200", (await upd(tTeam, { id: teamA3.id, requirement: "y" })).status === 200);
+  check("TEAM_LEAD update out-of-team lead -> 403", (await upd(tTeam, { id: outLead1.id, requirement: "y" })).status === 403);
+  const reTeam = await upd(tTeam, { id: ownA1.id, agentId: AG003.id }); // reassign within team
+  check("TEAM_LEAD reassign within team -> 200", reTeam.status === 200);
+  await prisma.lead.update({ where: { id: ownA1.id }, data: { agentId: AG001.id } }); // restore fixture
+  check("TEAM_LEAD reassign to out-of-team agent -> 403", (await upd(tTeam, { id: teamA3.id, agentId: AG004.id })).status === 403);
+  check("ADMIN create lead for any agent -> 201", (await crLead(tAdmin, AG004.id)).status === 201);
+
+  console.log("\n[crm] ===== scope: conflict (narrower of agent.scope and feature wins) =====");
+  const conflictUser = AG003.userId;
+  if (conflictUser) {
+    const tConf = mintTokenFor(conflictUser);
+    // (a) feature ALL but agent.scope OWN -> OWN wins
+    await prisma.salesAgent.update({ where: { id: AG003.id }, data: { scope: "OWN", teamLeadId: AG006.id } });
+    const g1 = await prisma.featurePermission.create({ data: { parentType: "User", parentId: conflictUser, permissions: { allowedFeatures: [...ENTS.map(OWN), ...ENTS.map(TEAM), ...ENTS.map(ALL)] } as any, createdAt: new Date() } });
+    const c1 = await api("POST", "/lead/get", tConf, { page: 1, pageSize: 100 });
+    const c1n = (c1.data?.data || []).filter((l: any) => String(l.customerName || "").startsWith(QTAG)).length;
+    check("feature ALL + agent OWN -> OWN (sees 2, AG003 own)", c1.data?.scope === "OWN" && c1n === 2, `mode ${c1.data?.scope} n ${c1n}`);
+    await prisma.featurePermission.delete({ where: { id: g1.id } });
+    // (b) feature OWN but agent.scope ALL -> OWN wins
+    await prisma.salesAgent.update({ where: { id: AG003.id }, data: { scope: "ALL" } });
+    const g2 = await prisma.featurePermission.create({ data: { parentType: "User", parentId: conflictUser, permissions: { allowedFeatures: [...ENTS.map(OWN)] } as any, createdAt: new Date() } });
+    const c2 = await api("POST", "/lead/get", tConf, { page: 1, pageSize: 100 });
+    const c2n = (c2.data?.data || []).filter((l: any) => String(l.customerName || "").startsWith(QTAG)).length;
+    check("feature OWN + agent ALL -> OWN (sees 2, AG003 own)", c2.data?.scope === "OWN" && c2n === 2, `mode ${c2.data?.scope} n ${c2n}`);
+    await prisma.featurePermission.delete({ where: { id: g2.id } });
+    await prisma.salesAgent.update({ where: { id: AG003.id }, data: { scope: "OWN" } });
+  }
 
   console.log("\n[crm] ===== scope: reports (salesByOutlet) =====");
   const sbo = async (t: string) => (await api("POST", "/crmReport/salesByOutlet", t, {})).data?.byOutlet || [];
