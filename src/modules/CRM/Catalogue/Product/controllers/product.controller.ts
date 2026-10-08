@@ -1,10 +1,26 @@
 import { Request, Response } from "express";
 import BaseController from "../../../../../core/controllers/base.controller";
 import ProductService from "../services/product.service";
+import ShopifyImportService from "../services/shopifyImport.service";
 import { canSeeCost, stripCost } from "../../../shared/cost";
 
 class ProductController extends BaseController<ProductService> {
   protected service = new ProductService();
+  private shopify = new ShopifyImportService();
+
+  /** Import a Shopify products CSV. dryRun defaults TRUE — pass dryRun=false (query or body) to persist. */
+  async importShopify(req: Request, res: Response) {
+    const csv = (req as any).file?.buffer?.toString("utf8") ?? req.body?.csv;
+    const dryRun = !(String(req.query.dryRun ?? req.body?.dryRun) === "false");
+    await this.handleRequest(async () => {
+      if (!csv) throw Object.assign(new Error("No CSV provided (file field 'file' or body.csv)"), { statusCode: 400 });
+      return this.shopify.import(csv, dryRun);
+    }, res, {
+      successMessage: dryRun ? "Shopify import dry-run complete" : "Shopify catalogue imported",
+      logActivity: dryRun ? undefined as any : { action: "IMPORT", entityType: "Product", description: "Shopify catalogue import" },
+      req,
+    });
+  }
 
   /** Run an operation, then strip cost from embedded price lists unless the caller may see cost. */
   private async readGated(req: Request, res: Response, op: () => Promise<any>, successMessage: string) {

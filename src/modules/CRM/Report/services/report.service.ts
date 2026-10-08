@@ -61,13 +61,24 @@ class ReportService {
     const scope = await resolveScope(userId, "order");
     const where = { AND: [baseWhere(f, "createdAt"), { status: "DELIVERED" as const }, scope.where] };
     const orders = await prisma.salesOrder.findMany({ where, include: { items: { where: { isDeleted: null } } } });
-    let revenue = 0, cost = 0;
+    // Margin is computed ONLY over lines with a known unit cost. Lines whose cost is still pending
+    // (null) are excluded from BOTH the revenue base and the cost — never counted as zero cost, so
+    // the margin is honest. Excluded revenue is reported separately.
+    let revenue = 0, cost = 0, pendingRevenue = 0, pendingLines = 0, costedLines = 0;
     for (const o of orders) {
-      revenue += o.total || 0;
-      for (const it of o.items) cost += (it.unitCost || 0) * (it.quantity || 0);
+      for (const it of o.items) {
+        const lineRev = it.lineTotal ?? (it.unitPrice || 0) * (it.quantity || 0);
+        if (it.unitCost === null || it.unitCost === undefined) { pendingRevenue += lineRev; pendingLines++; continue; }
+        revenue += lineRev; cost += it.unitCost * (it.quantity || 0); costedLines++;
+      }
     }
     const margin = revenue - cost;
-    return { scope: scope.mode, orders: orders.length, revenue, cost, margin, marginPct: revenue ? Math.round((margin / revenue) * 100) : 0 };
+    return {
+      scope: scope.mode, orders: orders.length,
+      revenue, cost, margin, marginPct: revenue ? Math.round((margin / revenue) * 100) : 0,
+      costedLines, pendingLines, pendingRevenue,
+      note: pendingLines ? `${pendingLines} line(s) excluded from margin — cost pending` : undefined,
+    };
   }
 }
 

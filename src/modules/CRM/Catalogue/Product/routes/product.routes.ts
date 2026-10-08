@@ -1,5 +1,8 @@
 import { Router } from "express";
+import multer from "multer";
 import ProductController from "../controllers/product.controller";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 /** Mounts at /crmProduct. */
 class CrmProductRoutes {
@@ -13,6 +16,7 @@ class CrmProductRoutes {
   }
 
   private initializeRoutes(): void {
+    this.router.post("/import", upload.single("file"), this.controller.importShopify.bind(this.controller));
     this.router.get("/getAll", this.controller.getAll.bind(this.controller));
     this.router.post("/get", this.controller.get.bind(this.controller));
     this.router.post("/getDeleted", this.controller.getDeleted.bind(this.controller));

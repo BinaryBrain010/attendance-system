@@ -788,13 +788,14 @@ model ProductImage {
 }
 
 model PriceList {
-  id        String    @id @default(uuid())
-  productId String
-  product   Product   @relation(fields: [productId], references: [id])
-  variantId String?
-  tier      PriceTier
-  price     Int
-  cost      Int?      // cost-gated by crm.catalogue.cost.*
+  id           String    @id @default(uuid())
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id])
+  variantId    String?
+  tier         PriceTier
+  price        Int?      // null until a real price is set (see pricePending)
+  cost         Int?      // cost-gated by crm.catalogue.cost.*; null = cost not yet known
+  pricePending Boolean   @default(false) // true = placeholder, no usable price/cost yet
   validFrom DateTime  @default(now())
   validTo   DateTime?
   isDeleted DateTime?

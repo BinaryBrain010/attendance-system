@@ -554,6 +554,11 @@
     "feature": "crm.catalogue.create.*",
     "kind": "create"
   },
+  "POST /crmProduct/import": {
+    "access": "feature",
+    "feature": "crm.catalogue.import.*",
+    "kind": "import"
+  },
   "POST /crmProduct/restore": {
     "access": "feature",
     "feature": "crm.catalogue.restore.*",

@@ -234,6 +234,18 @@ async function main() {
   check("AGENT_OWN export -> 403 (no report.export)", (await api("POST", "/crmReport/export", tOwn, { report: "salesByOutlet" })).status === 403);
   check("ADMIN export margin -> 200", (await api("POST", "/crmReport/export", tAdmin, { report: "margin" })).status === 200);
 
+  console.log("\n[crm] ===== pricing guard + Shopify import (dry-run) =====");
+  const pend = await prisma.product.findFirst({ where: { sku: { startsWith: "OKS-" } }, select: { id: true } });
+  const qPend = await api("POST", "/quotation/create", tAdmin, { quotationNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}q`, items: [{ productId: pend!.id, quantity: 1 }] });
+  check("quotation line w/ pending-price product (no unitPrice) -> 400", qPend.status === 400, `got ${qPend.status}`);
+  const qExpl = await api("POST", "/quotation/create", tAdmin, { quotationNo: `${QTAG}E${Date.now()}`, customerName: `${QTAG}q`, items: [{ productId: pend!.id, quantity: 1, unitPrice: 1000 }] });
+  check("quotation line w/ explicit unitPrice -> 201", qExpl.status === 201, `got ${qExpl.status}`);
+  const csv = "Handle,Title,Variant SKU,Variant Price,Cost per item,Image Src,Product Type,Vendor\nnova-lock,Nova Door Lock,S31870,17500,12000,http://img/x.jpg,Smart Locks,Okasha\nnova-lock,,S31871,18000,12500,http://img/y.jpg,,\n";
+  const dry = await api("POST", "/crmProduct/import", tAdmin, { csv, dryRun: true });
+  check("shopify dry-run -> 200, 1 product, 2 variants, persists nothing", dry.status === 200 && dry.data?.counts?.products === 1 && dry.data?.counts?.variants === 2 && !dry.data?.persisted, `status ${dry.status} counts ${JSON.stringify(dry.data?.counts)}`);
+  check("shopify dry-run keeps Shopify SKU + real price", dry.data?.products?.[0]?.sku === "S31870" && dry.data?.products?.[0]?.defaultPrice === 17500);
+  await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
+
   // ---- cleanup ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });

@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-409 routes walked from the live routers. Real DB users counted: 175.
+410 routes walked from the live routers. Real DB users counted: 177.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -13,7 +13,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 11. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 175) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 177) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -126,6 +126,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /crmProduct/getById | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
 | POST | /crmProduct/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
 | POST | /crmProduct/image | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
+| POST | /crmProduct/import | import | feature | `crm.catalogue.import.*` | yes | 0 | Shopify CSV import (dry-run default) |
 | POST | /crmProduct/restore | restore | feature | `crm.catalogue.restore.*` | yes | 0 |  |
 | POST | /crmProduct/search | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
 | GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 0 |  |

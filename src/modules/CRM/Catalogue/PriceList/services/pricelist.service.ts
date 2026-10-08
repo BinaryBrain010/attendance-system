@@ -13,13 +13,14 @@ class PriceListService {
   }
   /** Add a price for a (product, tier, variant); supersede the prior current one. */
   async create(data: any) {
-    const { productId, tier, variantId = null, price, cost = null, createdBy } = data;
+    const { productId, tier, variantId = null, price = null, cost = null, createdBy } = data;
+    const pricePending = price === null || price === undefined;
     return prisma.$transaction(async (tx) => {
       await tx.priceList.updateMany({
         where: { productId, tier, variantId, validTo: null, isDeleted: null },
         data: { validTo: new Date() },
       });
-      return tx.priceList.create({ data: { productId, tier, variantId, price, cost, createdBy } });
+      return tx.priceList.create({ data: { productId, tier, variantId, price, cost, pricePending, createdBy } });
     });
   }
   update(id: string, data: any) {

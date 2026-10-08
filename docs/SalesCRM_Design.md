@@ -200,8 +200,9 @@ model PriceList {
   product    Product   @relation(fields: [productId], references: [id])
   variantId  String?                               // null = applies to whole product
   tier       PriceTier                             // RETAIL / DEALER / OUTLET
-  price      Int                                   // selling price for this tier (PKR)
-  cost       Int?                                  // unit cost — basis for margin (hidden by RBAC)
+  price      Int?                                  // selling price (PKR); null until set — see pricePending
+  cost       Int?                                  // unit cost — basis for margin (hidden by RBAC); null = unknown
+  pricePending Boolean @default(false)             // true = placeholder, no usable price/cost yet
   validFrom  DateTime  @default(now())
   validTo    DateTime?                             // null = current
   @@index([productId, tier, validTo])
@@ -591,6 +592,14 @@ cross-file overlaps, and the agent name→Employee match/gap list) and only pers
   `Item Name` (+quantity `No. Of items`); link to `SalesOrder` by `Order Num` when present. `Status`
   "Order Cancel" → the linked order transitions toward `CANCELLED`/`RETURNED` (reason carried).
 
+**Catalogue import (Shopify products export):** `POST /crmProduct/import` (`crm.catalogue.import.*`,
+multipart `file` or body `csv`, **dry-run by default** — pass `dryRun=false` to persist). Columns:
+Handle, Title, Variant SKU, Variant Price, Cost per item, Image Src, Product Type, Vendor
+(+ Option1 Name/Value for variant names). Rows are grouped by Handle; Product Type → Category,
+Vendor → Brand, Title → Product (SKU = first Variant SKU, kept verbatim e.g. `S31870`), each variant
+row → ProductVariant + its PriceList (real price/cost, `pricePending=false`), Image Src → ProductImage.
+The dry-run returns parsed/ skipped counts, the category/brand sets, and a product sample.
+
 **Import endpoints** are `multipart/form-data` (multer memory storage, like Visitor `/import`), one
 per source shape: `POST /lead/import`, `POST /salesOrder/importReattempt`,
 `POST /salesReturn/import`, each honoring `dryRun`.
@@ -705,7 +714,15 @@ Distinct `Product/Service` values from the lead register + `Item Name` from retu
 (79 + 31 distinct). After dropping noise (job titles, SKU-only codes, "Scam mssges", "Out of stock",
 "want quotation", etc.), the **curated seed** is:
 
-**Category → Products (SKU prefix `OKS-`):**
+**Pricing is NOT seeded** — invented prices are wrong (e.g. the Nova lock is ~17,500 in the lead
+sheets, not a made-up 41,000). The seed creates each product with a single RETAIL `PriceList` row
+whose `price`/`cost` are **null** and `pricePending=true`. Real prices come from the Shopify export
+(§8) or the client. A quotation/order line that resolves to no price is **rejected (400)**
+(`shared/pricing.ts`), and the margin report **excludes** lines with unknown cost rather than
+counting them as zero. **Per-category SKU prefixes:** `OKS-LOCK`, `OKS-SWCH`, `OKS-PLUG`, `OKS-CAM`,
+`OKS-LGHT`, `OKS-APPL`, `OKS-SERV` (Shopify-imported products keep their own SKU, e.g. `S31870`).
+
+**Category → Products:**
 
 - **Smart Locks** — Super Smart Door Lock (Bluetooth), Smart Vision Door Lock, Glass Door Lock with
   Camera, Nova Door Lock (Matt/Texture), Classic Door Lock, Vault Door Lock, Armour Door Lock (Face),

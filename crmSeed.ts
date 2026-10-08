@@ -132,9 +132,20 @@ const AGENTS: { code: string; full: string }[] = [
   { code: "AG008", full: "Areeba Farooq" },
 ];
 
-function skuFor(cat: string, n: number): string {
-  const abbr = cat.split(/[^A-Za-z]/)[0].slice(0, 4).toUpperCase();
-  return `OKS-${abbr}-${String(n).padStart(3, "0")}`;
+const PREFIX: Record<string, string> = {
+  "Smart Locks": "OKS-LOCK",
+  "Smart Switches & Panels": "OKS-SWCH",
+  "Smart Plugs & Power": "OKS-PLUG",
+  "Cameras & Security": "OKS-CAM",
+  "Lighting": "OKS-LGHT",
+  "Appliances & Sensors": "OKS-APPL",
+  "Services & Bundles": "OKS-SERV",
+};
+const catCounter: Record<string, number> = {};
+function skuFor(cat: string): string {
+  const prefix = PREFIX[cat] || "OKS-GEN";
+  catCounter[cat] = (catCounter[cat] || 0) + 1;
+  return `${prefix}-${String(catCounter[cat]).padStart(3, "0")}`;
 }
 
 async function seedFeatures() {
@@ -149,6 +160,22 @@ async function seedFeatures() {
 }
 
 async function seedCatalogue() {
+  // Clear prior seeded catalogue (OKS-* products) so re-running with new SKUs/prices does not
+  // duplicate. Only touches seeded products; real Shopify-imported SKUs (e.g. S31870) are left alone.
+  const starter = await prisma.bundle.findUnique({ where: { name: "Starter Home Automation Kit" }, select: { id: true } });
+  if (starter) {
+    await prisma.bundleItem.deleteMany({ where: { bundleId: starter.id } });
+    await prisma.bundle.delete({ where: { id: starter.id } });
+  }
+  const old = await prisma.product.findMany({ where: { sku: { startsWith: "OKS-" } }, select: { id: true } });
+  const oldIds = old.map((o) => o.id);
+  if (oldIds.length) {
+    await prisma.priceList.deleteMany({ where: { productId: { in: oldIds } } });
+    await prisma.productVariant.deleteMany({ where: { productId: { in: oldIds } } });
+    await prisma.productImage.deleteMany({ where: { productId: { in: oldIds } } });
+    await prisma.product.deleteMany({ where: { id: { in: oldIds } } });
+  }
+
   const catId: Record<string, string> = {};
   for (let i = 0; i < CATEGORIES.length; i++) {
     const c = await prisma.category.upsert({
@@ -158,29 +185,23 @@ async function seedCatalogue() {
     });
     catId[CATEGORIES[i]] = c.id;
   }
-  let n = 0;
   for (const p of PRODUCTS) {
-    n++;
-    const sku = skuFor(p.cat, n);
-    const prod = await prisma.product.upsert({
-      where: { sku },
-      update: { name: p.name, categoryId: catId[p.cat], protocol: (p.protocol as any) ?? null, isDeleted: null },
-      create: { sku, name: p.name, categoryId: catId[p.cat], protocol: (p.protocol as any) ?? null, status: "ACTIVE" },
+    const sku = skuFor(p.cat);
+    const prod = await prisma.product.create({
+      data: { sku, name: p.name, categoryId: catId[p.cat], protocol: (p.protocol as any) ?? null, status: "ACTIVE" },
     });
-    const existingPrice = await prisma.priceList.findFirst({ where: { productId: prod.id, tier: "RETAIL", validTo: null, isDeleted: null } });
-    if (!existingPrice) {
-      await prisma.priceList.create({ data: { productId: prod.id, tier: "RETAIL", price: p.price, cost: p.cost } });
-    }
+    // Placeholder price row: NO invented numbers — price/cost null, pricePending=true until the real
+    // Shopify export (or the client) provides them. Lead-sheet prices are reference only.
+    await prisma.priceList.create({ data: { productId: prod.id, tier: "RETAIL", price: null, cost: null, pricePending: true } });
   }
-  console.log(`[crmSeed] categories=${CATEGORIES.length} products=${PRODUCTS.length}`);
+  console.log(`[crmSeed] categories=${CATEGORIES.length} products=${PRODUCTS.length} (prices PENDING — not seeded)`);
 
   // one starter bundle
   const bundleProducts = await prisma.product.findMany({
     where: { name: { in: ["10A Smart Plug", "9W RGB Bulb", "Smart Camera 5MP"] }, isDeleted: null },
     select: { id: true },
   });
-  const existingBundle = await prisma.bundle.findUnique({ where: { name: "Starter Home Automation Kit" } });
-  if (!existingBundle && bundleProducts.length) {
+  if (bundleProducts.length) {
     await prisma.bundle.create({
       data: { name: "Starter Home Automation Kit", description: "Plug + bulb + camera starter kit", items: { create: bundleProducts.map((b) => ({ productId: b.id, quantity: 1 })) } },
     });

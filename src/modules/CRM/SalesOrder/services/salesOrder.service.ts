@@ -1,5 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
+import { priceLines } from "../../shared/pricing";
 import { NotFoundError } from "../../../../core/errors/app.error";
 
 function filterWhere(f: any = {}): Record<string, any> {
@@ -42,8 +43,10 @@ class SalesOrderService {
   }
   async create(userId: string, data: any) {
     const scope = await resolveScope(userId, "order");
-    data.agentId = resolveAssignment(scope, data.agentId);
-    return prisma.salesOrder.gpCreate(data);
+    const { items, ...rest } = data;
+    rest.agentId = resolveAssignment(scope, rest.agentId);
+    if (items) await priceLines(items); // block any line with no usable price (persisted in P3)
+    return prisma.salesOrder.gpCreate(rest);
   }
   async update(userId: string, id: string, data: any) {
     const scope = await resolveScope(userId, "order");
