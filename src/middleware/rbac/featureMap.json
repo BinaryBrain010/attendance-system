@@ -1164,6 +1164,11 @@
     "feature": "crm.lead.read.own.*",
     "kind": "read"
   },
+  "POST /lead/import": {
+    "access": "feature",
+    "feature": "crm.lead.import.*",
+    "kind": "import"
+  },
   "POST /lead/restore": {
     "access": "feature",
     "feature": "crm.lead.restore.*",

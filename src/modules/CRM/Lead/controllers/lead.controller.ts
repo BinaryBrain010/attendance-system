@@ -1,9 +1,27 @@
 import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import LeadService from "../services/lead.service";
+import LeadImportService from "../services/leadImport.service";
 
 class LeadController extends BaseController<LeadService> {
   protected service = new LeadService();
+  private importer = new LeadImportService();
+
+  /** Import a lead register CSV. dryRun defaults TRUE — pass dryRun=false to persist. */
+  async importCsv(req: Request, res: Response) {
+    const file = (req as any).file;
+    const csv = file?.buffer?.toString("utf8") ?? req.body?.csv;
+    const name = file?.originalname ?? req.body?.name ?? "upload.csv";
+    const dryRun = !(String(req.query.dryRun ?? req.body?.dryRun) === "false");
+    await this.handleRequest(async () => {
+      if (!csv) throw Object.assign(new Error("No CSV provided (file field 'file' or body.csv)"), { statusCode: 400 });
+      return this.importer.run([{ name, csv }], dryRun);
+    }, res, {
+      successMessage: dryRun ? "Lead import dry-run complete" : "Leads imported",
+      logActivity: dryRun ? (undefined as any) : { action: "IMPORT", entityType: "Lead", description: `Lead import from ${name}` },
+      req,
+    });
+  }
 
   async get(req: Request, res: Response) {
     const { page, pageSize, ...filters } = req.body || {};
