@@ -101,6 +101,9 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /crmPriceList/withCost": { feature: "crm.catalogue.cost.*", kind: "read", access: "feature", note: "cost/margin visibility" },
   "POST /crmReport/margin": { feature: "crm.report.read.*", kind: "read", access: "feature", note: "cost enforced in controller via crm.catalogue.cost.*" },
   "POST /crmReport/export": { feature: "crm.report.export.*", kind: "export", access: "feature" },
+  "POST /lead/transition": { feature: "crm.lead.transition.*", kind: "update", access: "feature", note: "server-enforced stage change" },
+  "POST /lead/assign": { feature: "crm.lead.assign.*", kind: "update", access: "feature", note: "reassign agent" },
+  "POST /lead/fromVisitor": { feature: "crm.lead.create.*", kind: "create", access: "feature", note: "Visitor -> Lead" },
 };
 const CRM_SCOPED = new Set(["crm.lead", "crm.quotation", "crm.order"]);
 

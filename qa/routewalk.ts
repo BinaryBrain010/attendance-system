@@ -42,6 +42,7 @@ import CrmPriceListRoutes from "../src/modules/CRM/Catalogue/PriceList/routes/pr
 import CrmBundleRoutes from "../src/modules/CRM/Catalogue/Bundle/routes/bundle.routes";
 import SalesAgentRoutes from "../src/modules/CRM/SalesAgent/routes/salesAgent.routes";
 import LeadRoutes from "../src/modules/CRM/Lead/routes/lead.routes";
+import LeadActivityRoutes from "../src/modules/CRM/LeadActivity/routes/leadActivity.routes";
 import QuotationRoutes from "../src/modules/CRM/Quotation/routes/quotation.routes";
 import SalesOrderRoutes from "../src/modules/CRM/SalesOrder/routes/salesOrder.routes";
 import CrmReportRoutes from "../src/modules/CRM/Report/routes/report.routes";
@@ -54,7 +55,7 @@ const authed: any[] = [
   UnitRoutes, UnitEmployeeRoutes, ShiftRoutes, SystemConfigRoutes, AnalyticsRoutes,
   ActivityLogRoutes, VisitorRoutes,
   CrmCategoryRoutes, CrmBrandRoutes, CrmProductRoutes, CrmPriceListRoutes, CrmBundleRoutes,
-  SalesAgentRoutes, LeadRoutes, QuotationRoutes, SalesOrderRoutes, CrmReportRoutes,
+  SalesAgentRoutes, LeadRoutes, LeadActivityRoutes, QuotationRoutes, SalesOrderRoutes, CrmReportRoutes,
 ];
 const open: any[] = [AuthRoutes, WebhookRoutes];
 

@@ -60,11 +60,14 @@ const QTAG = "QA_CRM_";
 const createdLeads: string[] = [], createdOrders: string[] = [], createdCats: string[] = [];
 
 async function cleanupFixtures() {
-  await prisma.leadActivity.deleteMany({ where: { lead: undefined } as any }).catch(() => {});
+  const qaLeads = await prisma.lead.findMany({ where: { customerName: { startsWith: QTAG } }, select: { id: true } }).catch(() => [] as { id: string }[]);
+  const ids = qaLeads.map((l) => l.id);
+  if (ids.length) await prisma.leadActivity.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
   await prisma.salesOrderItem.deleteMany({ where: { order: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.salesOrder.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.lead.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
+  await prisma.visitor.deleteMany({ where: { name: { startsWith: QTAG } } }).catch(() => {});
   await prisma.category.deleteMany({ where: { name: { startsWith: QTAG } } }).catch(() => {});
 }
 
@@ -92,9 +95,10 @@ async function main() {
   // write features (create/update/delete/restore) a selling agent needs; scope of WHICH rows they can
   // touch is then enforced in the service layer, not by these features.
   const WRITES = ENTS.flatMap((e) => [`crm.${e}.create.*`, `crm.${e}.update.*`, `crm.${e}.delete.*`, `crm.${e}.restore.*`]);
+  const LEADOPS = ["crm.lead.transition.*", "crm.lead.assign.*"];
   await grant(adminUser, ["crm.*"]);
-  await grant(agentOwnUser, [...ENTS.map(OWN), ...WRITES, "crm.catalogue.read.*", "crm.report.read.*"]);
-  await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...WRITES, "crm.catalogue.read.*", "crm.report.read.*"]);
+  await grant(agentOwnUser, [...ENTS.map(OWN), ...WRITES, ...LEADOPS, "crm.catalogue.read.*", "crm.report.read.*"]);
+  await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...WRITES, ...LEADOPS, "crm.catalogue.read.*", "crm.report.read.*"]);
   await grant(viewerUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...ENTS.map(ALL), "crm.report.read.*", "crm.report.export.*", "crm.catalogue.read.*"]);
   await grant(umbrellaUser, ["appModules.crm.*"]);
 
@@ -245,6 +249,49 @@ async function main() {
   check("shopify dry-run -> 200, 1 product, 2 variants, persists nothing", dry.status === 200 && dry.data?.counts?.products === 1 && dry.data?.counts?.variants === 2 && !dry.data?.persisted, `status ${dry.status} counts ${JSON.stringify(dry.data?.counts)}`);
   check("shopify dry-run keeps Shopify SKU + real price", dry.data?.products?.[0]?.sku === "S31870" && dry.data?.products?.[0]?.defaultPrice === 17500);
   await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
+
+  console.log("\n[crm] ===== Phase 2: lead state machine =====");
+  const newLead = async (t: string, agentId: string, extra: any = {}) => {
+    const r = await api("POST", "/lead/create", t, { customerName: `${QTAG}SM ${Date.now()}${Math.random()}`, stage: "NEW", agentId, ...extra });
+    return r.data?.[0]?.id as string;
+  };
+  const trans = (t: string, id: string, to: string, reason?: string) => api("POST", "/lead/transition", t, { id, to, ...(reason ? { reason } : {}) });
+  const smLead = await newLead(tAdmin, AG001.id);
+  check("transition NEW->CONTACTED 200", (await trans(tAdmin, smLead, "CONTACTED")).status === 200);
+  check("transition CONTACTED->QUALIFIED 200", (await trans(tAdmin, smLead, "QUALIFIED")).status === 200);
+  check("invalid skip QUALIFIED->WON 409", (await trans(tAdmin, smLead, "WON")).status === 409);
+  check("transition QUALIFIED->QUOTATION 200", (await trans(tAdmin, smLead, "QUOTATION")).status === 200);
+  check("transition QUOTATION->WON 200", (await trans(tAdmin, smLead, "WON")).status === 200);
+  check("transition from terminal WON->LOST 409", (await trans(tAdmin, smLead, "LOST", "x")).status === 409);
+  const lostLead = await newLead(tAdmin, AG001.id);
+  check("LOST without reason -> 400", (await trans(tAdmin, lostLead, "LOST")).status === 400);
+  check("LOST with reason -> 200", (await trans(tAdmin, lostLead, "LOST", "price too high")).status === 200);
+  const holdLead = await newLead(tAdmin, AG001.id);
+  check("ON_HOLD without reason -> 400", (await trans(tAdmin, holdLead, "ON_HOLD")).status === 400);
+  check("AGENT_OWN transition out-of-scope lead -> 403", (await trans(tOwn, outLead1.id, "CONTACTED")).status === 403);
+
+  console.log("\n[crm] ===== Phase 2: LeadActivity + timeline =====");
+  const actLead = await newLead(tOwn, AG001.id);
+  const futureFu = new Date(Date.now() + 3 * 86400000).toISOString();
+  const aCreate = await api("POST", "/leadActivity/create", tOwn, { leadId: actLead, type: "CALL", outcome: "spoke", notes: "called", nextFollowUpAt: futureFu });
+  check("AGENT_OWN log activity on own lead -> 201", aCreate.status === 201, `got ${aCreate.status}`);
+  const aList = await api("POST", "/leadActivity/byLead", tOwn, { leadId: actLead });
+  check("byLead returns the activity", (aList.data || []).length === 1);
+  check("activity set lead.nextFollowUpAt (UPCOMING)", (await api("POST", "/lead/getById", tOwn, { id: actLead })).data?.followUpStatus === "UPCOMING");
+  check("AGENT_OWN log activity on out-of-scope lead -> 403", (await api("POST", "/leadActivity/create", tOwn, { leadId: outLead1.id, type: "CALL" })).status === 403);
+  const tl = await api("POST", "/lead/timeline", tOwn, { id: actLead });
+  check("timeline merges activity + audit", Array.isArray(tl.data) && tl.data.some((e: any) => e.source === "activity") && tl.data.some((e: any) => e.source === "audit"), `len ${tl.data?.length}`);
+
+  console.log("\n[crm] ===== Phase 2: follow-up status (computed) =====");
+  const overdue = await newLead(tAdmin, AG001.id, { nextFollowUpAt: new Date(Date.now() - 2 * 86400000).toISOString() });
+  check("overdue lead -> followUpStatus OVERDUE", (await api("POST", "/lead/getById", tAdmin, { id: overdue })).data?.followUpStatus === "OVERDUE");
+  check("lead carries computed probability", typeof (await api("POST", "/lead/getById", tAdmin, { id: overdue })).data?.probability === "number");
+
+  console.log("\n[crm] ===== Phase 2: Visitor -> Lead =====");
+  const vis = await prisma.visitor.create({ data: { name: `${QTAG}Visitor`, phone: "0300-1234567", purpose: "wants a smart lock", visitDate: new Date() } });
+  const conv = await api("POST", "/lead/fromVisitor", tAdmin, { visitorId: vis.id });
+  check("Visitor->Lead 201, stage NEW, visitorId set", conv.status === 201 && conv.data?.[0]?.stage === "NEW" && conv.data?.[0]?.visitorId === vis.id, `status ${conv.status}`);
+  check("Visitor->Lead again -> 409 (already converted)", (await api("POST", "/lead/fromVisitor", tAdmin, { visitorId: vis.id })).status === 409);
 
   // ---- cleanup ----
   await cleanupFixtures();

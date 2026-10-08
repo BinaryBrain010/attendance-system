@@ -50,6 +50,35 @@ class LeadController extends BaseController<LeadService> {
       logActivity: { action: "RESTORE", entityType: "Lead", entityId: id, description: "Lead restored" }, req,
     });
   }
+
+  async transition(req: Request, res: Response) {
+    const { id, to, reason } = req.body;
+    await this.handleRequest(() => this.service.transition((req as any).userId, id, to, reason ?? null), res, {
+      successMessage: "Lead stage changed successfully!",
+      logActivity: { action: "STAGE_CHANGE", entityType: "Lead", entityId: id, description: (r: any) => `Stage ${r?.from} -> ${r?.to}`, metadata: (r: any) => ({ from: r?.from, to: r?.to, reason: reason ?? null }) }, req,
+    });
+  }
+
+  async assign(req: Request, res: Response) {
+    const { id, agentId } = req.body;
+    await this.handleRequest(() => this.service.assign((req as any).userId, id, agentId ?? null), res, {
+      successMessage: "Lead reassigned successfully!",
+      logActivity: { action: "ASSIGN", entityType: "Lead", entityId: id, description: `Lead reassigned`, metadata: { agentId } }, req,
+    });
+  }
+
+  async fromVisitor(req: Request, res: Response) {
+    const { visitorId } = req.body;
+    await this.handleRequest(() => this.service.fromVisitor((req as any).userId, visitorId), res, {
+      successMessage: "Lead created from visitor successfully!", statusCode: 201,
+      logActivity: { action: "CREATE", entityType: "Lead", entityId: (r: any) => r?.[0]?.id, description: `Lead from visitor ${visitorId}`, metadata: { visitorId } }, req,
+    });
+  }
+
+  async timeline(req: Request, res: Response) {
+    const { id } = req.body;
+    await this.handleRequest(() => this.service.timeline((req as any).userId, id), res, { successMessage: "Lead timeline retrieved successfully!" });
+  }
 }
 
 export default LeadController;

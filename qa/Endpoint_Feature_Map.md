@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-410 routes walked from the live routers. Real DB users counted: 177.
+418 routes walked from the live routers. Real DB users counted: 177.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -241,14 +241,22 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /item/search | read | feature | `item.read.*` | yes | 0 |  |
 | GET | /item/total | read | feature | `item.read.*` | yes | 0 |  |
 | PUT | /item/update | update | feature | `item.update.*` | yes | 0 |  |
+| POST | /lead/assign | update | feature | `crm.lead.assign.*` | yes | 0 | reassign agent |
 | POST | /lead/create | create | feature | `crm.lead.create.*` | yes | 0 |  |
 | POST | /lead/delete | delete | feature | `crm.lead.delete.*` | yes | 0 |  |
 | POST | /lead/filtered | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/fromVisitor | create | feature | `crm.lead.create.*` | yes | 0 | Visitor -> Lead |
 | POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/restore | restore | feature | `crm.lead.restore.*` | yes | 0 |  |
+| POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/transition | update | feature | `crm.lead.transition.*` | yes | 0 | server-enforced stage change |
 | PUT | /lead/update | update | feature | `crm.lead.update.*` | yes | 0 |  |
+| POST | /leadActivity/byLead | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /leadActivity/create | create | feature | `crm.lead.create.*` | yes | 0 |  |
+| POST | /leadActivity/delete | delete | feature | `crm.lead.delete.*` | yes | 0 |  |
+| PUT | /leadActivity/update | update | feature | `crm.lead.update.*` | yes | 0 |  |
 | POST | /leave/leave-allocations/assignToAll | create | feature | `leaveAlloc.create.*` | yes | 0 |  |
 | POST | /leave/leave-allocations/create | create | feature | `leaveAlloc.create.*` | yes | 0 |  |
 | POST | /leave/leave-allocations/delete | delete | feature | `leaveAlloc.delete.*` | yes | 0 |  |

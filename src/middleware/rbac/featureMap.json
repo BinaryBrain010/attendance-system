@@ -1129,6 +1129,11 @@
     "feature": "item.update.*",
     "kind": "update"
   },
+  "POST /lead/assign": {
+    "access": "feature",
+    "feature": "crm.lead.assign.*",
+    "kind": "update"
+  },
   "POST /lead/create": {
     "access": "feature",
     "feature": "crm.lead.create.*",
@@ -1143,6 +1148,11 @@
     "access": "feature",
     "feature": "crm.lead.read.own.*",
     "kind": "read"
+  },
+  "POST /lead/fromVisitor": {
+    "access": "feature",
+    "feature": "crm.lead.create.*",
+    "kind": "create"
   },
   "POST /lead/get": {
     "access": "feature",
@@ -1159,12 +1169,42 @@
     "feature": "crm.lead.restore.*",
     "kind": "restore"
   },
+  "POST /lead/timeline": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
   "POST /lead/total": {
     "access": "feature",
     "feature": "crm.lead.read.own.*",
     "kind": "read"
   },
+  "POST /lead/transition": {
+    "access": "feature",
+    "feature": "crm.lead.transition.*",
+    "kind": "update"
+  },
   "PUT /lead/update": {
+    "access": "feature",
+    "feature": "crm.lead.update.*",
+    "kind": "update"
+  },
+  "POST /leadActivity/byLead": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /leadActivity/create": {
+    "access": "feature",
+    "feature": "crm.lead.create.*",
+    "kind": "create"
+  },
+  "POST /leadActivity/delete": {
+    "access": "feature",
+    "feature": "crm.lead.delete.*",
+    "kind": "delete"
+  },
+  "PUT /leadActivity/update": {
     "access": "feature",
     "feature": "crm.lead.update.*",
     "kind": "update"

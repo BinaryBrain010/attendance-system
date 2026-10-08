@@ -21,6 +21,10 @@ class LeadRoutes {
     this.router.put("/update", this.controller.update.bind(this.controller));
     this.router.post("/delete", this.controller.remove.bind(this.controller));
     this.router.post("/restore", this.controller.restore.bind(this.controller));
+    this.router.post("/transition", this.controller.transition.bind(this.controller));
+    this.router.post("/assign", this.controller.assign.bind(this.controller));
+    this.router.post("/fromVisitor", this.controller.fromVisitor.bind(this.controller));
+    this.router.post("/timeline", this.controller.timeline.bind(this.controller));
   }
 
   public getRouter(): Router {
