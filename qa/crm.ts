@@ -392,6 +392,27 @@ async function main() {
   const outR = await prisma.salesReturn.create({ data: { returnNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}outR`, agentId: AG004.id, status: "REPORTED", reason: "x", company: "OKASHASMART" } });
   check("AGENT_OWN transition out-of-scope return -> 403", (await api("POST", "/salesReturn/transition", tOwn, { id: outR.id, to: "RECEIVED_BACK" })).status === 403);
 
+  console.log("\n[crm] ===== Phase 3 fix: lead stage sync =====");
+  const syncLead = await prisma.lead.create({ data: { customerName: `${QTAG}Sync`, phone: "0300-7770001", stage: "CONTACTED", agentId: AG001.id, company: "OKASHASMART" } });
+  const sq = await api("POST", "/quotation/create", tAdmin, { customerName: `${QTAG}Sync`, leadId: syncLead.id, items: [{ description: "x", quantity: 1, unitPrice: 1000 }] });
+  await api("POST", "/quotation/transition", tAdmin, { id: sq.data?.id, to: "SENT" });
+  check("quotation SENT -> lead QUOTATION", (await prisma.lead.findUnique({ where: { id: syncLead.id } }))?.stage === "QUOTATION");
+  const stl = await api("POST", "/lead/timeline", tAdmin, { id: syncLead.id });
+  check("auto stage change logged in lead timeline", (stl.data || []).some((e: any) => e.action === "AUTO_STAGE" || /Auto:/.test(e.description || "")));
+  const so = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}Sync`, leadId: syncLead.id, items: [{ description: "y", quantity: 1, unitPrice: 2000 }] });
+  await api("POST", "/salesOrder/transition", tAdmin, { id: so.data?.id, to: "CONFIRMED" });
+  check("order CONFIRMED -> lead WON", (await prisma.lead.findUnique({ where: { id: syncLead.id } }))?.stage === "WON");
+  const sq2 = await api("POST", "/quotation/create", tAdmin, { customerName: `${QTAG}Sync`, leadId: syncLead.id, items: [{ description: "z", quantity: 1, unitPrice: 500 }] });
+  await api("POST", "/quotation/transition", tAdmin, { id: sq2.data?.id, to: "SENT" });
+  check("WON lead not downgraded by a later quotation", (await prisma.lead.findUnique({ where: { id: syncLead.id } }))?.stage === "WON");
+
+  // order field round-trip (externalOrderNo / paymentType / amountReceived / area)
+  const ofo = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}Fields`, externalOrderNo: "27125", courier: "PostEx", trackingNo: "CN123", paymentType: "COD", amountReceived: 0, city: "Lahore", area: "Johar Town", items: [{ description: "a", quantity: 1, unitPrice: 1000 }] });
+  const ofg = await api("POST", "/salesOrder/getById", tAdmin, { id: ofo.data?.id });
+  check("order persists external/payment/area fields", ofg.data?.externalOrderNo === "27125" && ofg.data?.paymentType === "COD" && ofg.data?.area === "Johar Town", `${ofg.data?.externalOrderNo}/${ofg.data?.paymentType}/${ofg.data?.area}`);
+  const vord = await api("POST", "/salesOrder/getById", tViewer, { id: ofo.data?.id });
+  check("no-cost getById keeps Date fields intact (stripCost bug)", typeof vord.data?.createdAt === "string" && vord.data?.margin === undefined, `createdAt type ${typeof vord.data?.createdAt}`);
+
   // ---- cleanup ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });

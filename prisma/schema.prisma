@@ -710,6 +710,12 @@ enum PriceTier {
   OUTLET
 }
 
+enum PaymentType {
+  COD
+  ADVANCE
+  PARTIAL
+}
+
 model Category {
   id          String    @id @default(uuid())
   name        String    @unique
@@ -972,8 +978,12 @@ model SalesOrder {
   discount      Int              @default(0)
   total         Int              @default(0)
   channel       SalesChannel?
-  courier       String?
-  trackingNo    String?
+  externalOrderNo String?        // e.g. Shopify order number (27125)
+  courier       String?          // PostEx / TCS / Leopards / self / outlet pickup
+  trackingNo    String?          // CN / tracking number
+  paymentType   PaymentType?     // COD / ADVANCE / PARTIAL
+  amountReceived Int?            // amount received so far (PKR)
+  area          String?          // delivery sub-locality
   dispatchedAt  DateTime?
   deliveredAt   DateTime?
   reattemptCount Int             @default(0)

@@ -2,6 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { priceLines } from "../../shared/pricing";
 import { assertTransition } from "../../shared/stateMachine";
+import { syncLeadStage } from "../../shared/leadSync";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 
 function filterWhere(f: any = {}): Record<string, any> {
@@ -173,6 +174,7 @@ class QuotationService {
     const data: any = { status: to, isActive: true, updatedBy: userId, updatedAt: new Date() };
     if (to === "REJECTED") data.statusReason = reason;
     const upd = await prisma.quotation.update({ where: { id }, data });
+    if (to === "SENT") await syncLeadStage(userId, q.leadId, "QUOTATION", "quotation sent");
     return { ...upd, from: q.status, to };
   }
 

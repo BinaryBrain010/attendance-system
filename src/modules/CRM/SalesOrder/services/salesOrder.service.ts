@@ -2,6 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { priceLines } from "../../shared/pricing";
 import { assertTransition } from "../../shared/stateMachine";
+import { syncLeadStage } from "../../shared/leadSync";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 
 function filterWhere(f: any = {}): Record<string, any> {
@@ -31,7 +32,7 @@ const lineData = (orderId: string, l: any) => ({
   orderId, productId: l.productId ?? null, variantId: l.variantId ?? null, description: l.description ?? null,
   quantity: l.quantity ?? 1, unitPrice: l.unitPrice, unitCost: l.unitCost ?? null, lineDiscount: l.lineDiscount || 0, lineTotal: l.lineTotal,
 });
-const HEADER = ["customerName", "phone", "city", "outlet", "address", "channel", "courier", "trackingNo", "discount", "agentId", "leadId", "quotationId"];
+const HEADER = ["customerName", "phone", "city", "area", "outlet", "address", "channel", "externalOrderNo", "courier", "trackingNo", "paymentType", "amountReceived", "discount", "agentId", "leadId", "quotationId"];
 function pickHeader(h: any): Record<string, any> { const o: Record<string, any> = {}; for (const k of HEADER) if (k in h) o[k] = h[k]; return o; }
 
 class SalesOrderService {
@@ -65,8 +66,9 @@ class SalesOrderService {
       const o = await tx.salesOrder.create({
         data: {
           orderNo, leadId: h.leadId ?? null, quotationId: h.quotationId ?? null, customerName: h.customerName, phone: h.phone ?? null,
-          city: h.city ?? null, outlet: h.outlet ?? null, address: h.address ?? null, status: "DRAFT", subtotal, discount: h.discount || 0,
-          total, channel: h.channel ?? null, courier: h.courier ?? null, trackingNo: h.trackingNo ?? null, agentId: h.agentId ?? null,
+          city: h.city ?? null, area: h.area ?? null, outlet: h.outlet ?? null, address: h.address ?? null, status: "DRAFT", subtotal, discount: h.discount || 0,
+          total, channel: h.channel ?? null, externalOrderNo: h.externalOrderNo ?? null, courier: h.courier ?? null, trackingNo: h.trackingNo ?? null,
+          paymentType: h.paymentType ?? null, amountReceived: h.amountReceived ?? null, agentId: h.agentId ?? null,
           company: h.company ?? "OKASHASMART", createdBy: userId, ...extra,
         },
       });
@@ -136,6 +138,7 @@ class SalesOrderService {
     if (to === "DISPATCHED") data.dispatchedAt = new Date();
     if (to === "DELIVERED") data.deliveredAt = new Date();
     const upd = await prisma.salesOrder.update({ where: { id }, data });
+    if (["CONFIRMED", "PACKED", "DISPATCHED", "DELIVERED"].includes(to)) await syncLeadStage(userId, o.leadId, "WON", `order ${to.toLowerCase()}`);
     return { ...upd, from: o.status, to };
   }
 
