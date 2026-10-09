@@ -25,21 +25,22 @@ const leadCols = (p = "") => [
   { header: p + "City", key: p + "city", width: 12 },
   { header: p + "Area", key: p + "area", width: 16 },
   { header: p + "Address", key: p + "address", width: 26 },
+  { header: p + "Notes", key: p + "notes", width: 26 },
   { header: p + "Channel", key: p + "channel", width: 15 },
   { header: p + "Stage", key: p + "stage", width: 11 },
   { header: p + "StageFlag", key: p + "stageFlagged", width: 9 },
   { header: p + "Priority", key: p + "priority", width: 8 },
   { header: p + "Est.Value", key: p + "estimatedValue", width: 11 },
-  { header: p + "Agent", key: p + "agentCode", width: 8 },
-  { header: p + "AgentFlag", key: p + "agentFlag", width: 28 },
+  { header: p + "Agent (final)", key: p + "finalAgent", width: 12 },
+  { header: p + "AgentFlag (original)", key: p + "agentFlag", width: 30 },
   { header: p + "DateRecvd", key: p + "dateReceived", width: 12 },
   { header: p + "MergedFrom", key: p + "mergedFrom", width: 26 },
 ];
 const leadRow = (r: any, p = "") => ({
   [p + "sourceFile"]: r.sourceFile, [p + "legacyId"]: r.legacyId, [p + "generatedId"]: r.generatedId ? "Y" : "",
-  [p + "customerName"]: r.customerName, [p + "phone"]: r.phone, [p + "city"]: r.city, [p + "area"]: r.area, [p + "address"]: r.address,
+  [p + "customerName"]: r.customerName, [p + "phone"]: r.phone, [p + "city"]: r.city, [p + "area"]: r.area, [p + "address"]: r.address, [p + "notes"]: r.notes,
   [p + "channel"]: r.channel, [p + "stage"]: r.stage, [p + "stageFlagged"]: r.stageFlagged ? "Y" : "", [p + "priority"]: r.priority,
-  [p + "estimatedValue"]: r.estimatedValue, [p + "agentCode"]: r.agentCode || "(unassigned)", [p + "agentFlag"]: r.agentFlag || "",
+  [p + "estimatedValue"]: r.estimatedValue, [p + "finalAgent"]: r.finalAgent || r.agentCode || "(unassigned)", [p + "agentFlag"]: r.agentFlag || "",
   [p + "dateReceived"]: fmtDate(r.dateReceived), [p + "mergedFrom"]: (r.mergedFrom || []).join(", "),
 });
 
@@ -54,29 +55,33 @@ async function main() {
   sum.columns = [{ header: "Metric", key: "k", width: 48 }, { header: "Value", key: "v", width: 64 }];
   const add = (k: string, v: any) => sum.addRow({ k, v });
   report.files.forEach((f: any) => add(f.name, `rows=${f.rows}  accepted=${f.accepted}  withLeadId=${f.withLeadId}  generatedId=${f.generatedId}  skipped=${f.skipped}`));
-  add("Unique after dedup", t.uniqueAfterDedup);
+  add("Empty spreadsheet rows ignored (both files)", t.emptyRowsIgnored);
+  add("Unique after dedup (to import)", t.uniqueAfterDedup);
   add("Duplicate groups (merged or kept-both)", t.duplicatesGroups);
-  add("Duplicate rows dropped by merge", t.duplicateRowsDropped);
+  add("Duplicate rows merged away", t.duplicateRowsDropped);
+  add("Conflicting-outcome duplicates kept (WON vs LOST)", t.conflictsKept);
+  add("Leads with NULL city (flagged)", t.nullCity);
   add("Unassigned (no agent)", t.unassigned);
   add("Reassigned AG007 -> AG006", t.reassignedFromAG007);
   add("Stage flagged (-> NEW)", t.stageFlagged);
   add("Date fixes (swapped / out of range)", t.dateFixes);
-  add("Location flags (non-city / unrecognized)", t.locationFlags);
-  add("Highest real Lead ID number", t.withLeadId ? report.highestRealId : report.highestRealId);
+  add("Location flags", t.locationFlags);
   add("Generated codes continue from", report.generatedFrom);
+  add("", "");
+  add("FINAL PER-AGENT COUNTS (as will be saved)", "");
+  Object.entries(report.perAgent).sort((a: any, b: any) => b[1] - a[1]).forEach(([k, v]) => add(`  ${k}`, v));
   const skBy = (reason: string) => d.skipped.filter((s: any) => s.reason === reason).length;
   add("", "");
   add("RECONCILIATION", "");
   add("  Populated Lead IDs in the two sheets", "96 + 149 = 245 (matches your figure)");
-  add("  minus Lead-ID rows with no customer name", skBy("no customer name"));
-  add("  minus dummy rows", skBy("dummy row"));
-  add("  minus repeated header rows", skBy("repeated header row"));
-  add("  minus junk names", skBy("junk name"));
-  add("  minus duplicate rows merged away", t.duplicateRowsDropped);
+  add("  (separate) completely empty spreadsheet rows, not counted above", t.emptyRowsIgnored);
+  add("  minus Lead-ID rows that HAVE an ID but NO customer name", skBy("no customer name"));
+  add("  minus dummy / repeated-header / junk-name rows", skBy("dummy row") + skBy("repeated header row") + skBy("junk name"));
+  add("  minus duplicate rows merged away (phone+date, same outcome)", t.duplicateRowsDropped);
   add("  = real-Lead-ID leads kept", t.withLeadId);
-  add("  PLUS name+phone rows with blank Lead ID (generated)", t.generatedId);
+  add("  PLUS name+phone rows with a BLANK Lead ID (generated code)", t.generatedId);
   add("  = UNIQUE leads to import", t.uniqueAfterDedup);
-  add("  Also skipped: named rows with neither Lead ID nor phone", skBy("no Lead ID and no phone"));
+  add("  Also skipped separately: named rows with neither Lead ID nor phone", skBy("no Lead ID and no phone"));
   sum.getRow(1).font = { bold: true };
 
   const sheet = (name: string, cols: any[], rows: any[]) => { const ws = wb.addWorksheet(name); ws.columns = cols; rows.forEach((r) => ws.addRow(r)); ws.getRow(1).font = { bold: true }; return ws; };
@@ -100,7 +105,7 @@ async function main() {
 
   await wb.xlsx.writeFile(OUT);
   console.log("=== Lead import DRY RUN (nothing written) ===");
-  console.log(JSON.stringify({ files: report.files, totals: t, generatedFrom: report.generatedFrom, cities: report.cities, stages: report.stages }, null, 2));
+  console.log(JSON.stringify({ files: report.files, totals: t, perAgent: report.perAgent, generatedFrom: report.generatedFrom, cities: report.cities, stages: report.stages }, null, 2));
   console.log(`\nExcel written: ${OUT}`);
   await prisma.$disconnect();
 }

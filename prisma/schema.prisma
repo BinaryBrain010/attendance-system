@@ -863,6 +863,7 @@ model Lead {
   city           String?
   area           String?       // short sub-locality within the city (e.g. "Johar Town" under Lahore)
   address        String?       // full street address when the source gave one
+  notes          String?       // free-text that is clearly a note, not a location
   outlet         String?
   channel        SalesChannel?
   stage          LeadStage     @default(NEW)

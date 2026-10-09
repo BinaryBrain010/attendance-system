@@ -46,10 +46,34 @@ const STAGE_RANK: Record<string, number> = { WON: 8, LOST: 8, NEGOTIATION: 6, QU
 const PRIORITY: Record<string, string> = { high: "HIGH", medium: "MEDIUM", low: "LOW" };
 const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
-// Lahore sub-localities -> city Lahore.
-const LAHORE_AREA = /beadon road|johar town|garden town|lake city|dha|askari|bahria|gulberg|model town|faisal town|wapda town|valencia|cantt|cavalry|firdous|mm alam|broadway|allama iqbal|iqbal town|township|walton|paragon|state life|eden|military accounts|jubilee|green ?town|wapda/i;
-const PURE_CITY = /^(lhr|lahore|karachi|krc|gujranwala|islamabad|isb|chakwal)$/i;
-const NON_CITY = /existing customer|bankers society|online store|physical store|source|n\/a|^-+$/i;
+// Pakistan cities + common misspellings/abbreviations -> canonical name. NEVER default to Lahore.
+const CITY_ALIAS: Record<string, string> = {
+  "lahore": "Lahore", "lhr": "Lahore", "karachi": "Karachi", "khi": "Karachi", "krc": "Karachi",
+  "islamabad": "Islamabad", "isb": "Islamabad", "rawalpindi": "Rawalpindi", "pindi": "Rawalpindi", "rwp": "Rawalpindi",
+  "faisalabad": "Faisalabad", "faislabad": "Faisalabad", "lyallpur": "Faisalabad", "multan": "Multan",
+  "peshawar": "Peshawar", "quetta": "Quetta", "hyderabad": "Hyderabad", "gujranwala": "Gujranwala", "gujrawala": "Gujranwala",
+  "sialkot": "Sialkot", "gujrat": "Gujrat", "sargodha": "Sargodha", "bahawalpur": "Bahawalpur", "bahwalpur": "Bahawalpur",
+  "okara": "Okara", "sahiwal": "Sahiwal", "abbottabad": "Abbottabad", "abbotabad": "Abbottabad", "mardan": "Mardan",
+  "mianwali": "Mianwali", "chishtian": "Chishtian", "arifwala": "Arifwala", "burewala": "Burewala", "chakwal": "Chakwal",
+  "sukkur": "Sukkur", "jhang": "Jhang", "sheikhupura": "Sheikhupura", "kasur": "Kasur", "rahim yar khan": "Rahim Yar Khan",
+  "dera ghazi khan": "Dera Ghazi Khan", "dgkhan": "Dera Ghazi Khan", "muzaffargarh": "Muzaffargarh", "vehari": "Vehari",
+  "khanewal": "Khanewal", "nankana": "Nankana Sahib", "wah": "Wah Cantt", "attock": "Attock", "jhelum": "Jhelum",
+  "kohat": "Kohat", "bannu": "Bannu", "swat": "Swat", "mingora": "Mingora", "nowshera": "Nowshera", "charsadda": "Charsadda",
+  "swabi": "Swabi", "haripur": "Haripur", "gilgit": "Gilgit", "skardu": "Skardu", "muzaffarabad": "Muzaffarabad",
+  "mirpur": "Mirpur", "sadiqabad": "Sadiqabad", "jacobabad": "Jacobabad", "larkana": "Larkana", "nawabshah": "Nawabshah",
+  "mirpurkhas": "Mirpurkhas", "toba tek singh": "Toba Tek Singh", "sahiwal city": "Sahiwal",
+};
+const CITY_ALIASES = Object.keys(CITY_ALIAS).sort((a, b) => b.length - a.length);
+// Lahore sub-localities -> city Lahore (only when no explicit other city is present).
+const LAHORE_AREA = /beadon\s*road|johar town|garden town|lake city|\bdha\b|askari|bahria|gulberg|model town|faisal town|wapda town|valencia|cantt|cavalry|firdous|mm alam|broadway|allama iqbal|iqbal town|township|walton|paragon|state life|eden|military accounts|jubilee|green ?town|defence/i;
+const PURE_CITY = new RegExp(`^(${CITY_ALIASES.join("|")})$`, "i");
+// text that is clearly a note (actions / products), not a location
+const NOTE_RE = /order|payment|installation|install|visited|propose|proposal|quotation|scam|return|refund|out of stock|out of order|message|\bmsg\b|complaint|delivered|dispatch|courier|whatsapp|\bcall\b|site visit/i;
+function looksNote(s: string): boolean { return NOTE_RE.test(s) || s.trim().split(/\s+/).length >= 7; }
+function findCity(s: string): string | null {
+  for (const al of CITY_ALIASES) { const re = new RegExp(`(^|[^a-z])${al.replace(/ /g, "\\s+")}([^a-z]|$)`, "i"); if (re.test(s)) return CITY_ALIAS[al]; }
+  return null;
+}
 
 const norm = (s: string) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
 const digits = (s: string) => (s || "").replace(/\D/g, "");
@@ -89,30 +113,31 @@ function isJunkName(n: string): boolean {
   return false;
 }
 
-function classifyLocation(raw: string): { city: string | null; area: string | null; address: string | null; flag: string | null } {
+function classifyLocation(raw: string): { city: string | null; area: string | null; address: string | null; notes: string | null; flag: string | null } {
   const original = (raw || "").trim();
   const s = norm(original);
-  if (!s) return { city: null, area: null, address: null, flag: null };
+  if (!s) return { city: null, area: null, address: null, notes: null, flag: null };
+  // explicit city name anywhere in the text/address wins; Lahore areas imply Lahore only if no city.
+  let city = findCity(s);
+  if (!city && LAHORE_AREA.test(s)) city = "Lahore";
+  const note = looksNote(original);
   const looksAddress = original.length > 28 || (/\d/.test(original) && original.includes(",")) || /house|street|st no|road no|plot|block\s*\w|phase\s*\d/i.test(original);
-  let city: string | null = null;
-  if (/krc|karachi/.test(s)) city = "Karachi";
-  else if (/gujranwala/.test(s)) city = "Gujranwala";
-  else if (/islamabad|isb/.test(s)) city = "Islamabad";
-  else if (/chakwal/.test(s)) city = "Chakwal";
-  else if (LAHORE_AREA.test(s) || /lhr|lahore/.test(s)) city = "Lahore";
   if (!city) {
-    const flag = NON_CITY.test(s) ? "non-city value -> area" : "unrecognized city -> area";
-    return looksAddress ? { city: null, area: null, address: original, flag } : { city: null, area: original, address: null, flag };
+    if (note) return { city: null, area: null, address: null, notes: original, flag: "free-text -> notes (city null)" };
+    return looksAddress
+      ? { city: null, area: null, address: original, notes: null, flag: "unknown city -> address (city null)" }
+      : { city: null, area: original, address: null, notes: null, flag: "unknown city -> area (city null)" };
   }
-  if (PURE_CITY.test(original)) return { city, area: null, address: null, flag: null };
-  return looksAddress ? { city, area: null, address: original, flag: null } : { city, area: original, address: null, flag: null };
+  if (PURE_CITY.test(original)) return { city, area: null, address: null, notes: null, flag: null };
+  if (note) return { city, area: null, address: null, notes: original, flag: null };
+  return looksAddress ? { city, area: null, address: original, notes: null, flag: null } : { city, area: original, address: null, notes: null, flag: null };
 }
 
 interface CleanRow {
   sourceFile: string; legacyId: string; generatedId: boolean; customerName: string; phone: string | null;
-  city: string | null; area: string | null; address: string | null; locationFlag: string | null;
+  city: string | null; area: string | null; address: string | null; notes: string | null; locationFlag: string | null;
   channel: string | null; stage: string; stageFlagged: boolean; priority: string; estimatedValue: number | null;
-  requirement: string | null; agentCode: string | null; agentId: string | null; agentFlag: string | null;
+  requirement: string | null; agentCode: string | null; agentId: string | null; agentFlag: string | null; finalAgent?: string;
   dateReceived: Date | null; lastContactAt: Date | null; nextFollowUpAt: Date | null; outcomeRaw: string | null;
   company: string; dedupKey: string; mergedFrom?: string[]; dupFlag?: string;
 }
@@ -140,6 +165,7 @@ class LeadImportService {
     const genCode = () => `OS-LHR-2026-${String(++genSeq).padStart(3, "0")}`;
 
     const perFile: Record<string, any> = {};
+    let emptyRows = 0;
     const stageReview: any[] = [], agentFlagsList: any[] = [], dateFixes: any[] = [], locationFlags: any[] = [], reassigned: any[] = [];
     const chanDist: Record<string, number> = {}, stageDist: Record<string, number> = {}, cityDist: Record<string, number> = {};
     const clean: CleanRow[] = [];
@@ -162,7 +188,7 @@ class LeadImportService {
 
       for (let r = 1; r < rows.length; r++) {
         const row = rows[r];
-        if (!row || row.every((c) => !String(c).trim())) continue;
+        if (!row || row.every((c) => !String(c).trim())) { emptyRows++; continue; }
         pfr.rows++;
         let id = (col.id >= 0 ? row[col.id] : "").trim();
         const name = (col.name >= 0 ? row[col.name] : "").trim();
@@ -214,7 +240,7 @@ class LeadImportService {
         if (loc.city) cityDist[loc.city] = (cityDist[loc.city] || 0) + 1;
 
         clean.push({
-          sourceFile: file, legacyId: id, generatedId, customerName: name, phone, city: loc.city, area: loc.area, address: loc.address, locationFlag: loc.flag,
+          sourceFile: file, legacyId: id, generatedId, customerName: name, phone, city: loc.city, area: loc.area, address: loc.address, notes: loc.notes, locationFlag: loc.flag,
           channel, stage, stageFlagged, priority, estimatedValue: est,
           requirement: (col.req >= 0 ? row[col.req] : (col.product >= 0 ? row[col.product] : ""))?.trim() || null,
           agentCode, agentId, agentFlag, dateReceived: dR.date, lastContactAt: lC.date, nextFollowUpAt: nF.date, outcomeRaw: outcome || null,
@@ -235,11 +261,14 @@ class LeadImportService {
     for (const key of Object.keys(groups)) {
       const g = groups[key];
       if (g.length === 1) { unique.push(g[0]); continue; }
+      const stagesInGroup = new Set(g.map((r) => r.stage));
+      const conflict = stagesInGroup.has("WON") && stagesInGroup.has("LOST");
       const vals = g.map((r) => r.estimatedValue).filter((v): v is number => v != null);
       const differ = vals.length >= 2 && (Math.max(...vals) - Math.min(...vals) > 100000 || (Math.min(...vals) > 0 && Math.max(...vals) / Math.min(...vals) >= 3));
-      if (differ) {
-        g.forEach((r) => { r.dupFlag = "kept separate (values differ a lot)"; unique.push(r); });
-        duplicates.push({ resolution: "kept-both", rows: g });
+      if (conflict || differ) {
+        const why = conflict ? "conflicting outcome (WON vs LOST)" : "kept separate (values differ a lot)";
+        g.forEach((r) => { r.dupFlag = why; unique.push(r); });
+        duplicates.push({ resolution: conflict ? "kept-both (conflicting outcome)" : "kept-both (values differ)", rows: g });
       } else {
         const sorted = [...g].sort((a, b) => (STAGE_RANK[b.stage] || 0) - (STAGE_RANK[a.stage] || 0) || (b.estimatedValue || 0) - (a.estimatedValue || 0));
         const survivor = sorted[0]; const others = sorted.slice(1);
@@ -257,8 +286,17 @@ class LeadImportService {
       }
     }
 
+    // final agent (resolved from the saved agentId; AG006 for reassigned AG007 rows) + per-agent counts
+    const idToCode: Record<string, string> = {};
+    for (const a of agents) idToCode[a.id] = a.agentCode;
+    for (const r of unique) r.finalAgent = r.agentId ? (idToCode[r.agentId] || "AG?") : "(unassigned)";
+    const perAgent: Record<string, number> = {};
+    for (const r of unique) perAgent[r.finalAgent!] = (perAgent[r.finalAgent!] || 0) + 1;
+
     const droppedCount = duplicates.filter((d) => d.resolution === "merged").reduce((n, d) => n + d.dropped.length, 0);
     const unassigned = unique.filter((r) => !r.agentId);
+    const nullCityRows = unique.filter((r) => !r.city);
+    const conflictsKept = duplicates.filter((d) => String(d.resolution).includes("conflicting")).reduce((n, d) => n + d.rows.length, 0);
     const generated = unique.filter((r) => r.generatedId);
     const stageFlaggedRows = unique.filter((r) => r.stageFlagged);
 
@@ -266,14 +304,15 @@ class LeadImportService {
       dryRun, highestRealId: maxSeq, generatedFrom: `OS-LHR-2026-${String(maxSeq + 1).padStart(3, "0")}`,
       files: Object.entries(perFile).map(([name, s]: any) => ({ name, rows: s.rows, accepted: s.accepted, withLeadId: s.withId, generatedId: s.generated, skipped: s.skipped.length })),
       totals: {
-        parsedAccepted: clean.length, uniqueAfterDedup: unique.length, duplicatesGroups: duplicates.length, duplicateRowsDropped: droppedCount,
+        emptyRowsIgnored: emptyRows, parsedAccepted: clean.length, uniqueAfterDedup: unique.length,
+        duplicatesGroups: duplicates.length, duplicateRowsDropped: droppedCount, conflictsKept,
         withLeadId: unique.filter((r) => !r.generatedId).length, generatedId: generated.length,
-        unassigned: unassigned.length, reassignedFromAG007: reassigned.length, stageFlagged: stageFlaggedRows.length,
-        dateFixes: dateFixes.length, locationFlags: locationFlags.length,
+        unassigned: unassigned.length, reassignedFromAG007: reassigned.length, nullCity: nullCityRows.length,
+        stageFlagged: stageFlaggedRows.length, dateFixes: dateFixes.length, locationFlags: locationFlags.length,
       },
-      channels: chanDist, stages: stageDist, cities: Object.fromEntries(Object.entries(cityDist).sort((a, b) => b[1] - a[1]).slice(0, 15)),
+      perAgent, channels: chanDist, stages: stageDist, cities: Object.fromEntries(Object.entries(cityDist).sort((a, b) => b[1] - a[1]).slice(0, 20)),
       detail: {
-        accepted: unique, duplicates,
+        accepted: unique, duplicates, nullCity: nullCityRows,
         skipped: Object.entries(perFile).flatMap(([name, s]: any) => s.skipped.map((x: any) => ({ file: name, ...x }))),
         stageReview, unassigned, generated, reassigned, dateFixes, locationFlags, agentFlags: agentFlagsList,
       },
@@ -286,7 +325,7 @@ class LeadImportService {
       let created = 0, updated = 0;
       for (const r of unique) {
         const data = {
-          customerName: r.customerName, phone: r.phone, city: r.city, area: r.area, address: r.address, channel: r.channel as any,
+          customerName: r.customerName, phone: r.phone, city: r.city, area: r.area, address: r.address, notes: r.notes, channel: r.channel as any,
           stage: r.stage as any, priority: r.priority as any, estimatedValue: r.estimatedValue, requirement: r.requirement, agentId: r.agentId,
           dateReceived: r.dateReceived ?? new Date(), lastContactAt: r.lastContactAt, nextFollowUpAt: r.nextFollowUpAt,
           outcomeRaw: r.outcomeRaw, company: r.company as any, sourceFile: r.sourceFile, legacyId: r.legacyId,
