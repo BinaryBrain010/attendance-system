@@ -48,6 +48,14 @@ class QuotationController extends BaseController<QuotationService> {
       logActivity: { action: "UPDATE", entityType: "Quotation", entityId: id, description: "Quotation updated" }, req,
     });
   }
+  async fromLead(req: Request, res: Response) {
+    const uid = (req as any).userId;
+    const { leadId } = req.body;
+    await this.handleRequest(() => this.service.fromLead(uid, leadId), res, {
+      successMessage: "Quotation created from lead!", statusCode: 201,
+      logActivity: { action: "CREATE", entityType: "Quotation", entityId: (r: any) => r?.id, description: (r: any) => `Quotation ${r?.quotationNo} from lead ${leadId}` }, req,
+    });
+  }
   async newVersion(req: Request, res: Response) {
     const uid = (req as any).userId;
     const { id } = req.body;

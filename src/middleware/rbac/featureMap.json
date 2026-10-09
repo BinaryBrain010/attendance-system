@@ -1404,6 +1404,11 @@
     "feature": "crm.quotation.read.own.*",
     "kind": "read"
   },
+  "POST /quotation/fromLead": {
+    "access": "feature",
+    "feature": "crm.quotation.create.*",
+    "kind": "create"
+  },
   "POST /quotation/get": {
     "access": "feature",
     "feature": "crm.quotation.read.own.*",
@@ -1569,6 +1574,16 @@
     "feature": "crm.order.read.own.*",
     "kind": "read"
   },
+  "POST /salesOrder/fromLead": {
+    "access": "feature",
+    "feature": "crm.order.create.*",
+    "kind": "create"
+  },
+  "POST /salesOrder/fromQuotation": {
+    "access": "feature",
+    "feature": "crm.order.create.*",
+    "kind": "create"
+  },
   "POST /salesOrder/get": {
     "access": "feature",
     "feature": "crm.order.read.own.*",
@@ -1579,6 +1594,11 @@
     "feature": "crm.order.read.own.*",
     "kind": "read"
   },
+  "POST /salesOrder/reattempt": {
+    "access": "feature",
+    "feature": "crm.order.reattempt.*",
+    "kind": "update"
+  },
   "POST /salesOrder/restore": {
     "access": "feature",
     "feature": "crm.order.restore.*",
@@ -1588,6 +1608,11 @@
     "access": "feature",
     "feature": "crm.order.read.own.*",
     "kind": "read"
+  },
+  "POST /salesOrder/transition": {
+    "access": "feature",
+    "feature": "crm.order.transition.*",
+    "kind": "update"
   },
   "PUT /salesOrder/update": {
     "access": "feature",

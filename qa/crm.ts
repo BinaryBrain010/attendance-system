@@ -329,6 +329,44 @@ async function main() {
   const outQ = await prisma.quotation.create({ data: { quotationNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}out`, agentId: AG004.id, status: "DRAFT", company: "OKASHASMART" } });
   check("AGENT_OWN transition out-of-scope quotation -> 403", (await api("POST", "/quotation/transition", tOwn, { id: outQ.id, to: "SENT" })).status === 403);
 
+  console.log("\n[crm] ===== Phase 3: conversions (lead->quote->order) =====");
+  const qlead = await prisma.lead.create({ data: { customerName: `${QTAG}QL`, phone: "0300-5550001", stage: "QUALIFIED", agentId: AG001.id, company: "OKASHASMART" } });
+  const nlead = await prisma.lead.create({ data: { customerName: `${QTAG}NL`, phone: "0300-5550002", stage: "NEW", agentId: AG001.id, company: "OKASHASMART" } });
+  const fromLeadQ = await api("POST", "/quotation/fromLead", tAdmin, { leadId: qlead.id });
+  check("lead(QUALIFIED)->quotation 201", fromLeadQ.status === 201 && /^Q-\d{4}$/.test(fromLeadQ.data?.quotationNo || ""), `status ${fromLeadQ.status}`);
+  check("lead(NEW)->quotation -> 409 (not quote-ready)", (await api("POST", "/quotation/fromLead", tAdmin, { leadId: nlead.id })).status === 409);
+  check("lead->order 201", (await api("POST", "/salesOrder/fromLead", tAdmin, { leadId: qlead.id })).status === 201);
+
+  // accepted quotation -> order
+  const q2 = await api("POST", "/quotation/create", tAdmin, { customerName: `${QTAG}Conv`, items: [{ description: "X", quantity: 3, unitPrice: 2000 }] });
+  const q2id = q2.data?.id;
+  check("fromQuotation on DRAFT -> 409", (await api("POST", "/salesOrder/fromQuotation", tAdmin, { quotationId: q2id })).status === 409);
+  await api("POST", "/quotation/transition", tAdmin, { id: q2id, to: "SENT" });
+  await api("POST", "/quotation/transition", tAdmin, { id: q2id, to: "ACCEPTED" });
+  const fromQ = await api("POST", "/salesOrder/fromQuotation", tAdmin, { quotationId: q2id });
+  check("accepted quotation -> order 201 (carries items, total 6000)", fromQ.status === 201 && fromQ.data?.total === 6000, `status ${fromQ.status} total ${fromQ.data?.total}`);
+  const convOrderId = fromQ.data?.id;
+  check("converted order has 1 item", ((await api("POST", "/salesOrder/getById", tAdmin, { id: convOrderId })).data?.items || []).length === 1);
+
+  console.log("\n[crm] ===== Phase 3: order state machine + reattempt =====");
+  const oc = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}Ord`, items: [{ description: "Y", quantity: 1, unitPrice: 10000 }] });
+  const oid = oc.data?.id;
+  check("order create 201 (orderNo SO-NNNN)", oc.status === 201 && /^SO-\d{4}$/.test(oc.data?.orderNo || ""));
+  const otrans = (to: string, reason?: string) => api("POST", "/salesOrder/transition", tAdmin, { id: oid, to, ...(reason ? { reason } : {}) });
+  check("invalid DRAFT->DELIVERED -> 409", (await otrans("DELIVERED")).status === 409);
+  check("reattempt on DRAFT -> 409", (await api("POST", "/salesOrder/reattempt", tAdmin, { id: oid })).status === 409);
+  check("DRAFT->CONFIRMED 200", (await otrans("CONFIRMED")).status === 200);
+  check("CONFIRMED->PACKED 200", (await otrans("PACKED")).status === 200);
+  check("PACKED->DISPATCHED 200", (await otrans("DISPATCHED")).status === 200);
+  const re = await api("POST", "/salesOrder/reattempt", tAdmin, { id: oid });
+  check("reattempt on DISPATCHED -> 200, count 1", re.status === 200 && re.data?.reattemptCount === 1, `status ${re.status} count ${re.data?.reattemptCount}`);
+  check("DISPATCHED->DELIVERED 200", (await otrans("DELIVERED")).status === 200);
+  const oc2 = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}Ord2`, items: [{ description: "Z", quantity: 1, unitPrice: 5000 }] });
+  check("DRAFT->CANCELLED without reason -> 400", (await api("POST", "/salesOrder/transition", tAdmin, { id: oc2.data?.id, to: "CANCELLED" })).status === 400);
+  check("DRAFT->CANCELLED with reason -> 200", (await api("POST", "/salesOrder/transition", tAdmin, { id: oc2.data?.id, to: "CANCELLED", reason: "customer cancelled" })).status === 200);
+  const outO = await prisma.salesOrder.create({ data: { orderNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}outO`, agentId: AG004.id, status: "DRAFT", company: "OKASHASMART" } });
+  check("AGENT_OWN transition out-of-scope order -> 403", (await api("POST", "/salesOrder/transition", tOwn, { id: outO.id, to: "CONFIRMED" })).status === 403);
+
   // ---- cleanup ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });

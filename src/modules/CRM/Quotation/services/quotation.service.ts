@@ -113,6 +113,30 @@ class QuotationService {
     });
   }
 
+  /** Lead -> Quotation. Lead must be quote-ready (Qualified/Quotation/Negotiation/Won). */
+  async fromLead(userId: string, leadId: string) {
+    const scope = await resolveScope(userId, "quotation");
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
+    if (!["QUALIFIED", "QUOTATION", "NEGOTIATION", "WON"].includes(lead.stage)) {
+      throw new AppError(409, `Lead must be Qualified/Quotation/Negotiation/Won to quote (it is ${lead.stage})`);
+    }
+    const agentId = resolveAssignment(scope, lead.agentId ?? null);
+    const items: any[] = [];
+    if (lead.productId) items.push({ productId: lead.productId, quantity: 1 });
+    const priced = await priceLines(items);
+    const { lines, subtotal, total } = computeTotals(priced, 0);
+    const quotationNo = await nextQuotationNo();
+    return prisma.$transaction(async (tx) => {
+      const q = await tx.quotation.create({
+        data: { quotationNo, version: 1, isActive: true, leadId: lead.id, customerName: lead.customerName, phone: lead.phone,
+          tier: "RETAIL", status: "DRAFT", subtotal, discount: 0, total, agentId, outlet: lead.outlet, company: "OKASHASMART", createdBy: userId },
+      });
+      for (const l of lines) await tx.quotationItem.create({ data: lineData(q.id, l) });
+      return q;
+    });
+  }
+
   /** New version of a quotation (same quotationNo, version+1); only the new one stays active. */
   async newVersion(userId: string, id: string) {
     const scope = await resolveScope(userId, "quotation");

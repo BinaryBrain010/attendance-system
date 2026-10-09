@@ -107,7 +107,12 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /lead/import": { feature: "crm.lead.import.*", kind: "import", access: "feature", note: "lead register CSV import (dry-run default)" },
   "POST /quotation/transition": { feature: "crm.quotation.transition.*", kind: "update", access: "feature", note: "quotation status change" },
   "POST /quotation/newVersion": { feature: "crm.quotation.create.*", kind: "create", access: "feature", note: "new quotation version" },
+  "POST /quotation/fromLead": { feature: "crm.quotation.create.*", kind: "create", access: "feature", note: "Lead -> Quotation" },
   "POST /quotation/pdf": { feature: "crm.quotation.export.*", kind: "export", access: "feature", note: "quotation PDF" },
+  "POST /salesOrder/transition": { feature: "crm.order.transition.*", kind: "update", access: "feature", note: "order status change" },
+  "POST /salesOrder/reattempt": { feature: "crm.order.reattempt.*", kind: "update", access: "feature", note: "re-attempt delivery" },
+  "POST /salesOrder/fromLead": { feature: "crm.order.create.*", kind: "create", access: "feature", note: "Lead -> Order" },
+  "POST /salesOrder/fromQuotation": { feature: "crm.order.create.*", kind: "create", access: "feature", note: "Quotation -> Order" },
 };
 const CRM_SCOPED = new Set(["crm.lead", "crm.quotation", "crm.order"]);
 

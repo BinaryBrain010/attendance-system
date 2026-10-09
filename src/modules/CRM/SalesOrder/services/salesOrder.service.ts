@@ -1,7 +1,8 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { priceLines } from "../../shared/pricing";
-import { NotFoundError } from "../../../../core/errors/app.error";
+import { assertTransition } from "../../shared/stateMachine";
+import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 
 function filterWhere(f: any = {}): Record<string, any> {
   const w: Record<string, any> = {};
@@ -11,13 +12,27 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.status) w.status = f.status;
   if (f.channel) w.channel = f.channel;
   if (f.agentId) w.agentId = f.agentId;
-  if (f.from || f.to) {
-    w.createdAt = {};
-    if (f.from) w.createdAt.gte = new Date(f.from);
-    if (f.to) w.createdAt.lte = new Date(f.to);
-  }
+  if (f.from || f.to) { w.createdAt = {}; if (f.from) w.createdAt.gte = new Date(f.from); if (f.to) w.createdAt.lte = new Date(f.to); }
   return w;
 }
+
+function computeTotals(items: any[], headerDiscount = 0) {
+  let subtotal = 0;
+  const lines = items.map((it) => { const lineTotal = (it.quantity || 1) * (it.unitPrice || 0) - (it.lineDiscount || 0); subtotal += lineTotal; return { ...it, lineTotal }; });
+  return { lines, subtotal, total: subtotal - (headerDiscount || 0) };
+}
+async function nextOrderNo(): Promise<string> {
+  const rows = await prisma.salesOrder.findMany({ where: { orderNo: { startsWith: "SO-" } }, select: { orderNo: true } });
+  let max = 0;
+  for (const r of rows) { const m = r.orderNo.match(/(\d+)/); if (m) max = Math.max(max, parseInt(m[1], 10)); }
+  return `SO-${String(max + 1).padStart(4, "0")}`;
+}
+const lineData = (orderId: string, l: any) => ({
+  orderId, productId: l.productId ?? null, variantId: l.variantId ?? null, description: l.description ?? null,
+  quantity: l.quantity ?? 1, unitPrice: l.unitPrice, unitCost: l.unitCost ?? null, lineDiscount: l.lineDiscount || 0, lineTotal: l.lineTotal,
+});
+const HEADER = ["customerName", "phone", "city", "outlet", "address", "channel", "courier", "trackingNo", "discount", "agentId", "leadId", "quotationId"];
+function pickHeader(h: any): Record<string, any> { const o: Record<string, any> = {}; for (const k of HEADER) if (k in h) o[k] = h[k]; return o; }
 
 class SalesOrderService {
   async get(userId: string, page = 1, pageSize = 10, filters: any = {}) {
@@ -41,21 +56,99 @@ class SalesOrderService {
     assertRowInScope(scope, row.agentId, "Order");
     return row;
   }
+
+  private async persist(userId: string, h: any, items: any[], extra: any = {}) {
+    const priced = await priceLines(items);
+    const { lines, subtotal, total } = computeTotals(priced, h.discount || 0);
+    const orderNo = h.orderNo || (await nextOrderNo());
+    return prisma.$transaction(async (tx) => {
+      const o = await tx.salesOrder.create({
+        data: {
+          orderNo, leadId: h.leadId ?? null, quotationId: h.quotationId ?? null, customerName: h.customerName, phone: h.phone ?? null,
+          city: h.city ?? null, outlet: h.outlet ?? null, address: h.address ?? null, status: "DRAFT", subtotal, discount: h.discount || 0,
+          total, channel: h.channel ?? null, courier: h.courier ?? null, trackingNo: h.trackingNo ?? null, agentId: h.agentId ?? null,
+          company: h.company ?? "OKASHASMART", createdBy: userId, ...extra,
+        },
+      });
+      for (const l of lines) await tx.salesOrderItem.create({ data: lineData(o.id, l) });
+      return o;
+    });
+  }
+
   async create(userId: string, data: any) {
     const scope = await resolveScope(userId, "order");
-    const { items, ...rest } = data;
-    rest.agentId = resolveAssignment(scope, rest.agentId);
-    if (items) await priceLines(items); // block any line with no usable price (persisted in P3)
-    return prisma.salesOrder.gpCreate(rest);
+    const { items = [], ...h } = data;
+    h.agentId = resolveAssignment(scope, h.agentId);
+    return this.persist(userId, h, items);
   }
+
+  /** Lead -> SalesOrder (carries customer + the lead's product as a line if it has a current price). */
+  async fromLead(userId: string, leadId: string) {
+    const scope = await resolveScope(userId, "order");
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
+    const agentId = resolveAssignment(scope, lead.agentId ?? null);
+    const items: any[] = [];
+    if (lead.productId) items.push({ productId: lead.productId, quantity: 1 }); // priceLines resolves/validates
+    return this.persist(userId, { customerName: lead.customerName, phone: lead.phone, city: lead.city, outlet: lead.outlet, agentId, leadId, discount: 0 }, items);
+  }
+
+  /** Accepted Quotation -> SalesOrder (carries its line items + customer). */
+  async fromQuotation(userId: string, quotationId: string) {
+    const scope = await resolveScope(userId, "order");
+    const q = await prisma.quotation.findUnique({ where: { id: quotationId }, include: { items: { where: { isDeleted: null } } } });
+    if (!q || q.isDeleted) throw new NotFoundError("Quotation");
+    if (q.status !== "ACCEPTED") throw new AppError(409, `Quotation must be ACCEPTED to convert to an order (it is ${q.status})`);
+    const agentId = resolveAssignment(scope, q.agentId ?? null);
+    const items = q.items.map((it) => ({ productId: it.productId, variantId: it.variantId, description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, unitCost: it.unitCost, lineDiscount: it.lineDiscount }));
+    return this.persist(userId, { customerName: q.customerName, phone: q.phone, outlet: q.outlet, agentId, leadId: q.leadId, quotationId: q.id, discount: q.discount }, items);
+  }
+
   async update(userId: string, id: string, data: any) {
     const scope = await resolveScope(userId, "order");
     const existing = await prisma.salesOrder.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Order");
     assertRowInScope(scope, existing.agentId, "Order");
-    if (Object.prototype.hasOwnProperty.call(data, "agentId")) data.agentId = resolveAssignment(scope, data.agentId);
-    return prisma.salesOrder.gpUpdate(id, data);
+    const { items, ...h } = data;
+    if ("agentId" in h) h.agentId = resolveAssignment(scope, h.agentId);
+    return prisma.$transaction(async (tx) => {
+      let subtotal = existing.subtotal, total = existing.total;
+      if (items) {
+        const priced = await priceLines(items);
+        const c = computeTotals(priced, h.discount ?? existing.discount);
+        subtotal = c.subtotal; total = c.total;
+        await tx.salesOrderItem.deleteMany({ where: { orderId: id } });
+        for (const l of c.lines) await tx.salesOrderItem.create({ data: lineData(id, l) });
+      } else if (h.discount != null) total = existing.subtotal - h.discount;
+      return tx.salesOrder.update({ where: { id }, data: { ...pickHeader(h), subtotal, total, updatedBy: userId, updatedAt: new Date() } });
+    });
   }
+
+  /** Status transition. Reason required for CANCELLED/RETURNED; sets dispatched/delivered timestamps. */
+  async transition(userId: string, id: string, to: string, reason: string | null) {
+    const scope = await resolveScope(userId, "order");
+    const o = await prisma.salesOrder.findUnique({ where: { id } });
+    if (!o || o.isDeleted) throw new NotFoundError("Order");
+    assertRowInScope(scope, o.agentId, "Order");
+    assertTransition("order", o.status, to, reason);
+    const data: any = { status: to, updatedBy: userId, updatedAt: new Date() };
+    if (to === "CANCELLED" || to === "RETURNED") data.statusReason = reason;
+    if (to === "DISPATCHED") data.dispatchedAt = new Date();
+    if (to === "DELIVERED") data.deliveredAt = new Date();
+    const upd = await prisma.salesOrder.update({ where: { id }, data });
+    return { ...upd, from: o.status, to };
+  }
+
+  /** Re-attempt a delivery: order stays DISPATCHED, reattemptCount++. */
+  async reattempt(userId: string, id: string) {
+    const scope = await resolveScope(userId, "order");
+    const o = await prisma.salesOrder.findUnique({ where: { id } });
+    if (!o || o.isDeleted) throw new NotFoundError("Order");
+    assertRowInScope(scope, o.agentId, "Order");
+    if (o.status !== "DISPATCHED") throw new AppError(409, `Only a DISPATCHED order can be re-attempted (it is ${o.status})`);
+    return prisma.salesOrder.update({ where: { id }, data: { reattemptCount: (o.reattemptCount || 0) + 1, updatedBy: userId, updatedAt: new Date() } });
+  }
+
   async remove(userId: string, id: string) {
     const scope = await resolveScope(userId, "order");
     const existing = await prisma.salesOrder.findUnique({ where: { id } });
