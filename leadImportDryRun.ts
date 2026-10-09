@@ -1,7 +1,8 @@
 /**
- * Two-register lead import DRY RUN (local only). Reads both Okasha lead registers from Docs/, runs
- * the importer in dry-run mode (NOTHING is written), prints the summary, and writes
- * qa/LeadImport_DryRun.xlsx with sheets: Summary, Accepted, Duplicates, Skipped, Stage flagged, Unassigned.
+ * Two-register lead import DRY RUN (local only). Reads both Okasha registers from Docs/, runs the
+ * importer in dry-run mode (NOTHING is written), prints the summary, and writes
+ * qa/LeadImport_DryRun.xlsx with sheets: Summary, Accepted, Duplicates, Skipped, Stage flagged,
+ * Unassigned, Date fixed, Location flags.
  *   npx ts-node leadImportDryRun.ts
  */
 import fs from "fs";
@@ -15,100 +16,91 @@ const FILES = ["FINAL-Okasha_Sales_Dashboard (01 Lead Register).csv", "Okasha_Sa
 const OUT = path.join(__dirname, "qa", "LeadImport_DryRun.xlsx");
 
 const fmtDate = (d: any) => (d ? new Date(d).toISOString().slice(0, 10) : "");
-const leadCols = (prefix = "") => [
-  { header: prefix + "Source File", key: prefix + "sourceFile", width: 34 },
-  { header: prefix + "Lead ID", key: prefix + "legacyId", width: 18 },
-  { header: prefix + "Generated?", key: prefix + "generatedId", width: 11 },
-  { header: prefix + "Customer", key: prefix + "customerName", width: 24 },
-  { header: prefix + "Phone", key: prefix + "phone", width: 16 },
-  { header: prefix + "City", key: prefix + "city", width: 14 },
-  { header: prefix + "Area", key: prefix + "area", width: 20 },
-  { header: prefix + "Channel", key: prefix + "channel", width: 16 },
-  { header: prefix + "Stage", key: prefix + "stage", width: 12 },
-  { header: prefix + "Stage flagged", key: prefix + "stageFlagged", width: 12 },
-  { header: prefix + "Priority", key: prefix + "priority", width: 9 },
-  { header: prefix + "Est. Value", key: prefix + "estimatedValue", width: 12 },
-  { header: prefix + "Agent", key: prefix + "agentCode", width: 8 },
-  { header: prefix + "Date Received", key: prefix + "dateReceived", width: 14 },
+const leadCols = (p = "") => [
+  { header: p + "Source File", key: p + "sourceFile", width: 32 },
+  { header: p + "Lead ID", key: p + "legacyId", width: 17 },
+  { header: p + "Gen?", key: p + "generatedId", width: 6 },
+  { header: p + "Customer", key: p + "customerName", width: 22 },
+  { header: p + "Phone", key: p + "phone", width: 15 },
+  { header: p + "City", key: p + "city", width: 12 },
+  { header: p + "Area", key: p + "area", width: 16 },
+  { header: p + "Address", key: p + "address", width: 26 },
+  { header: p + "Channel", key: p + "channel", width: 15 },
+  { header: p + "Stage", key: p + "stage", width: 11 },
+  { header: p + "StageFlag", key: p + "stageFlagged", width: 9 },
+  { header: p + "Priority", key: p + "priority", width: 8 },
+  { header: p + "Est.Value", key: p + "estimatedValue", width: 11 },
+  { header: p + "Agent", key: p + "agentCode", width: 8 },
+  { header: p + "AgentFlag", key: p + "agentFlag", width: 28 },
+  { header: p + "DateRecvd", key: p + "dateReceived", width: 12 },
+  { header: p + "MergedFrom", key: p + "mergedFrom", width: 26 },
 ];
-const leadRow = (r: any, prefix = "") => ({
-  [prefix + "sourceFile"]: r.sourceFile, [prefix + "legacyId"]: r.legacyId, [prefix + "generatedId"]: r.generatedId ? "YES" : "",
-  [prefix + "customerName"]: r.customerName, [prefix + "phone"]: r.phone, [prefix + "city"]: r.city, [prefix + "area"]: r.area,
-  [prefix + "channel"]: r.channel, [prefix + "stage"]: r.stage, [prefix + "stageFlagged"]: r.stageFlagged ? "YES" : "",
-  [prefix + "priority"]: r.priority, [prefix + "estimatedValue"]: r.estimatedValue, [prefix + "agentCode"]: r.agentCode || "(unassigned)",
-  [prefix + "dateReceived"]: fmtDate(r.dateReceived),
+const leadRow = (r: any, p = "") => ({
+  [p + "sourceFile"]: r.sourceFile, [p + "legacyId"]: r.legacyId, [p + "generatedId"]: r.generatedId ? "Y" : "",
+  [p + "customerName"]: r.customerName, [p + "phone"]: r.phone, [p + "city"]: r.city, [p + "area"]: r.area, [p + "address"]: r.address,
+  [p + "channel"]: r.channel, [p + "stage"]: r.stage, [p + "stageFlagged"]: r.stageFlagged ? "Y" : "", [p + "priority"]: r.priority,
+  [p + "estimatedValue"]: r.estimatedValue, [p + "agentCode"]: r.agentCode || "(unassigned)", [p + "agentFlag"]: r.agentFlag || "",
+  [p + "dateReceived"]: fmtDate(r.dateReceived), [p + "mergedFrom"]: (r.mergedFrom || []).join(", "),
 });
 
 async function main() {
   const files = FILES.map((name) => ({ name, csv: fs.readFileSync(path.join(DOCS, name), "utf8") }));
   const report: any = await new LeadImportService().run(files, true); // DRY RUN
-  const d = report.detail;
-  const t = report.totals;
-
+  const d = report.detail, t = report.totals;
   const wb = new ExcelJS.Workbook();
 
   // Summary
   const sum = wb.addWorksheet("Summary");
-  sum.columns = [{ header: "Metric", key: "k", width: 42 }, { header: "Value", key: "v", width: 60 }];
+  sum.columns = [{ header: "Metric", key: "k", width: 48 }, { header: "Value", key: "v", width: 64 }];
   const add = (k: string, v: any) => sum.addRow({ k, v });
-  add("Files", FILES.join("  |  "));
-  report.files.forEach((f: any) => add(`  ${f.name}`, `rows=${f.rows}  accepted=${f.accepted}  withLeadId=${f.withLeadId}  generatedId=${f.generatedId}  skipped=${f.skipped}`));
-  add("Parsed accepted (both files)", t.parsedAccepted);
-  add("Unique after dedup (phone+date)", t.uniqueAfterDedup);
-  add("Duplicates dropped", t.duplicatesDropped);
-  add("  of unique: with real Lead ID", t.withLeadId);
-  add("  of unique: generated Lead ID (blank ID + phone)", t.generatedId);
-  add("Unassigned (no linked agent incl. AG007)", t.unassigned);
-  add("Stage flagged (no clear stage -> NEW)", t.stageFlagged);
+  report.files.forEach((f: any) => add(f.name, `rows=${f.rows}  accepted=${f.accepted}  withLeadId=${f.withLeadId}  generatedId=${f.generatedId}  skipped=${f.skipped}`));
+  add("Unique after dedup", t.uniqueAfterDedup);
+  add("Duplicate groups (merged or kept-both)", t.duplicatesGroups);
+  add("Duplicate rows dropped by merge", t.duplicateRowsDropped);
+  add("Unassigned (no agent)", t.unassigned);
+  add("Reassigned AG007 -> AG006", t.reassignedFromAG007);
+  add("Stage flagged (-> NEW)", t.stageFlagged);
+  add("Date fixes (swapped / out of range)", t.dateFixes);
+  add("Location flags (non-city / unrecognized)", t.locationFlags);
+  add("Highest real Lead ID number", t.withLeadId ? report.highestRealId : report.highestRealId);
+  add("Generated codes continue from", report.generatedFrom);
   const skBy = (reason: string) => d.skipped.filter((s: any) => s.reason === reason).length;
-  const dummy = skBy("dummy row"), noName = skBy("no customer name"), noIdNoPhone = skBy("no Lead ID and no phone");
   add("", "");
-  add("RECONCILIATION — why 'accepted' is not simply 245", "");
+  add("RECONCILIATION", "");
   add("  Populated Lead IDs in the two sheets", "96 + 149 = 245 (matches your figure)");
-  add("  minus Lead-ID rows with NO customer name (skipped)", noName);
-  add("  minus dummy rows (skipped)", dummy);
-  add("  minus cross-file duplicates (phone+date)", t.duplicatesDropped);
+  add("  minus Lead-ID rows with no customer name", skBy("no customer name"));
+  add("  minus dummy rows", skBy("dummy row"));
+  add("  minus repeated header rows", skBy("repeated header row"));
+  add("  minus junk names", skBy("junk name"));
+  add("  minus duplicate rows merged away", t.duplicateRowsDropped);
   add("  = real-Lead-ID leads kept", t.withLeadId);
-  add("  PLUS name+phone rows with a BLANK Lead ID (generated code, flagged)", t.generatedId);
+  add("  PLUS name+phone rows with blank Lead ID (generated)", t.generatedId);
   add("  = UNIQUE leads to import", t.uniqueAfterDedup);
-  add("Also skipped: named rows with neither Lead ID nor phone", noIdNoPhone);
-  add("Note", "The earlier 282 counted every named row (incl. blank-ID + no-phone noise) and used a looser dedup.");
+  add("  Also skipped: named rows with neither Lead ID nor phone", skBy("no Lead ID and no phone"));
   sum.getRow(1).font = { bold: true };
 
-  // Accepted
-  const acc = wb.addWorksheet("Accepted");
-  acc.columns = leadCols();
-  d.accepted.forEach((r: any) => acc.addRow(leadRow(r)));
-  acc.getRow(1).font = { bold: true };
+  const sheet = (name: string, cols: any[], rows: any[]) => { const ws = wb.addWorksheet(name); ws.columns = cols; rows.forEach((r) => ws.addRow(r)); ws.getRow(1).font = { bold: true }; return ws; };
 
-  // Duplicates (kept + dropped side by side)
+  sheet("Accepted", leadCols(), d.accepted.map((r: any) => leadRow(r)));
+
+  // Duplicates: merged (kept vs dropped) + kept-both
   const dup = wb.addWorksheet("Duplicates");
-  dup.columns = [...leadCols("KEPT "), { header: "", key: "sep", width: 3 }, ...leadCols("DROPPED ")];
-  d.duplicates.forEach((p: any) => dup.addRow({ ...leadRow(p.kept, "KEPT "), sep: "|", ...leadRow(p.dropped, "DROPPED ") }));
+  dup.columns = [{ header: "Resolution", key: "resolution", width: 26 }, ...leadCols("KEPT "), { header: "", key: "sep", width: 2 }, ...leadCols("DROPPED ")];
+  for (const dp of d.duplicates) {
+    if (dp.resolution === "merged") { for (const dr of dp.dropped) dup.addRow({ resolution: "merged (kept higher stage)", ...leadRow(dp.kept, "KEPT "), sep: "|", ...leadRow(dr, "DROPPED ") }); }
+    else { for (const rr of dp.rows) dup.addRow({ resolution: "KEPT BOTH (values differ)", ...leadRow(rr, "KEPT ") }); }
+  }
   dup.getRow(1).font = { bold: true };
 
-  // Skipped
-  const skip = wb.addWorksheet("Skipped");
-  skip.columns = [{ header: "File", key: "file", width: 34 }, { header: "Row", key: "row", width: 7 }, { header: "Lead ID", key: "id", width: 18 }, { header: "Customer", key: "name", width: 24 }, { header: "Reason", key: "reason", width: 30 }];
-  d.skipped.forEach((s: any) => skip.addRow(s));
-  skip.getRow(1).font = { bold: true };
-
-  // Stage flagged
-  const stg = wb.addWorksheet("Stage flagged");
-  stg.columns = [{ header: "File", key: "file", width: 34 }, { header: "Lead ID", key: "id", width: 18 }, { header: "Customer", key: "name", width: 24 }, { header: "Raw stage", key: "rawStage", width: 16 }, { header: "Outcome", key: "outcome", width: 14 }, { header: "Resolved", key: "resolved", width: 20 }];
-  d.stageReview.forEach((s: any) => stg.addRow(s));
-  stg.getRow(1).font = { bold: true };
-
-  // Unassigned
-  const un = wb.addWorksheet("Unassigned");
-  un.columns = leadCols();
-  d.unassigned.forEach((r: any) => un.addRow(leadRow(r)));
-  un.getRow(1).font = { bold: true };
+  sheet("Skipped", [{ header: "File", key: "file", width: 32 }, { header: "Row", key: "row", width: 6 }, { header: "Lead ID", key: "id", width: 17 }, { header: "Customer", key: "name", width: 22 }, { header: "Reason", key: "reason", width: 28 }], d.skipped);
+  sheet("Stage flagged", [{ header: "File", key: "file", width: 32 }, { header: "Lead ID", key: "id", width: 17 }, { header: "Customer", key: "name", width: 22 }, { header: "Raw stage", key: "rawStage", width: 16 }, { header: "Outcome", key: "outcome", width: 14 }, { header: "Resolved", key: "resolved", width: 20 }], d.stageReview);
+  sheet("Unassigned", leadCols(), d.unassigned.map((r: any) => leadRow(r)));
+  sheet("Date fixed", [{ header: "File", key: "file", width: 32 }, { header: "Lead ID", key: "id", width: 17 }, { header: "Customer", key: "name", width: 22 }, { header: "Field", key: "field", width: 15 }, { header: "Raw", key: "from", width: 16 }, { header: "Parsed", key: "to", width: 14 }, { header: "Reason", key: "reason", width: 30 }], d.dateFixes);
+  sheet("Location flags", [{ header: "File", key: "file", width: 32 }, { header: "Lead ID", key: "id", width: 17 }, { header: "Customer", key: "name", width: 22 }, { header: "Raw location", key: "raw", width: 40 }, { header: "Flag", key: "flag", width: 28 }], d.locationFlags);
 
   await wb.xlsx.writeFile(OUT);
-
-  console.log("=== Lead import DRY RUN (nothing written to DB) ===");
-  console.log(JSON.stringify({ files: report.files, totals: t, channels: report.channels, stages: report.stages, cities: report.cities }, null, 2));
+  console.log("=== Lead import DRY RUN (nothing written) ===");
+  console.log(JSON.stringify({ files: report.files, totals: t, generatedFrom: report.generatedFrom, cities: report.cities, stages: report.stages }, null, 2));
   console.log(`\nExcel written: ${OUT}`);
   await prisma.$disconnect();
 }

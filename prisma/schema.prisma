@@ -861,7 +861,8 @@ model Lead {
   customerName   String
   phone          String?
   city           String?
-  area           String?       // sub-locality within the city (e.g. "Johar Town" under Lahore)
+  area           String?       // short sub-locality within the city (e.g. "Johar Town" under Lahore)
+  address        String?       // full street address when the source gave one
   outlet         String?
   channel        SalesChannel?
   stage          LeadStage     @default(NEW)
