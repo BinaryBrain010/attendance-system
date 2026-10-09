@@ -62,6 +62,7 @@ import LeadRoutes from "../../modules/CRM/Lead/routes/lead.routes";
 import LeadActivityRoutes from "../../modules/CRM/LeadActivity/routes/leadActivity.routes";
 import QuotationRoutes from "../../modules/CRM/Quotation/routes/quotation.routes";
 import SalesOrderRoutes from "../../modules/CRM/SalesOrder/routes/salesOrder.routes";
+import SalesReturnRoutes from "../../modules/CRM/Return/routes/salesReturn.routes";
 import CrmReportRoutes from "../../modules/CRM/Report/routes/report.routes";
 
 class App {
@@ -239,6 +240,7 @@ class App {
       LeadActivityRoutes,
       QuotationRoutes,
       SalesOrderRoutes,
+      SalesReturnRoutes,
       CrmReportRoutes
     ];
     

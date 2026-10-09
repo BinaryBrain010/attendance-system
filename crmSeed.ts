@@ -68,7 +68,7 @@ const FEATURES: F[] = [
   ["crm.return.read.own.*", "crm.return.read.*", "View own returns"],
   ["crm.return.read.team.*", "crm.return.read.*", "View team returns"],
   ["crm.return.read.all.*", "crm.return.read.*", "View all returns"],
-  ...leaves("crm.return", "crm.return.*", ["create", "update", "transition", "import", "export"],
+  ...leaves("crm.return", "crm.return.*", ["create", "update", "delete", "transition", "import", "export"],
     { ...CRUDL, transition: "Change status", import: "Import", export: "Export" }),
 
   ["crm.report.*", "crm.*", "Reports"],

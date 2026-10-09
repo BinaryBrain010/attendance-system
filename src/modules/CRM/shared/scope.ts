@@ -25,7 +25,7 @@ import { AgentScope } from "@prisma/client";
 import { GOD_ID, getFeatureSet, holds } from "./access";
 import { ForbiddenError } from "../../../core/errors/app.error";
 
-export type CrmEntity = "lead" | "quotation" | "order";
+export type CrmEntity = "lead" | "quotation" | "order" | "return";
 export type ScopeMode = "ALL" | "TEAM" | "OWN" | "NONE";
 
 export interface ScopeResult {

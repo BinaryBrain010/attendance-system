@@ -63,6 +63,8 @@ async function cleanupFixtures() {
   const qaLeads = await prisma.lead.findMany({ where: { customerName: { startsWith: QTAG } }, select: { id: true } }).catch(() => [] as { id: string }[]);
   const ids = qaLeads.map((l) => l.id);
   if (ids.length) await prisma.leadActivity.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
+  await prisma.returnItem.deleteMany({ where: { return: { customerName: { startsWith: QTAG } } } }).catch(() => {});
+  await prisma.salesReturn.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.salesOrderItem.deleteMany({ where: { order: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.salesOrder.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.quotationItem.deleteMany({ where: { quotation: { customerName: { startsWith: QTAG } } } }).catch(() => {});
@@ -366,6 +368,29 @@ async function main() {
   check("DRAFT->CANCELLED with reason -> 200", (await api("POST", "/salesOrder/transition", tAdmin, { id: oc2.data?.id, to: "CANCELLED", reason: "customer cancelled" })).status === 200);
   const outO = await prisma.salesOrder.create({ data: { orderNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}outO`, agentId: AG004.id, status: "DRAFT", company: "OKASHASMART" } });
   check("AGENT_OWN transition out-of-scope order -> 403", (await api("POST", "/salesOrder/transition", tOwn, { id: outO.id, to: "CONFIRMED" })).status === 403);
+
+  console.log("\n[crm] ===== Phase 3: returns =====");
+  check("return create without reason -> 400", (await api("POST", "/salesReturn/create", tAdmin, { customerName: `${QTAG}R` })).status === 400);
+  const rc = await api("POST", "/salesReturn/create", tAdmin, { customerName: `${QTAG}R`, reason: "wrong item", items: [{ description: "returned thing", quantity: 1 }] });
+  check("return create with reason -> 201 (RET-NNNN)", rc.status === 201 && /^RET-\d{4}$/.test(rc.data?.returnNo || ""), `status ${rc.status}`);
+  const rid = rc.data?.id;
+  check("return REPORTED->RESTOCKED invalid -> 409", (await api("POST", "/salesReturn/transition", tAdmin, { id: rid, to: "RESTOCKED" })).status === 409);
+  check("return REPORTED->RECEIVED_BACK -> 200", (await api("POST", "/salesReturn/transition", tAdmin, { id: rid, to: "RECEIVED_BACK" })).status === 200);
+  check("return RECEIVED_BACK->DAMAGED without reason -> 400", (await api("POST", "/salesReturn/transition", tAdmin, { id: rid, to: "DAMAGED" })).status === 400);
+  check("return RECEIVED_BACK->RESTOCKED -> 200", (await api("POST", "/salesReturn/transition", tAdmin, { id: rid, to: "RESTOCKED" })).status === 200);
+
+  // order -> return
+  const ro = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}RetOrd`, items: [{ description: "W", quantity: 2, unitPrice: 2500 }] });
+  const roid = ro.data?.id;
+  check("fromOrder on DRAFT -> 409", (await api("POST", "/salesReturn/fromOrder", tAdmin, { orderId: roid, reason: "x" })).status === 409);
+  for (const s of ["CONFIRMED", "PACKED", "DISPATCHED"]) await api("POST", "/salesOrder/transition", tAdmin, { id: roid, to: s });
+  check("fromOrder without reason -> 400", (await api("POST", "/salesReturn/fromOrder", tAdmin, { orderId: roid })).status === 400);
+  const fr = await api("POST", "/salesReturn/fromOrder", tAdmin, { orderId: roid, reason: "damaged in transit" });
+  check("order->return 201 (carries items)", fr.status === 201 && ((await api("POST", "/salesReturn/getById", tAdmin, { id: fr.data?.id })).data?.items || []).length === 1, `status ${fr.status}`);
+  check("source order now RETURNED", (await api("POST", "/salesOrder/getById", tAdmin, { id: roid })).data?.status === "RETURNED");
+
+  const outR = await prisma.salesReturn.create({ data: { returnNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}outR`, agentId: AG004.id, status: "REPORTED", reason: "x", company: "OKASHASMART" } });
+  check("AGENT_OWN transition out-of-scope return -> 403", (await api("POST", "/salesReturn/transition", tOwn, { id: outR.id, to: "RECEIVED_BACK" })).status === 403);
 
   // ---- cleanup ----
   await cleanupFixtures();

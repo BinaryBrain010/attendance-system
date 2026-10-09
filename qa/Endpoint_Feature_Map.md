@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-427 routes walked from the live routers. Real DB users counted: 177.
+436 routes walked from the live routers. Real DB users counted: 177.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -339,6 +339,15 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /salesOrder/total | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /salesOrder/transition | update | feature | `crm.order.transition.*` | yes | 0 | order status change |
 | PUT | /salesOrder/update | update | feature | `crm.order.update.*` | yes | 0 |  |
+| POST | /salesReturn/create | create | feature | `crm.return.create.*` | yes | 0 |  |
+| POST | /salesReturn/delete | delete | feature | `crm.return.delete.*` | yes | 0 |  |
+| POST | /salesReturn/filtered | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/fromOrder | create | feature | `crm.return.create.*` | yes | 0 | Order -> Return |
+| POST | /salesReturn/get | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/getById | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/total | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/transition | update | feature | `crm.return.transition.*` | yes | 0 | return status change |
+| PUT | /salesReturn/update | update | feature | `crm.return.update.*` | yes | 0 |  |
 | POST | /shift/assignedEmployees | special | feature | `shift.assignments.assignedEmployees.*` | yes | 0 |  |
 | POST | /shift/assignmentsByEmployee | read | feature | `shift.read.*` | yes | 0 |  |
 | POST | /shift/assignToEmployee | special | feature | `shift.assignments.assignToEmployee.*` | yes | 0 |  |

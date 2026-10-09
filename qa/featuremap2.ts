@@ -113,8 +113,10 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /salesOrder/reattempt": { feature: "crm.order.reattempt.*", kind: "update", access: "feature", note: "re-attempt delivery" },
   "POST /salesOrder/fromLead": { feature: "crm.order.create.*", kind: "create", access: "feature", note: "Lead -> Order" },
   "POST /salesOrder/fromQuotation": { feature: "crm.order.create.*", kind: "create", access: "feature", note: "Quotation -> Order" },
+  "POST /salesReturn/transition": { feature: "crm.return.transition.*", kind: "update", access: "feature", note: "return status change" },
+  "POST /salesReturn/fromOrder": { feature: "crm.return.create.*", kind: "create", access: "feature", note: "Order -> Return" },
 };
-const CRM_SCOPED = new Set(["crm.lead", "crm.quotation", "crm.order"]);
+const CRM_SCOPED = new Set(["crm.lead", "crm.quotation", "crm.order", "crm.return"]);
 
 function resolveFeature(method: string, p: string): { feature: string; kind: string; access: string; note?: string } {
   const key = `${method} ${p}`;

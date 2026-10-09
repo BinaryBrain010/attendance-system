@@ -1619,6 +1619,51 @@
     "feature": "crm.order.update.*",
     "kind": "update"
   },
+  "POST /salesReturn/create": {
+    "access": "feature",
+    "feature": "crm.return.create.*",
+    "kind": "create"
+  },
+  "POST /salesReturn/delete": {
+    "access": "feature",
+    "feature": "crm.return.delete.*",
+    "kind": "delete"
+  },
+  "POST /salesReturn/filtered": {
+    "access": "feature",
+    "feature": "crm.return.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesReturn/fromOrder": {
+    "access": "feature",
+    "feature": "crm.return.create.*",
+    "kind": "create"
+  },
+  "POST /salesReturn/get": {
+    "access": "feature",
+    "feature": "crm.return.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesReturn/getById": {
+    "access": "feature",
+    "feature": "crm.return.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesReturn/total": {
+    "access": "feature",
+    "feature": "crm.return.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesReturn/transition": {
+    "access": "feature",
+    "feature": "crm.return.transition.*",
+    "kind": "update"
+  },
+  "PUT /salesReturn/update": {
+    "access": "feature",
+    "feature": "crm.return.update.*",
+    "kind": "update"
+  },
   "POST /shift/assignedEmployees": {
     "access": "feature",
     "feature": "shift.assignments.assignedEmployees.*",
