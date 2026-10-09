@@ -16,13 +16,15 @@ const host = (() => { try { return DB.split("://")[1].split("@").pop()!.split("/
 if (!["localhost", "127.0.0.1", "[::1]"].includes(host)) { console.error("refusing: not local"); process.exit(2); }
 
 const PASSWORD = "CrmTest!2026";
-const DEMO = "CRM Demo";
 
 const AGENT_FEATURES = [
   "login.admin.*", "appModules.crm.*", "crm.catalogue.read.*", "crm.agent.read.*",
   "crm.lead.read.own.*", "crm.lead.create.*", "crm.lead.update.*", "crm.lead.transition.*", "crm.lead.assign.*",
+  "crm.quotation.read.own.*", "crm.quotation.create.*", "crm.quotation.update.*", "crm.quotation.transition.*", "crm.quotation.export.*",
+  "crm.order.read.own.*", "crm.order.create.*", "crm.order.update.*", "crm.order.transition.*", "crm.order.reattempt.*",
+  "crm.return.read.own.*", "crm.return.create.*", "crm.return.update.*", "crm.return.transition.*",
 ];
-const MANAGER_FEATURES = [...AGENT_FEATURES, "crm.lead.read.team.*"];
+const MANAGER_FEATURES = [...AGENT_FEATURES, "crm.lead.read.team.*", "crm.quotation.read.team.*", "crm.order.read.team.*", "crm.return.read.team.*"];
 
 async function setPassword(userId: string) {
   const hash = await bcrypt.hash(PASSWORD, 10);
@@ -59,25 +61,12 @@ async function main() {
   const agentUser = await prisma.user.findUnique({ where: { id: AG001.userId! }, select: { username: true } });
   const mgrUser = await prisma.user.findUnique({ where: { id: AG006.userId! }, select: { username: true } });
 
-  // demo leads across stages (idempotent by customerName)
-  await prisma.lead.deleteMany({ where: { customerName: { startsWith: DEMO } } });
-  const mk = (agentId: string, who: string, n: number, stage: any, value: number, fu: Date | null) =>
-    prisma.lead.create({ data: { customerName: `${DEMO} ${who}-${n}`, phone: `0300-00000${n}`, city: n % 2 ? "Lahore" : "Karachi", channel: "PHONE", stage, priority: "MEDIUM", estimatedValue: value, agentId, company: "OKASHASMART", dateReceived: new Date(), nextFollowUpAt: fu } });
-  const past = new Date(Date.now() - 2 * 86400000), future = new Date(Date.now() + 3 * 86400000);
-  // AG001 (own) — spread across stages for the kanban
-  await mk(AG001.id, "A1", 1, "NEW", 50000, past);
-  await mk(AG001.id, "A1", 2, "CONTACTED", 30000, future);
-  await mk(AG001.id, "A1", 3, "QUOTATION", 120000, future);
-  await mk(AG001.id, "A1", 4, "WON", 45000, null);
-  // AG003 (team member) — visible to manager, NOT to AG001
-  await mk(AG003.id, "A3", 1, "NEGOTIATION", 80000, past);
-  await mk(AG003.id, "A3", 2, "CONTACTED", 15000, future);
-  // AG006 (manager own)
-  await mk(AG006.id, "M", 1, "QUALIFIED", 60000, future);
+  // NOTE: no demo leads are seeded — the 261 imported leads are the working data. This script only
+  // sets passwords + CRM grants + the AG006 team (AG001, AG003) so the pages can be exercised.
 
   console.log("=== CRM browser personas ready (LOCAL) ===");
-  console.log(`OWN agent   : ${agentUser?.username}  /  ${PASSWORD}   (AG001, scope OWN — sees 4 demo leads)`);
-  console.log(`MANAGER     : ${mgrUser?.username}  /  ${PASSWORD}   (AG006, scope TEAM over AG001+AG003 — sees all 7 demo leads)`);
+  console.log(`OWN agent   : ${agentUser?.username}  /  ${PASSWORD}   (AG001, scope OWN)`);
+  console.log(`MANAGER     : ${mgrUser?.username}  /  ${PASSWORD}   (AG006, scope TEAM over AG001+AG003)`);
   console.log("platform = Admin");
   await prisma.$disconnect();
 }

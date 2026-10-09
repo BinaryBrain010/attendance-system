@@ -65,6 +65,7 @@ async function cleanupFixtures() {
   if (ids.length) await prisma.leadActivity.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
   await prisma.salesOrderItem.deleteMany({ where: { order: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.salesOrder.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
+  await prisma.quotationItem.deleteMany({ where: { quotation: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.lead.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.visitor.deleteMany({ where: { name: { startsWith: QTAG } } }).catch(() => {});
@@ -95,10 +96,10 @@ async function main() {
   // write features (create/update/delete/restore) a selling agent needs; scope of WHICH rows they can
   // touch is then enforced in the service layer, not by these features.
   const WRITES = ENTS.flatMap((e) => [`crm.${e}.create.*`, `crm.${e}.update.*`, `crm.${e}.delete.*`, `crm.${e}.restore.*`]);
-  const LEADOPS = ["crm.lead.transition.*", "crm.lead.assign.*"];
+  const OPS = ["crm.lead.transition.*", "crm.lead.assign.*", "crm.quotation.transition.*", "crm.quotation.export.*", "crm.order.transition.*", "crm.order.reattempt.*", "crm.return.transition.*"];
   await grant(adminUser, ["crm.*"]);
-  await grant(agentOwnUser, [...ENTS.map(OWN), ...WRITES, ...LEADOPS, "crm.catalogue.read.*", "crm.report.read.*"]);
-  await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...WRITES, ...LEADOPS, "crm.catalogue.read.*", "crm.report.read.*"]);
+  await grant(agentOwnUser, [...ENTS.map(OWN), ...WRITES, ...OPS, "crm.catalogue.read.*", "crm.report.read.*"]);
+  await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...WRITES, ...OPS, "crm.catalogue.read.*", "crm.report.read.*"]);
   await grant(viewerUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...ENTS.map(ALL), "crm.report.read.*", "crm.report.export.*", "crm.catalogue.read.*"]);
   await grant(umbrellaUser, ["appModules.crm.*"]);
 
@@ -248,6 +249,7 @@ async function main() {
   const dry = await api("POST", "/crmProduct/import", tAdmin, { csv, dryRun: true });
   check("shopify dry-run -> 200, 1 product, 2 variants, persists nothing", dry.status === 200 && dry.data?.counts?.products === 1 && dry.data?.counts?.variants === 2 && !dry.data?.persisted, `status ${dry.status} counts ${JSON.stringify(dry.data?.counts)}`);
   check("shopify dry-run keeps Shopify SKU + real price", dry.data?.products?.[0]?.sku === "S31870" && dry.data?.products?.[0]?.defaultPrice === 17500);
+  await prisma.quotationItem.deleteMany({ where: { quotation: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
 
   console.log("\n[crm] ===== Phase 2: lead state machine =====");
@@ -292,6 +294,40 @@ async function main() {
   const conv = await api("POST", "/lead/fromVisitor", tAdmin, { visitorId: vis.id });
   check("Visitor->Lead 201, stage NEW, visitorId set", conv.status === 201 && conv.data?.[0]?.stage === "NEW" && conv.data?.[0]?.visitorId === vis.id, `status ${conv.status}`);
   check("Visitor->Lead again -> 409 (already converted)", (await api("POST", "/lead/fromVisitor", tAdmin, { visitorId: vis.id })).status === 409);
+
+  console.log("\n[crm] ===== Phase 3: quotation builder =====");
+  const qc = await api("POST", "/quotation/create", tAdmin, {
+    customerName: `${QTAG}QCust`,
+    items: [{ description: "Item A", quantity: 2, unitPrice: 1000, lineDiscount: 100 }, { description: "Item B", quantity: 1, unitPrice: 5000, unitCost: 3000 }],
+    discount: 200,
+  });
+  check("quotation create 201", qc.status === 201, `got ${qc.status}`);
+  const qid = qc.data?.id;
+  const qg = await api("POST", "/quotation/getById", tAdmin, { id: qid });
+  check("persisted 2 line items", (qg.data?.items || []).length === 2, `got ${(qg.data?.items || []).length}`);
+  check("totals: lineA=1900, subtotal=6900, total=6700", (qg.data?.items || []).some((i: any) => i.lineTotal === 1900) && qg.data?.subtotal === 6900 && qg.data?.total === 6700, `sub ${qg.data?.subtotal} tot ${qg.data?.total}`);
+  check("quotationNo generated (Q-NNNN)", /^Q-\d{4}$/.test(qg.data?.quotationNo || ""), qg.data?.quotationNo);
+  check("ADMIN sees margin", typeof qg.data?.margin === "number");
+  const qgv = await api("POST", "/quotation/getById", tViewer, { id: qid });
+  check("VIEWER (no cost) margin stripped + no unitCost", qgv.status === 200 && qgv.data?.margin === undefined && (qgv.data?.items || []).every((i: any) => !("unitCost" in i)));
+
+  check("transition DRAFT->ACCEPTED invalid -> 409", (await api("POST", "/quotation/transition", tAdmin, { id: qid, to: "ACCEPTED" })).status === 409);
+  check("transition SENT without items ok DRAFT->SENT -> 200", (await api("POST", "/quotation/transition", tAdmin, { id: qid, to: "SENT" })).status === 200);
+  check("transition SENT->REJECTED no reason -> 400", (await api("POST", "/quotation/transition", tAdmin, { id: qid, to: "REJECTED" })).status === 400);
+
+  const v2 = await api("POST", "/quotation/newVersion", tAdmin, { id: qid });
+  check("newVersion -> 201 v2", v2.status === 201 && v2.data?.version === 2, `status ${v2.status} v ${v2.data?.version}`);
+  const v2id = v2.data?.id;
+  check("v1 isActive false after newVersion", (await api("POST", "/quotation/getById", tAdmin, { id: qid })).data?.isActive === false);
+  check("v2 isActive true", (await api("POST", "/quotation/getById", tAdmin, { id: v2id })).data?.isActive === true);
+  check("send v2 while v1 is SENT -> 409 (single active)", (await api("POST", "/quotation/transition", tAdmin, { id: v2id, to: "SENT" })).status === 409);
+
+  const qpdf = await api("POST", "/quotation/pdf", tAdmin, { id: qid });
+  check("quotation PDF -> 200", qpdf.status === 200, `got ${qpdf.status}`);
+
+  // scope on quotation ops: AG004 quotation, AGENT_OWN cannot transition
+  const outQ = await prisma.quotation.create({ data: { quotationNo: `${QTAG}${Date.now()}`, customerName: `${QTAG}out`, agentId: AG004.id, status: "DRAFT", company: "OKASHASMART" } });
+  check("AGENT_OWN transition out-of-scope quotation -> 403", (await api("POST", "/quotation/transition", tOwn, { id: outQ.id, to: "SENT" })).status === 403);
 
   // ---- cleanup ----
   await cleanupFixtures();

@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-419 routes walked from the live routers. Real DB users counted: 177.
+422 routes walked from the live routers. Real DB users counted: 177.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -84,52 +84,52 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /auth/logoutUserOfAllDevices | open | open | `-` | - | - |  |
 | POST | /crmBrand/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmBrand/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
-| POST | /crmBrand/get | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmBrand/getAll | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmBrand/getById | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmBrand/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmBrand/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBrand/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBrand/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBrand/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmBrand/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
-| POST | /crmBrand/search | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmBrand/total | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmBrand/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBrand/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmBrand/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
 | POST | /crmBundle/addItem | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmBundle/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmBundle/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
-| POST | /crmBundle/get | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmBundle/getAll | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmBundle/getById | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmBundle/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmBundle/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBundle/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBundle/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBundle/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmBundle/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
-| POST | /crmBundle/search | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmBundle/total | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmBundle/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBundle/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmBundle/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
 | POST | /crmCategory/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmCategory/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
-| POST | /crmCategory/get | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmCategory/getAll | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmCategory/getById | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmCategory/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmCategory/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmCategory/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmCategory/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmCategory/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmCategory/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
-| POST | /crmCategory/search | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmCategory/total | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmCategory/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmCategory/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmCategory/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
-| POST | /crmPriceList/byProduct | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmPriceList/byProduct | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmPriceList/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmPriceList/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
 | PUT | /crmPriceList/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
 | POST | /crmPriceList/withCost | read | feature | `crm.catalogue.cost.*` | yes | 1 | cost/margin visibility |
-| POST | /crmProduct/byCategory | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmProduct/byCategory | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmProduct/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmProduct/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
-| POST | /crmProduct/get | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmProduct/getAll | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmProduct/getById | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| POST | /crmProduct/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmProduct/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmProduct/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmProduct/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmProduct/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmProduct/image | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmProduct/import | import | feature | `crm.catalogue.import.*` | yes | 1 | Shopify CSV import (dry-run default) |
 | POST | /crmProduct/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
-| POST | /crmProduct/search | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
-| GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 1 |  |
+| POST | /crmProduct/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmProduct/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
 | POST | /crmProduct/variant | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 1 |  |
@@ -241,23 +241,23 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /item/search | read | feature | `item.read.*` | yes | 3 |  |
 | GET | /item/total | read | feature | `item.read.*` | yes | 3 |  |
 | PUT | /item/update | update | feature | `item.update.*` | yes | 3 |  |
-| POST | /lead/assign | update | feature | `crm.lead.assign.*` | yes | 1 | reassign agent |
-| POST | /lead/create | create | feature | `crm.lead.create.*` | yes | 1 |  |
+| POST | /lead/assign | update | feature | `crm.lead.assign.*` | yes | 3 | reassign agent |
+| POST | /lead/create | create | feature | `crm.lead.create.*` | yes | 3 |  |
 | POST | /lead/delete | delete | feature | `crm.lead.delete.*` | yes | 1 |  |
-| POST | /lead/filtered | read | feature | `crm.lead.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/fromVisitor | create | feature | `crm.lead.create.*` | yes | 1 | Visitor -> Lead |
-| POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/filtered | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/fromVisitor | create | feature | `crm.lead.create.*` | yes | 3 | Visitor -> Lead |
+| POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/import | import | feature | `crm.lead.import.*` | yes | 1 | lead register CSV import (dry-run default) |
 | POST | /lead/restore | restore | feature | `crm.lead.restore.*` | yes | 1 |  |
-| POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/transition | update | feature | `crm.lead.transition.*` | yes | 1 | server-enforced stage change |
-| PUT | /lead/update | update | feature | `crm.lead.update.*` | yes | 1 |  |
-| POST | /leadActivity/byLead | read | feature | `crm.lead.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /leadActivity/create | create | feature | `crm.lead.create.*` | yes | 1 |  |
+| POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/transition | update | feature | `crm.lead.transition.*` | yes | 3 | server-enforced stage change |
+| PUT | /lead/update | update | feature | `crm.lead.update.*` | yes | 3 |  |
+| POST | /leadActivity/byLead | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /leadActivity/create | create | feature | `crm.lead.create.*` | yes | 3 |  |
 | POST | /leadActivity/delete | delete | feature | `crm.lead.delete.*` | yes | 1 |  |
-| PUT | /leadActivity/update | update | feature | `crm.lead.update.*` | yes | 1 |  |
+| PUT | /leadActivity/update | update | feature | `crm.lead.update.*` | yes | 3 |  |
 | POST | /leave/leave-allocations/assignToAll | create | feature | `leaveAlloc.create.*` | yes | 4 |  |
 | POST | /leave/leave-allocations/create | create | feature | `leaveAlloc.create.*` | yes | 4 |  |
 | POST | /leave/leave-allocations/delete | delete | feature | `leaveAlloc.delete.*` | yes | 4 |  |
@@ -298,8 +298,11 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /quotation/filtered | read | feature | `crm.quotation.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /quotation/get | read | feature | `crm.quotation.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /quotation/getById | read | feature | `crm.quotation.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /quotation/newVersion | create | feature | `crm.quotation.create.*` | yes | 1 | new quotation version |
+| POST | /quotation/pdf | export | feature | `crm.quotation.export.*` | yes | 1 | quotation PDF |
 | POST | /quotation/restore | restore | feature | `crm.quotation.restore.*` | yes | 1 |  |
 | POST | /quotation/total | read | feature | `crm.quotation.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /quotation/transition | update | feature | `crm.quotation.transition.*` | yes | 1 | quotation status change |
 | PUT | /quotation/update | update | feature | `crm.quotation.update.*` | yes | 1 |  |
 | PUT | /role/changeRole | update | feature | `role.update.*` | yes | 2 |  |
 | POST | /role/create | create | feature | `role.create.*` | yes | 2 |  |
@@ -315,13 +318,13 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | PUT | /role/update | update | feature | `role.update.*` | yes | 2 |  |
 | POST | /salesAgent/create | create | feature | `crm.agent.create.*` | yes | 1 |  |
 | POST | /salesAgent/delete | delete | feature | `crm.agent.delete.*` | yes | 1 |  |
-| POST | /salesAgent/get | read | feature | `crm.agent.read.*` | yes | 1 |  |
-| GET | /salesAgent/getAll | read | feature | `crm.agent.read.*` | yes | 1 |  |
-| POST | /salesAgent/getById | read | feature | `crm.agent.read.*` | yes | 1 |  |
-| GET | /salesAgent/me | read | feature | `crm.agent.read.*` | yes | 1 |  |
+| POST | /salesAgent/get | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| GET | /salesAgent/getAll | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| POST | /salesAgent/getById | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| GET | /salesAgent/me | read | feature | `crm.agent.read.*` | yes | 3 |  |
 | POST | /salesAgent/restore | restore | feature | `crm.agent.restore.*` | yes | 1 |  |
-| POST | /salesAgent/search | read | feature | `crm.agent.read.*` | yes | 1 |  |
-| GET | /salesAgent/total | read | feature | `crm.agent.read.*` | yes | 1 |  |
+| POST | /salesAgent/search | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| GET | /salesAgent/total | read | feature | `crm.agent.read.*` | yes | 3 |  |
 | PUT | /salesAgent/update | update | feature | `crm.agent.update.*` | yes | 1 |  |
 | POST | /salesOrder/create | create | feature | `crm.order.create.*` | yes | 1 |  |
 | POST | /salesOrder/delete | delete | feature | `crm.order.delete.*` | yes | 1 |  |

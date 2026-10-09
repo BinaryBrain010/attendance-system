@@ -1414,6 +1414,16 @@
     "feature": "crm.quotation.read.own.*",
     "kind": "read"
   },
+  "POST /quotation/newVersion": {
+    "access": "feature",
+    "feature": "crm.quotation.create.*",
+    "kind": "create"
+  },
+  "POST /quotation/pdf": {
+    "access": "feature",
+    "feature": "crm.quotation.export.*",
+    "kind": "export"
+  },
   "POST /quotation/restore": {
     "access": "feature",
     "feature": "crm.quotation.restore.*",
@@ -1423,6 +1433,11 @@
     "access": "feature",
     "feature": "crm.quotation.read.own.*",
     "kind": "read"
+  },
+  "POST /quotation/transition": {
+    "access": "feature",
+    "feature": "crm.quotation.transition.*",
+    "kind": "update"
   },
   "PUT /quotation/update": {
     "access": "feature",

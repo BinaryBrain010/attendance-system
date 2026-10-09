@@ -19,6 +19,9 @@ class QuotationRoutes {
     this.router.post("/getById", this.controller.getById.bind(this.controller));
     this.router.post("/create", this.controller.create.bind(this.controller));
     this.router.put("/update", this.controller.update.bind(this.controller));
+    this.router.post("/newVersion", this.controller.newVersion.bind(this.controller));
+    this.router.post("/transition", this.controller.transition.bind(this.controller));
+    this.router.post("/pdf", this.controller.downloadPdf.bind(this.controller));
     this.router.post("/delete", this.controller.remove.bind(this.controller));
     this.router.post("/restore", this.controller.restore.bind(this.controller));
   }
