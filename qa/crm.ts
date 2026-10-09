@@ -207,19 +207,44 @@ async function main() {
     await prisma.salesAgent.update({ where: { id: AG003.id }, data: { scope: "OWN" } });
   }
 
-  console.log("\n[crm] ===== scope: reports (salesByOutlet) =====");
-  const sbo = async (t: string) => (await api("POST", "/crmReport/salesByOutlet", t, {})).data?.byOutlet || [];
-  const rev = (rows: any[], outlet: string) => (rows.find((r) => r.outlet === outlet)?.revenue) || 0;
+  console.log("\n[crm] ===== scope: reports (sales by outlet) =====");
+  const sbo = async (t: string) => (await api("POST", "/crmReport/sales", t, { dimension: "outlet" })).data?.rows || [];
+  const rev = (rows: any[], outlet: string) => (rows.find((r) => r.key === outlet)?.revenue) || 0;
   const sAdmin = await sbo(tAdmin), sOwn = await sbo(tOwn), sTeam = await sbo(tTeam);
-  check("ADMIN salesByOutlet Lahore=80000", rev(sAdmin, "Lahore") === 80000, `got ${rev(sAdmin, "Lahore")}`);
-  check("ADMIN salesByOutlet Karachi=100000", rev(sAdmin, "Karachi") === 100000, `got ${rev(sAdmin, "Karachi")}`);
-  check("AGENT_OWN salesByOutlet Lahore=50000", rev(sOwn, "Lahore") === 50000, `got ${rev(sOwn, "Lahore")}`);
-  check("AGENT_OWN salesByOutlet Karachi=0", rev(sOwn, "Karachi") === 0, `got ${rev(sOwn, "Karachi")}`);
-  check("TEAM_LEAD salesByOutlet Lahore=80000 Karachi=40000", rev(sTeam, "Lahore") === 80000 && rev(sTeam, "Karachi") === 40000, `L=${rev(sTeam, "Lahore")} K=${rev(sTeam, "Karachi")}`);
+  check("ADMIN sales outlet Lahore=80000", rev(sAdmin, "Lahore") === 80000, `got ${rev(sAdmin, "Lahore")}`);
+  check("ADMIN sales outlet Karachi=100000", rev(sAdmin, "Karachi") === 100000, `got ${rev(sAdmin, "Karachi")}`);
+  check("AGENT_OWN sales outlet Lahore=50000", rev(sOwn, "Lahore") === 50000, `got ${rev(sOwn, "Lahore")}`);
+  check("AGENT_OWN sales outlet Karachi=0", rev(sOwn, "Karachi") === 0, `got ${rev(sOwn, "Karachi")}`);
+  check("TEAM_LEAD sales outlet Lahore=80000 Karachi=40000", rev(sTeam, "Lahore") === 80000 && rev(sTeam, "Karachi") === 40000, `L=${rev(sTeam, "Lahore")} K=${rev(sTeam, "Karachi")}`);
 
   console.log("\n[crm] ===== report filter (company/outlet) =====");
-  const sboFilt = (await api("POST", "/crmReport/salesByOutlet", tAdmin, { outlet: "Lahore" })).data?.byOutlet || [];
-  check("ADMIN filter outlet=Lahore -> only Lahore", sboFilt.length === 1 && sboFilt[0].outlet === "Lahore", `rows ${sboFilt.length}`);
+  const sboFilt = (await api("POST", "/crmReport/sales", tAdmin, { dimension: "outlet", outlet: "Lahore" })).data?.rows || [];
+  check("ADMIN filter outlet=Lahore -> only Lahore", sboFilt.length === 1 && sboFilt[0].key === "Lahore", `rows ${sboFilt.length}`);
+
+  console.log("\n[crm] ===== report totals vs fixtures (order-based, clean) =====");
+  // Only QA fixtures exist as orders (no real orders imported), so order aggregates are exact.
+  const dash = await api("POST", "/crmReport/dashboard", tAdmin, {});
+  check("ADMIN dashboard 200 + deliveredOrders>=4 + returns=0", dash.status === 200 && dash.data?.deliveredOrders >= 4 && dash.data?.returns === 0, `status ${dash.status} del ${dash.data?.deliveredOrders} ret ${dash.data?.returns}`);
+  const dsum = (await api("POST", "/crmReport/dailySummary", tAdmin, {})).data?.days || [];
+  const totalRev = dsum.reduce((s: number, d: any) => s + (d.revenue || 0), 0);
+  check("ADMIN dailySummary total revenue=180000", totalRev === 180000, `got ${totalRev}`);
+  const marginPct = (await api("POST", "/crmReport/margin", tAdmin, {})).data?.marginPct;
+  check("ADMIN margin pct=33 (60000/180000)", marginPct === 33, `got ${marginPct}`);
+  const pipe = await api("POST", "/crmReport/pipeline", tTeam, {});
+  check("TEAM pipeline 200 + weightedValue<=totalValue", pipe.status === 200 && pipe.data?.weightedValue <= pipe.data?.totalValue && Array.isArray(pipe.data?.byAgent), `status ${pipe.status}`);
+  const fun = await api("POST", "/crmReport/funnel", tOwn, {});
+  check("AGENT_OWN funnel 200 + 6 stages NEW..WON + scope OWN", fun.status === 200 && (fun.data?.stages || []).length === 6 && fun.data?.scope === "OWN", `status ${fun.status} stages ${(fun.data?.stages || []).length} scope ${fun.data?.scope}`);
+  const perf = await api("POST", "/crmReport/agentPerformance", tTeam, {});
+  check("TEAM agentPerformance 200 + agents array + scope TEAM", perf.status === 200 && Array.isArray(perf.data?.agents) && perf.data?.agents.length >= 1 && perf.data?.scope === "TEAM", `status ${perf.status} scope ${perf.data?.scope}`);
+  const ret = await api("POST", "/crmReport/returns", tAdmin, {});
+  check("ADMIN returns 200 + rate=0 (no returns yet) + deliveredOrders>=4", ret.status === 200 && ret.data?.ratePct === 0 && ret.data?.deliveredOrders >= 4, `status ${ret.status} rate ${ret.data?.ratePct}`);
+  const aging = await api("POST", "/crmReport/leadAging", tOwn, {});
+  check("AGENT_OWN leadAging 200 + 4 age buckets + scope OWN", aging.status === 200 && (aging.data?.ageBuckets || []).length === 4 && aging.data?.scope === "OWN", `status ${aging.status}`);
+  const lost = await api("POST", "/crmReport/lostReasons", tAdmin, {});
+  check("ADMIN lostReasons 200 + reasons array", lost.status === 200 && Array.isArray(lost.data?.reasons), `status ${lost.status}`);
+  const repeat = await api("POST", "/crmReport/repeatCustomers", tAdmin, {});
+  check("ADMIN repeatCustomers 200 + customers array", repeat.status === 200 && Array.isArray(repeat.data?.customers), `status ${repeat.status}`);
+  check("NO_CRM dashboard -> 403", (await api("POST", "/crmReport/dashboard", tNo, {})).status === 403);
 
   console.log("\n[crm] ===== cost / margin gating =====");
   const mAdmin = await api("POST", "/crmReport/margin", tAdmin, {});
@@ -236,9 +261,10 @@ async function main() {
   check("ADMIN /crmPriceList/withCost -> 200", (await api("POST", "/crmPriceList/withCost", tAdmin, { productId: prod!.id })).status === 200);
 
   console.log("\n[crm] ===== exports (scope + cost) =====");
-  check("VIEWER export salesByOutlet -> 200", (await api("POST", "/crmReport/export", tViewer, { report: "salesByOutlet" })).status === 200);
+  check("VIEWER export sales (xlsx) -> 200", (await api("POST", "/crmReport/export", tViewer, { report: "sales", dimension: "outlet" })).status === 200);
+  check("VIEWER export dashboard (pdf) -> 200", (await api("POST", "/crmReport/export", tViewer, { report: "dashboard", format: "pdf" })).status === 200);
   check("VIEWER export margin -> 403 (no cost)", (await api("POST", "/crmReport/export", tViewer, { report: "margin" })).status === 403);
-  check("AGENT_OWN export -> 403 (no report.export)", (await api("POST", "/crmReport/export", tOwn, { report: "salesByOutlet" })).status === 403);
+  check("AGENT_OWN export -> 403 (no report.export)", (await api("POST", "/crmReport/export", tOwn, { report: "sales", dimension: "outlet" })).status === 403);
   check("ADMIN export margin -> 200", (await api("POST", "/crmReport/export", tAdmin, { report: "margin" })).status === 200);
 
   console.log("\n[crm] ===== pricing guard + Shopify import (dry-run) =====");

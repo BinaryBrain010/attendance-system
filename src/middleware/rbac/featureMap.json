@@ -584,12 +584,37 @@
     "feature": "crm.catalogue.create.*",
     "kind": "create"
   },
+  "POST /crmReport/agentPerformance": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/dailySummary": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/dashboard": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
   "POST /crmReport/export": {
     "access": "feature",
     "feature": "crm.report.export.*",
     "kind": "export"
   },
   "POST /crmReport/funnel": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/leadAging": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/lostReasons": {
     "access": "feature",
     "feature": "crm.report.read.*",
     "kind": "read"
@@ -604,7 +629,17 @@
     "feature": "crm.report.read.*",
     "kind": "read"
   },
-  "POST /crmReport/salesByOutlet": {
+  "POST /crmReport/repeatCustomers": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/returns": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/sales": {
     "access": "feature",
     "feature": "crm.report.read.*",
     "kind": "read"
