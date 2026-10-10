@@ -55,7 +55,8 @@ class ReportService {
     const overdue = open.filter((l) => l.nextFollowUpAt && new Date(l.nextFollowUpAt).getTime() < t0).length;
     const wonValue = won.reduce((s, l) => s + (l.estimatedValue || 0), 0);
     const pipelineValue = open.reduce((s, l) => s + (l.estimatedValue || 0), 0);
-    const { rows: delivered } = await this.orders(userId, f, { status: "DELIVERED" });
+    const { rows: deliveredAll } = await this.orders(userId, f, { status: "DELIVERED" });
+    const delivered = deliveredAll.filter((o: any) => o.sourceFile !== "RETURNS_IMPORT"); // exclude imported RTOs
     const { rows: returnRows } = await this.returns(userId, f);
     const returnsRate = delivered.length ? Math.round((returnRows.length / delivered.length) * 100) : 0;
     return {
@@ -118,8 +119,23 @@ class ReportService {
     return { scope, count: rows.length, totalValue, weightedValue: weighted, byStage: Object.values(byStage), byAgent: Object.values(byAgent).sort((x: any, y: any) => y.value - x.value) };
   }
 
-  /** 5. Sales by a dimension (product/category/channel/city/outlet) over delivered orders. */
+  /** 5. Sales by a dimension (product/category/channel/city/outlet).
+   * basis "orders" (default) = delivered orders; "wonLeads" = won leads by estimated value
+   * (product/category not available on the won-leads basis — leads have no line items). */
   async salesBy(userId: string, dimension: string, f: any = {}) {
+    const basis = f.basis === "wonLeads" ? "wonLeads" : "orders";
+    if (basis === "wonLeads") {
+      if (dimension === "product" || dimension === "category") {
+        return { scope: (await resolveScope(userId, "lead")).mode, dimension, basis, rows: [], note: "Product/category breakdown is only available on the delivered-orders basis." };
+      }
+      const { scope, rows } = await this.leads(userId, f, { stage: "WON" });
+      const agg: Record<string, { key: string; orders: number; revenue: number }> = {};
+      for (const l of rows as any[]) {
+        const key = String(l[dimension] ?? "(none)");
+        const a = (agg[key] ||= { key, orders: 0, revenue: 0 }); a.revenue += l.estimatedValue || 0; a.orders++;
+      }
+      return { scope, dimension, basis, rows: Object.values(agg).sort((x, y) => y.revenue - x.revenue) };
+    }
     const { scope, rows } = await this.orders(userId, f, { status: "DELIVERED" }, dimension === "product" || dimension === "category");
     const agg: Record<string, { key: string; orders: number; revenue: number }> = {};
     if (dimension === "product" || dimension === "category") {
@@ -138,7 +154,7 @@ class ReportService {
         const a = (agg[key] ||= { key, orders: 0, revenue: 0 }); a.revenue += o.total || 0; a.orders++;
       }
     }
-    return { scope, dimension, rows: Object.values(agg).sort((x, y) => y.revenue - x.revenue) };
+    return { scope, dimension, basis, rows: Object.values(agg).sort((x, y) => y.revenue - x.revenue) };
   }
 
   /** 6. Lost reasons. */
@@ -149,22 +165,34 @@ class ReportService {
     return { scope, total: rows.length, reasons: Object.values(agg).sort((x, y) => y.count - x.count) };
   }
 
-  /** 7. Returns: rate + breakdowns by city/reason/courier/month, RTO value. */
+  /** 7. Returns: rate + breakdowns by city/reason/courier/month, RTO value.
+   * Orders created by the returns import (sourceFile "RETURNS_IMPORT") are excluded from the
+   * returns-rate denominator, and their RTO value is reported as "pending price" (unit prices are 0
+   * until catalogue prices exist and are backfilled). */
   async returnsReport(userId: string, f: any = {}) {
     const { scope, rows } = await this.returns(userId, f);
-    const { rows: delivered } = await this.orders(userId, f, { status: "DELIVERED" });
+    const { rows: deliveredAll } = await this.orders(userId, f, { status: "DELIVERED" });
     const { rows: returnedOrders } = await this.orders(userId, f, { status: "RETURNED" }, true);
-    const byCity: Record<string, number> = {}, byReason: Record<string, number> = {}, byCourier: Record<string, number> = {}, byMonth: Record<string, number> = {};
+    const delivered = deliveredAll.filter((o: any) => o.sourceFile !== "RETURNS_IMPORT"); // exclude imported RTOs
+    const byCity: Record<string, number> = {}, byReason: Record<string, number> = {}, byCourier: Record<string, number> = {}, byMonth: Record<string, number> = {}, courierFault: Record<string, number> = {};
     for (const r of rows) {
       byCity[r.city || "(none)"] = (byCity[r.city || "(none)"] || 0) + 1;
-      byReason[(r.reason || "Unspecified").split("|")[0].trim()] = (byReason[(r.reason || "Unspecified").split("|")[0].trim()] || 0) + 1;
+      const reason = (r.reason || "Unspecified").split("|")[0].trim();
+      byReason[reason] = (byReason[reason] || 0) + 1;
       byCourier[r.courier || "(none)"] = (byCourier[r.courier || "(none)"] || 0) + 1;
+      if (/^Courier fault/i.test(reason)) courierFault[r.courier || "(none)"] = (courierFault[r.courier || "(none)"] || 0) + 1;
       const m = r.reportedAt ? new Date(r.reportedAt).toISOString().slice(0, 7) : "(none)"; byMonth[m] = (byMonth[m] || 0) + 1;
     }
-    const rtoValue = returnedOrders.reduce((s: number, o: any) => s + (o.total || 0), 0);
+    // RTO value: only orders with a real price; imported (pending-price) ones are counted separately.
+    let rtoValue = 0, rtoPendingOrders = 0;
+    for (const o of returnedOrders as any[]) {
+      if (o.sourceFile === "RETURNS_IMPORT" || !(o.total > 0)) rtoPendingOrders++;
+      else rtoValue += o.total || 0;
+    }
     const ratePct = delivered.length ? Math.round((rows.length / delivered.length) * 100) : 0;
     const srt = (o: Record<string, number>) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key: k, count: v }));
-    return { scope, totalReturns: rows.length, deliveredOrders: delivered.length, ratePct, rtoValue, byCity: srt(byCity), byReason: srt(byReason), byCourier: srt(byCourier), byMonth: srt(byMonth) };
+    return { scope, totalReturns: rows.length, deliveredOrders: delivered.length, ratePct, rtoValue, rtoPendingOrders, rtoPending: rtoPendingOrders > 0,
+      byCity: srt(byCity), byReason: srt(byReason), byCourier: srt(byCourier), byMonth: srt(byMonth), courierFaultByCourier: srt(courierFault) };
   }
 
   /** 8. Lead aging + overdue follow-up list per agent. */

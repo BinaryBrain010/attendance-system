@@ -93,6 +93,9 @@ async function main() {
 
   // ---- clean any prior run, then grant ----
   await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: [adminUser, viewerUser, umbrellaUser, agentOwnUser, teamLeadUser] }, permissions: { path: ["allowedFeatures"], array_contains: ["crm.*"] } as any } }).catch(() => {});
+  // also remove any crmBrowserPersonas grant on the agent users (marked by login.admin.*), so the
+  // persona's report.export/cost grants don't bleed into these scope/cost assertions.
+  await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: [agentOwnUser, teamLeadUser] }, permissions: { path: ["allowedFeatures"], array_contains: ["login.admin.*"] } as any } }).catch(() => {});
   await cleanupFixtures();
 
   // write features (create/update/delete/restore) a selling agent needs; scope of WHICH rows they can
@@ -224,7 +227,8 @@ async function main() {
   console.log("\n[crm] ===== report totals vs fixtures (order-based, clean) =====");
   // Only QA fixtures exist as orders (no real orders imported), so order aggregates are exact.
   const dash = await api("POST", "/crmReport/dashboard", tAdmin, {});
-  check("ADMIN dashboard 200 + deliveredOrders>=4 + returns=0", dash.status === 200 && dash.data?.deliveredOrders >= 4 && dash.data?.returns === 0, `status ${dash.status} del ${dash.data?.deliveredOrders} ret ${dash.data?.returns}`);
+  // deliveredOrders excludes RETURNS_IMPORT RTOs; returns count may be >0 once the returns import has run.
+  check("ADMIN dashboard 200 + deliveredOrders>=4 + returns is a number", dash.status === 200 && dash.data?.deliveredOrders >= 4 && typeof dash.data?.returns === "number", `status ${dash.status} del ${dash.data?.deliveredOrders} ret ${dash.data?.returns}`);
   const dsum = (await api("POST", "/crmReport/dailySummary", tAdmin, {})).data?.days || [];
   const totalRev = dsum.reduce((s: number, d: any) => s + (d.revenue || 0), 0);
   check("ADMIN dailySummary total revenue=180000", totalRev === 180000, `got ${totalRev}`);
@@ -237,7 +241,16 @@ async function main() {
   const perf = await api("POST", "/crmReport/agentPerformance", tTeam, {});
   check("TEAM agentPerformance 200 + agents array + scope TEAM", perf.status === 200 && Array.isArray(perf.data?.agents) && perf.data?.agents.length >= 1 && perf.data?.scope === "TEAM", `status ${perf.status} scope ${perf.data?.scope}`);
   const ret = await api("POST", "/crmReport/returns", tAdmin, {});
-  check("ADMIN returns 200 + rate=0 (no returns yet) + deliveredOrders>=4", ret.status === 200 && ret.data?.ratePct === 0 && ret.data?.deliveredOrders >= 4, `status ${ret.status} rate ${ret.data?.ratePct}`);
+  // deliveredOrders excludes RETURNS_IMPORT RTOs; rate is a computed number (returns / delivered).
+  check("ADMIN returns 200 + deliveredOrders>=4 + rate is a number", ret.status === 200 && ret.data?.deliveredOrders >= 4 && typeof ret.data?.ratePct === "number", `status ${ret.status} rate ${ret.data?.ratePct} del ${ret.data?.deliveredOrders}`);
+  check("ADMIN returns has courierFaultByCourier + rtoPending fields", Array.isArray(ret.data?.courierFaultByCourier) && typeof ret.data?.rtoPendingOrders === "number", JSON.stringify({ cf: ret.data?.courierFaultByCourier, p: ret.data?.rtoPendingOrders }));
+  // sales basis switch: delivered-orders vs won-leads
+  const salesOrders = await api("POST", "/crmReport/sales", tAdmin, { dimension: "outlet", basis: "orders" });
+  check("ADMIN sales basis=orders Lahore=80000", (salesOrders.data?.rows || []).find((r: any) => r.key === "Lahore")?.revenue === 80000 && salesOrders.data?.basis === "orders");
+  const salesWon = await api("POST", "/crmReport/sales", tAdmin, { dimension: "city", basis: "wonLeads" });
+  check("ADMIN sales basis=wonLeads 200 + basis echoed + rows array", salesWon.status === 200 && salesWon.data?.basis === "wonLeads" && Array.isArray(salesWon.data?.rows), `status ${salesWon.status} basis ${salesWon.data?.basis}`);
+  const salesWonProd = await api("POST", "/crmReport/sales", tAdmin, { dimension: "product", basis: "wonLeads" });
+  check("ADMIN sales basis=wonLeads + product -> note + empty rows", (salesWonProd.data?.rows || []).length === 0 && !!salesWonProd.data?.note, `note ${salesWonProd.data?.note}`);
   const aging = await api("POST", "/crmReport/leadAging", tOwn, {});
   check("AGENT_OWN leadAging 200 + 4 age buckets + scope OWN", aging.status === 200 && (aging.data?.ageBuckets || []).length === 4 && aging.data?.scope === "OWN", `status ${aging.status}`);
   const lost = await api("POST", "/crmReport/lostReasons", tAdmin, {});

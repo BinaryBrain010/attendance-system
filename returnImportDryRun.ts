@@ -1,7 +1,7 @@
 /**
  * Returns + Reattempt import DRY RUN (local). Reads Docs/Returns + Reattempt CSVs, runs the importer
  * in dry-run mode (nothing written), prints the summary, and writes qa/ReturnImport_DryRun.xlsx with
- * sheets: Summary, Returns, Reason clusters, Couriers, Reattempts.
+ * sheets: Summary, Returns, Reason clusters, Couriers, Courier fault, Reattempts.
  *   npx ts-node returnImportDryRun.ts
  */
 import fs from "fs";
@@ -28,12 +28,17 @@ async function main() {
   const add = (k: string, v: any) => sum.addRow({ k, v });
   add("Returns rows parsed", report.returns.rows);
   add("  matched to an existing order (by Order# or CN)", report.returns.matchedToOrder);
-  add("  will CREATE a historical order", report.returns.willCreateOrder);
+  add("  will CREATE a historical order (source=RETURNS_IMPORT)", report.returns.willCreateOrder);
+  add("  linked to an existing lead by phone", report.returns.leadMatchedByPhone);
   add("  skipped (no customer name)", report.returns.skipped);
   add("Reattempt rows parsed", report.reattempts.rows);
   add("  matched to an existing order", report.reattempts.matchedToOrder);
   add("  will CREATE a historical order", report.reattempts.willCreateOrder);
+  add("  linked to an existing lead by phone", report.reattempts.leadMatchedByPhone);
   add("  skipped", report.reattempts.skipped);
+  add("", "");
+  add("COURIER FAULT returns, by courier", "");
+  Object.entries(report.returns.courierFaultByCourier || {}).sort((a: any, b: any) => b[1] - a[1]).forEach(([k, v]) => add(`  ${k}`, v));
   add("", "");
   add("REASON CLUSTERS (Detail -> bucket)", "");
   Object.entries(report.returns.reasonClusters).sort((a: any, b: any) => b[1] - a[1]).forEach(([k, v]) => add(`  ${k}`, v));
@@ -63,6 +68,11 @@ async function main() {
   co.columns = [{ header: "Normalized courier", key: "k", width: 20 }, { header: "Count", key: "n", width: 8 }];
   Object.entries(report.returns.couriers).sort((a: any, b: any) => b[1] - a[1]).forEach(([k, v]) => co.addRow({ k, n: v }));
   co.getRow(1).font = { bold: true };
+
+  const cf = wb.addWorksheet("Courier fault");
+  cf.columns = [{ header: "Courier", key: "k", width: 20 }, { header: "Courier-fault returns", key: "n", width: 20 }];
+  Object.entries(report.returns.courierFaultByCourier || {}).sort((a: any, b: any) => b[1] - a[1]).forEach(([k, v]) => cf.addRow({ k, n: v }));
+  cf.getRow(1).font = { bold: true };
 
   const ra = wb.addWorksheet("Reattempts");
   ra.columns = [{ header: "Name", key: "name", width: 22 }, { header: "Phone", key: "phone", width: 15 }, { header: "CN #", key: "cn", width: 18 }, { header: "Order NO", key: "orderNum", width: 12 }, { header: "Match", key: "match", width: 10 }, { header: "Date", key: "date", width: 12 }];
