@@ -878,5 +878,105 @@ tested in Phase 1; `company`+`outlet` on Lead and SalesOrder and filterable ever
 
 ---
 
-*Phase 1 is in progress. Each phase stays local and harness-green under `RBAC_ENFORCE=on` before the
-next begins.*
+## 16. As-built (implementation status — P1–P4 complete)
+
+This section records what is **actually built and committed**, superseding the forward-looking tense
+above where they differ. All work is local; every importer/seed/persona script refuses a non-localhost
+`DATABASE_URL`. Commits carry no AI attribution (per the owner's standing rule).
+
+### 16.1 Catalogue & agents (P1)
+- Catalogue CRUD: Category/Brand/Product (+Variant,+Image)/PriceList/Bundle, per-category SKU prefixes
+  (`OKS-LOCK`, `OKS-SWCH`, `OKS-PLUG`, `OKS-CAM`, `OKS-LGHT`, `OKS-APPL`, `OKS-SERV`).
+- **Prices are honest**: all seeded `price`/`cost` are `null` with `pricePending = true` — no invented
+  numbers. Real prices come from a **Shopify products CSV importer** (`POST /crmProduct/import`,
+  dry-run default; keeps the Shopify SKU + price + cost).
+- SalesAgent CRUD + seed; agents matched to **existing** Employee/User by name **and** username (fuzzy;
+  never auto-links when ambiguous; never creates users). AG004 Sadaf Raza pending a username; AG007
+  Waleed stayed unlinked and his leads were reassigned to the manager AG006 at import.
+- **Scope engine** (`shared/scope.ts`): effective scope = **narrower of** `SalesAgent.scope` and the
+  `read.{own,team,all}` feature leaf held; team = direct reports (`teamLeadId`). Enforced on reads,
+  updates, deletes, state-changes and reassigns (out-of-scope → 403; own-scope agent cannot create for
+  or reassign to another agent). `assertRowInScope` / `resolveAssignment` / `canAssignTo`.
+- **Cost gate** (`shared/cost.ts`): `crm.catalogue.cost.*` (or god) is required to see
+  `cost`/`unitCost`/`margin`/`marginPct` anywhere; `stripCost` deep-strips for everyone else (and
+  leaves `Date`/`Buffer` intact).
+
+### 16.2 Leads (P2)
+- State machine Draft→New→Contacted→Qualified→Quotation→Negotiation→Won|Lost|On-hold (reason required
+  for Lost/On-hold; never backward), `LeadActivity` + merged timeline, computed follow-up status,
+  Visitor→Lead.
+- **Two-register import** (dry-run Excel first): dates parsed as Karachi calendar days (no TZ shift);
+  dedup by phone+date keeping the more advanced stage + field-merge, keep-both on WON-vs-LOST conflict
+  or large value gap; PK city list with alias map (**never defaults to Lahore**); free-text → `notes`;
+  generated codes continue `OS-LHR-2026-####` after the highest real ID. **Real import run: 7 → 261.**
+
+### 16.3 Quotations, orders, returns (P3)
+- Quotation builder: persisted `QuotationItem` lines, line+header discounts, one `quotationNo` with
+  versions (only one Sent/Accepted at a time, 409 otherwise), `Q-####`, Lead→Quotation, **PDF** with
+  Okasha Smart letterhead (phone 0301 0444888, terms, signature), black/grey.
+- SalesOrder: `SO-####`, line items/discounts, state machine + reattempt (DISPATCHED only),
+  Lead→Order and Quotation→Order (ACCEPTED-gated). Fields: `channel`, `externalOrderNo` (Shopify),
+  `courier`, `trackingNo` (CN), `paymentType` (COD/ADVANCE/PARTIAL) + `amountReceived`,
+  delivery `city`/`area`/`address`, `dispatchedAt`/`deliveredAt`.
+- Returns: `RET-####`, state machine REPORTED→RECEIVED_BACK→RESTOCKED|DAMAGED (reason required),
+  Order→Return (carries items, marks order RETURNED).
+- **Lead-stage sync** (`shared/leadSync.ts`): quotation SENT → lead QUOTATION (if earlier);
+  order CONFIRMED-or-later → lead WON; never moves a closed lead or backward; each auto change is
+  logged in the lead timeline as `AUTO_STAGE`.
+
+### 16.4 Returns/reattempt import (P4A) — as-built
+- Dry-run Excel first (`qa/ReturnImport_DryRun.xlsx`); real runner `qa/runReturnImportReal.ts`.
+  Matches rows to existing orders by `externalOrderNo` (Order Num) or CN (`trackingNo`); otherwise
+  **creates a historical order**.
+- Created orders are tagged **`sourceFile = "RETURNS_IMPORT"`**, status RETURNED, channel ONLINE_STORE,
+  `legacyId = ext || cn` (deduped via `@@unique([sourceFile, legacyId])`), unit prices **0 ("pending
+  price")**. They are **excluded from the returns-rate denominator**, and their RTO value is reported as
+  pending until catalogue prices exist. Backfill is ready: `qa/backfillReturnImportPrices.ts` matches
+  line descriptions to priced products and sets `unitPrice` + recomputes totals (dry-run default).
+- **Reason clustering** (free-text Detail → canonical bucket), stored as `"Cluster | raw detail"` so
+  reports group by the cluster. The old "No pickup / rider" bucket is **split** into
+  **"Customer not reachable / no pickup"** and **"Courier fault (rider did not call / misbehaved /
+  late)"**; courier normalization (Post Ex/Postex → PostEx, etc.).
+- **Phone→lead linking**: imported orders/returns link to an existing lead by **last-10-digit** phone
+  match (PK phones are stored as 0300…/+92 300…/300…), carrying the lead's `agentId`. The dry-run and
+  the result report how many matched.
+- **Real import run: orders 0 → 68 (62 returns + 6 reattempts), returns 0 → 62; 2 orders / 1 return
+  linked to a lead by phone** (the returns are overwhelmingly online-store customers absent from the
+  lead register — an honest, low overlap).
+
+### 16.5 Reports & dashboard (P4B/C) — as-built
+11 reports under `/crmReport`, all scope-aware, cost-gated, with date/company/outlet/agent/channel/city
+filters and Excel (exceljs) + PDF (`src/pdf/report.ts`, black/grey letterhead) export (`crm.report.read.*`,
+export gated by `crm.report.export.*`):
+1. **Dashboard** — lead counts (today/week/month/total), won + **won value (estimated, from leads)**,
+   conversion %, pipeline value, overdue follow-ups, delivered orders, returns + rate %.
+2. **Agent performance** — leads/won/value/conversion %/avg days-to-close/overdue/target achieved %.
+3. **Funnel** — stage counts + drop-off %.
+4. **Pipeline** — open & weighted value, by stage and by agent.
+5. **Sales by** product/category/channel/city/outlet, with a **basis switch**: *Orders (delivered)* vs
+   *Won leads* (product/category unavailable on the won-leads basis — leads have no line items).
+6. **Lost reasons**, 7. **Returns** (rate excludes imports; RTO value + *pending-price* count;
+   by reason/courier/city/month + **courier-fault-by-courier**), 8. **Lead aging** + overdue
+   follow-ups per agent, 9. **Repeat customers** (by phone), 10. **Daily summary**, 11. **Margin**
+   (cost-gated; pending-cost lines excluded).
+- Admin **Reports page** (`/crm/reports`): filter bar, left report selector, KPI cards, inline bar
+  charts, Excel/PDF buttons, cost-gated Margin tab hidden without cost, and a **stale-response guard**
+  (request-id check) so switching reports/filters never shows a previous report's data.
+
+### 16.6 Test & ops status
+- CRM harness `qa/crm.ts`: **136/136** under `RBAC_ENFORCE=on` (coexists with the real imported data).
+  Main `qa:rbac` suite unaffected (featureMap `not-registered = 0`).
+- Browser personas `qa/crmBrowserPersonas.ts`: `usama_liaqat@phw` (AG001, OWN) and `usman_arshad@phw`
+  (AG006, TEAM over AG001+AG003), password `CrmTest!2026`, incl. report read/export (+ cost for the
+  manager). The harness clears persona grants for its agent users, so re-run the persona script before
+  browser/UAT testing.
+
+### 16.7 Still open
+- Catalogue **prices** await the Shopify export (everything stays `pricePending`); run the price
+  backfill for RETURNS_IMPORT orders afterwards. **AG004** username pending. **P5** (catalogue↔inventory
+  link) deferred.
+
+---
+
+*P1–P4 are built, committed and harness-green under `RBAC_ENFORCE=on`. Each phase stayed local and
+green before the next began.*
