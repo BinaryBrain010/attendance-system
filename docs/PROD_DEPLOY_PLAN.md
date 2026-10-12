@@ -187,9 +187,18 @@ where that module's nav should appear.
 
 ### 5.1 🖥️ Create/refresh the roles
 ```bash
-npx ts-node seedRoles.ts --allow-remote          # all 6 roles; prints each role id + feature count
+npx ts-node seedRoles.ts --allow-remote          # all 6 roles; prints each role id + action
 # or one at a time, e.g.: npx ts-node seedRoles.ts "Order Ops" --allow-remote
 ```
+**Safety (verified in rehearsal):** `seedRoles` does NOT overwrite a role that already exists with a
+feature permission; it prints `SKIPPED`. The rehearsal showed prod likely already has **Admin** and
+**HR** roles. Review their current features first; only if you want to align them to the recipe, re-run
+with `--replace` for those roles:
+```bash
+# review existing role features in the admin UI first, THEN, per role you want to align:
+npx ts-node seedRoles.ts "HR" --replace --allow-remote
+```
+New roles (Sales Agent, Sales Manager, Order Ops) are created regardless.
 
 ### 5.2 ✋ Draft role→user mapping (owner approves before applying)
 Map **real prod users** to roles via `UserRole` (admin UI → Access Control, or a small script). This

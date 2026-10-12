@@ -5,8 +5,12 @@
  *
  *   npx ts-node seedRoles.ts                 # all recipes
  *   npx ts-node seedRoles.ts "Order Ops"     # one role
+ *   npx ts-node seedRoles.ts --replace       # also overwrite the features of roles that already exist
  *
- * On prod this is additive and safe (creates/updates roles only); run it as part of PROD_DEPLOY_PLAN.
+ * SAFETY: by default an EXISTING role that already has a feature permission is LEFT UNTOUCHED (only a
+ * warning is printed). This protects a curated prod role (e.g. Admin/HR that predate this release) from
+ * being clobbered. Pass --replace to overwrite after you have reviewed that role's current features.
+ * New roles are always created. On prod this is additive and safe; run it as part of PROD_DEPLOY_PLAN.
  */
 import prisma from "./src/core/models/base.model";
 import { ROLE_RECIPES } from "./roleRecipes";
@@ -19,15 +23,21 @@ if (!["localhost", "127.0.0.1", "[::1]"].includes(host) && !ALLOW_REMOTE) {
   process.exit(2);
 }
 
-async function upsertRole(name: string, features: string[]) {
+const REPLACE = process.argv.includes("--replace");
+
+async function upsertRole(name: string, features: string[]): Promise<{ id: string; action: string }> {
   let role = await prisma.role.findUnique({ where: { name } });
+  const existed = !!role;
   if (!role) role = await prisma.role.create({ data: { name, createdAt: new Date() } });
-  // replace the role's feature permission
+  const current = await prisma.featurePermission.findFirst({ where: { parentType: "Role", parentId: role.id, isDeleted: null } });
+  if (existed && current && !REPLACE) {
+    return { id: role.id, action: "SKIPPED (role exists with features; pass --replace to overwrite)" };
+  }
   await prisma.featurePermission.deleteMany({ where: { parentType: "Role", parentId: role.id } });
   await prisma.featurePermission.create({
     data: { parentType: "Role", parentId: role.id, permissions: { allowedFeatures: features } as any, createdAt: new Date() },
   });
-  return role;
+  return { id: role.id, action: existed ? "updated (--replace)" : "created" };
 }
 
 async function main() {
@@ -36,8 +46,8 @@ async function main() {
   for (const name of names) {
     const recipe = ROLE_RECIPES[name];
     if (!recipe) { console.error(`unknown role recipe: "${name}". Known: ${Object.keys(ROLE_RECIPES).join(", ")}`); process.exit(1); }
-    const role = await upsertRole(name, recipe.features);
-    console.log(`✓ ${name}  (role ${role.id})  — ${recipe.features.length} features`);
+    const r = await upsertRole(name, recipe.features);
+    console.log(`${r.action.startsWith("SKIPPED") ? "•" : "✓"} ${name}  (role ${r.id})  — ${recipe.features.length} features — ${r.action}`);
   }
   console.log(`\nDone. Map users to roles via UserRole (admin UI or the deploy plan's mapping table).`);
   await prisma.$disconnect();
