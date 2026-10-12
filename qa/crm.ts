@@ -484,6 +484,37 @@ async function main() {
   const vord = await api("POST", "/salesOrder/getById", tViewer, { id: ofo.data?.id });
   check("no-cost getById keeps Date fields intact (stripCost bug)", typeof vord.data?.createdAt === "string" && vord.data?.margin === undefined, `createdAt type ${typeof vord.data?.createdAt}`);
 
+  console.log("\n[crm] ===== Task 3: validation + mass-assignment + fuzz =====");
+  // validation returns 400 (never 500) for bad bodies
+  check("create with null body -> 400", (await api("POST", "/lead/create", tAdmin, null)).status === 400);
+  check("create with array body -> 400", (await api("POST", "/lead/create", tAdmin, [] as any)).status === 400);
+  check("create missing required (customerName) -> 400", (await api("POST", "/lead/create", tAdmin, { phone: "0300" })).status === 400);
+  check("create wrong type (customerName number) -> 400", (await api("POST", "/lead/create", tAdmin, { customerName: 123 })).status === 400);
+  check("create bad numeric (estimatedValue) -> 400", (await api("POST", "/lead/create", tAdmin, { customerName: `${QTAG}x`, estimatedValue: "notanumber" })).status === 400);
+  check("create oversized string -> 400", (await api("POST", "/lead/create", tAdmin, { customerName: "Z".repeat(5000) })).status === 400);
+  check("transition invalid enum -> 400", (await api("POST", "/lead/transition", tAdmin, { id: ownA1.id, to: "BOGUS" })).status === 400);
+  check("order items not an array -> 400", (await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}x`, items: "nope" })).status === 400);
+  check("order item qty < 1 -> 400", (await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}x`, items: [{ description: "a", quantity: -5 }] })).status === 400);
+  check("quotation missing customerName -> 400", (await api("POST", "/quotation/create", tAdmin, { items: [] })).status === 400);
+  check("return missing reason -> 400 (validation)", (await api("POST", "/salesReturn/create", tAdmin, { customerName: `${QTAG}x` })).status === 400);
+  check("getById missing id -> 400 (not a 500)", (await api("POST", "/lead/getById", tAdmin, {})).status === 400);
+  const bigPage = await api("POST", "/lead/get", tAdmin, { page: 1, pageSize: 999999 });
+  check("list pageSize over cap -> 200 and clamped to <=200 rows", bigPage.status === 200 && (bigPage.data?.data || []).length <= 200, `status ${bigPage.status} rows ${(bigPage.data?.data || []).length}`);
+
+  // mass-assignment: server-controlled fields in the body are ignored
+  const maLead = await api("POST", "/lead/create", tAdmin, { customerName: `${QTAG}MassAssign`, sourceFile: "HACK", legacyId: "HACK", createdBy: "attacker", subtotal: 99999, reattemptCount: 7 } as any);
+  const maRow = maLead.data?.[0] ? await prisma.lead.findUnique({ where: { id: maLead.data[0].id } }) : null;
+  check("mass-assign: sourceFile/legacyId not client-settable", maLead.status === 201 && maRow?.sourceFile == null && maRow?.legacyId == null, `src ${maRow?.sourceFile} legacy ${maRow?.legacyId}`);
+  check("mass-assign: createdBy is the caller, not the body", !!maRow && maRow.createdBy === adminUser, `createdBy ${maRow?.createdBy}`);
+  const maOrder = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}MAOrd`, status: "DELIVERED", total: 123456, subtotal: 123456, sourceFile: "HACK", items: [{ description: "x", quantity: 1, unitPrice: 100 }] } as any);
+  const maOrderRow = maOrder.data?.id ? await prisma.salesOrder.findUnique({ where: { id: maOrder.data.id } }) : null;
+  check("mass-assign: order status stays DRAFT (not client DELIVERED)", maOrder.status === 201 && maOrderRow?.status === "DRAFT", `status ${maOrderRow?.status}`);
+  check("mass-assign: order total computed (100), not client 123456", maOrderRow?.total === 100, `total ${maOrderRow?.total}`);
+  check("mass-assign: order sourceFile not client-set", maOrderRow?.sourceFile == null, `src ${maOrderRow?.sourceFile}`);
+
+  // the server must still be alive after all the garbage
+  check("server still healthy after fuzz (no crash)", (await api("POST", "/lead/get", tAdmin, { page: 1, pageSize: 1 })).status === 200);
+
   // ---- cleanup (drop the entire QA world; real users/agents untouched) ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });

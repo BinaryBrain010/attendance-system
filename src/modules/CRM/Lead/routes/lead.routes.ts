@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import LeadController from "../controllers/lead.controller";
+import { validate, schemas } from "../../shared/validate";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -17,18 +18,18 @@ class LeadRoutes {
 
   private initializeRoutes(): void {
     this.router.post("/import", upload.single("file"), this.controller.importCsv.bind(this.controller));
-    this.router.post("/get", this.controller.get.bind(this.controller));
-    this.router.post("/filtered", this.controller.filtered.bind(this.controller));
-    this.router.post("/total", this.controller.total.bind(this.controller));
-    this.router.post("/getById", this.controller.getById.bind(this.controller));
-    this.router.post("/create", this.controller.create.bind(this.controller));
-    this.router.put("/update", this.controller.update.bind(this.controller));
-    this.router.post("/delete", this.controller.remove.bind(this.controller));
-    this.router.post("/restore", this.controller.restore.bind(this.controller));
-    this.router.post("/transition", this.controller.transition.bind(this.controller));
-    this.router.post("/assign", this.controller.assign.bind(this.controller));
-    this.router.post("/fromVisitor", this.controller.fromVisitor.bind(this.controller));
-    this.router.post("/timeline", this.controller.timeline.bind(this.controller));
+    this.router.post("/get", validate(schemas.readList), this.controller.get.bind(this.controller));
+    this.router.post("/filtered", validate(schemas.readList), this.controller.filtered.bind(this.controller));
+    this.router.post("/total", validate(schemas.readList), this.controller.total.bind(this.controller));
+    this.router.post("/getById", validate(schemas.idOnly), this.controller.getById.bind(this.controller));
+    this.router.post("/create", validate(schemas.lead.create), this.controller.create.bind(this.controller));
+    this.router.put("/update", validate(schemas.lead.update), this.controller.update.bind(this.controller));
+    this.router.post("/delete", validate(schemas.idOnly), this.controller.remove.bind(this.controller));
+    this.router.post("/restore", validate(schemas.idOnly), this.controller.restore.bind(this.controller));
+    this.router.post("/transition", validate(schemas.lead.transition), this.controller.transition.bind(this.controller));
+    this.router.post("/assign", validate(schemas.leadAssign), this.controller.assign.bind(this.controller));
+    this.router.post("/fromVisitor", validate(schemas.fromVisitor), this.controller.fromVisitor.bind(this.controller));
+    this.router.post("/timeline", validate(schemas.idOnly), this.controller.timeline.bind(this.controller));
   }
 
   public getRouter(): Router {

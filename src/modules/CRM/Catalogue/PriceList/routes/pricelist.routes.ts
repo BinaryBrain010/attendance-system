@@ -1,5 +1,6 @@
 import { Router } from "express";
 import PriceListController from "../controllers/pricelist.controller";
+import { validate, schemas } from "../../../shared/validate";
 
 /** Mounts at /crmPriceList. */
 class CrmPriceListRoutes {
@@ -13,11 +14,11 @@ class CrmPriceListRoutes {
   }
 
   private initializeRoutes(): void {
-    this.router.post("/byProduct", this.controller.byProduct.bind(this.controller));
-    this.router.post("/withCost", this.controller.withCost.bind(this.controller));
-    this.router.post("/create", this.controller.create.bind(this.controller));
-    this.router.put("/update", this.controller.update.bind(this.controller));
-    this.router.post("/delete", this.controller.remove.bind(this.controller));
+    this.router.post("/byProduct", validate(schemas.byProduct), this.controller.byProduct.bind(this.controller));
+    this.router.post("/withCost", validate(schemas.byProduct), this.controller.withCost.bind(this.controller));
+    this.router.post("/create", validate(schemas.priceList.create), this.controller.create.bind(this.controller));
+    this.router.put("/update", validate(schemas.priceList.update), this.controller.update.bind(this.controller));
+    this.router.post("/delete", validate(schemas.idOnly), this.controller.remove.bind(this.controller));
   }
 
   public getRouter(): Router {

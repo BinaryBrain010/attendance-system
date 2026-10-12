@@ -13,7 +13,8 @@ _pending_
 
 _(safe defaults chosen when blocked; review these)_
 
-- none yet
+- **featureMap / _livefeatures drift (pre-existing, not from the CRM work).** Regenerating the feature map from the current working DB reports not-registered=4 for four non-CRM features: attendance.create.*, attendance.delete.*, attendance.restore.*, leaveReq.delete.*. Cause: the committed qa/_livefeatures.json snapshot has 245 features while the working DB AppFeature table has 263 (it includes those 4). The committed featureMap.json was generated against the matching snapshot and is correct (122 CRM routes mapped, CRM not-registered = 0), and the running server plus RBAC use the DB's real feature set, so runtime is fine. SAFE DEFAULT: I kept the committed featureMap.json (known-good) and did not resync _livefeatures, because the CRM work added no routes and resyncing is outside this task. To clear it: run `npx ts-node crmSeed.ts` (rewrites _livefeatures from the DB) then `npm run qa:featuremap`; expected not-registered = 0 since the DB has all four features. Please confirm whether those 4 features are intended to be live before resyncing.
+- **Online Orders agent person is still unset** (AG-ONLINE.userId is null) and **AG004 Sadaf Raza still has no login**. Left as-is per your earlier note that you will confirm the person.
 
 ## Task progress
 
@@ -39,4 +40,13 @@ Ran the PROD_DEPLOY_PLAN steps against the gatePassSystem_restore DB (pre-work, 
 - Returns import dry run then real: orders 0 -> 68, returns 0 -> 62 (matches; reproducible).
 - RBAC impact report on the restore copy: 174 of 175 users would lose at least one endpoint once RBAC_ENFORCE=on (top losers 413 routes each). This is expected because the restore users have no roles/grants for the new structure yet. It confirms the plan's off -> log -> on rollout and "assign roles before flipping on" are necessary, not optional.
 - No stray working-tree changes; _livefeatures.json unchanged (restore and working have the same 245 features).
+- Commit (backend): 762d1ef.
+
+### Task 3 - Security + validation on all CRM endpoints  [DONE]
+- New module src/modules/CRM/shared/validate.ts: Zod whitelist schemas for every CRM create/update/transition plus id-only and list bodies, and a validate(schema) middleware. One mechanism does three jobs: type-checks (bad type -> 400 with a clear message, never a 500), strips unknown/junk keys (so junk can't reach Prisma and 500), and leaves server-controlled fields out of the whitelist (mass-assignment guard).
+- Mass-assignment: createdBy/updatedBy, sourceFile/legacyId, subtotal/total, status (transition only), stage on lead update (transition only), reattemptCount, quotation version/isActive/parentId, isDeleted are all not settable from the body. agentId is still allowed but scope-checked in the service; scope is allowed only on the SalesAgent endpoints.
+- Mounted validate() on all 12 CRM route files (lead, leadActivity, quotation, salesOrder, salesReturn, salesAgent, category, brand, product, pricelist, bundle). No new routes added, so the feature map is unchanged; committed featureMap has CRM not-registered = 0.
+- List endpoints now coerce and CLAMP pageSize to a max of 200 (also serves Task 7's max-page-size requirement).
+- Harness: added 19 validation/mass-assignment/fuzz tests. CRM harness now 155/0.
+- Gates: tsc clean, qa:rbac 306/1/3, CRM harness 155/0.
 - Commit (backend): see hash below.
