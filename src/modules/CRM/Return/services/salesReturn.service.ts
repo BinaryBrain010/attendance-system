@@ -10,6 +10,14 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.status) w.status = f.status;
   if (f.agentId) w.agentId = f.agentId;
   if (f.courier) w.courier = f.courier;
+  if (f.phone) w.phone = { contains: String(f.phone).replace(/\s+/g, ""), mode: "insensitive" };
+  if (f.search) {
+    const s = String(f.search).trim();
+    w.OR = [
+      { customerName: { contains: s, mode: "insensitive" } }, { phone: { contains: s, mode: "insensitive" } },
+      { returnNo: { contains: s, mode: "insensitive" } }, { trackingNo: { contains: s, mode: "insensitive" } },
+    ];
+  }
   if (f.from || f.to) { w.reportedAt = {}; if (f.from) w.reportedAt.gte = new Date(f.from); if (f.to) w.reportedAt.lte = new Date(f.to); }
   return w;
 }

@@ -589,6 +589,11 @@
     "feature": "crm.report.read.*",
     "kind": "read"
   },
+  "POST /crmReport/customer360": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
   "POST /crmReport/dailySummary": {
     "access": "feature",
     "feature": "crm.report.read.*",
@@ -1604,6 +1609,11 @@
     "feature": "crm.order.delete.*",
     "kind": "delete"
   },
+  "POST /salesOrder/deliverySlip": {
+    "access": "feature",
+    "feature": "crm.order.read.own.*",
+    "kind": "read"
+  },
   "POST /salesOrder/filtered": {
     "access": "feature",
     "feature": "crm.order.read.own.*",
@@ -1625,6 +1635,11 @@
     "kind": "read"
   },
   "POST /salesOrder/getById": {
+    "access": "feature",
+    "feature": "crm.order.read.own.*",
+    "kind": "read"
+  },
+  "POST /salesOrder/invoicePdf": {
     "access": "feature",
     "feature": "crm.order.read.own.*",
     "kind": "read"

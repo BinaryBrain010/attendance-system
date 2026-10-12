@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import BaseController from "../../../../core/controllers/base.controller";
 import ReportService from "../services/report.service";
 import { ReportPDF } from "../../../../pdf/report";
-import { canSeeCost } from "../../shared/cost";
+import { canSeeCost, stripCost } from "../../shared/cost";
 import { ForbiddenError } from "../../../../core/errors/app.error";
 
 const pdf = new ReportPDF();
@@ -25,6 +25,14 @@ class ReportController extends BaseController<ReportService> {
   async leadAging(req: Request, res: Response) { await this.run(req, res, () => this.service.leadAging((req as any).userId, req.body || {}), "Lead aging ready"); }
   async repeatCustomers(req: Request, res: Response) { await this.run(req, res, () => this.service.repeatCustomers((req as any).userId, req.body || {}), "Repeat customers ready"); }
   async dailySummary(req: Request, res: Response) { await this.run(req, res, () => this.service.dailySummary((req as any).userId, req.body || {}), "Daily summary ready"); }
+  async customer360(req: Request, res: Response) {
+    await this.handleRequest(async () => {
+      const uid = (req as any).userId;
+      const canSee = await canSeeCost(uid);
+      const data = await this.service.customer360(uid, String(req.body?.phone || ""));
+      return stripCost(data, canSee);
+    }, res, { successMessage: "Customer profile ready" });
+  }
   async margin(req: Request, res: Response) {
     await this.handleRequest(async () => {
       if (!(await canSeeCost((req as any).userId))) throw new ForbiddenError("crm.catalogue.cost.* required for margin");

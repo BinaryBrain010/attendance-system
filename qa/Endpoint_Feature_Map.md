@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-443 routes walked from the live routers. Real DB users counted: 187.
+446 routes walked from the live routers. Real DB users counted: 189.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -13,7 +13,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 11. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 187) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 189) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -133,6 +133,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | PUT | /crmProduct/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
 | POST | /crmProduct/variant | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmReport/agentPerformance | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/customer360 | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /crmReport/dailySummary | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /crmReport/dashboard | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 3 |  |
@@ -336,11 +337,13 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | PUT | /salesAgent/update | update | feature | `crm.agent.update.*` | yes | 1 |  |
 | POST | /salesOrder/create | create | feature | `crm.order.create.*` | yes | 3 |  |
 | POST | /salesOrder/delete | delete | feature | `crm.order.delete.*` | yes | 1 |  |
+| POST | /salesOrder/deliverySlip | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /salesOrder/filtered | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /salesOrder/fromLead | create | feature | `crm.order.create.*` | yes | 3 | Lead -> Order |
 | POST | /salesOrder/fromQuotation | create | feature | `crm.order.create.*` | yes | 3 | Quotation -> Order |
 | POST | /salesOrder/get | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /salesOrder/getById | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/invoicePdf | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /salesOrder/reattempt | update | feature | `crm.order.reattempt.*` | yes | 3 | re-attempt delivery |
 | POST | /salesOrder/restore | restore | feature | `crm.order.restore.*` | yes | 1 |  |
 | POST | /salesOrder/total | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |

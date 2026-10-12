@@ -13,6 +13,16 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.status) w.status = f.status;
   if (f.channel) w.channel = f.channel;
   if (f.agentId) w.agentId = f.agentId;
+  if (f.phone) w.phone = { contains: String(f.phone).replace(/\s+/g, ""), mode: "insensitive" };
+  if (f.reattemptMin != null) w.reattemptCount = { gte: Number(f.reattemptMin) || 1 };
+  if (f.search) {
+    const s = String(f.search).trim();
+    w.OR = [
+      { customerName: { contains: s, mode: "insensitive" } }, { phone: { contains: s, mode: "insensitive" } },
+      { orderNo: { contains: s, mode: "insensitive" } }, { externalOrderNo: { contains: s, mode: "insensitive" } },
+      { trackingNo: { contains: s, mode: "insensitive" } },
+    ];
+  }
   if (f.from || f.to) { w.createdAt = {}; if (f.from) w.createdAt.gte = new Date(f.from); if (f.to) w.createdAt.lte = new Date(f.to); }
   return w;
 }

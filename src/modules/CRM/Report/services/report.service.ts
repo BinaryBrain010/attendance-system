@@ -240,6 +240,34 @@ class ReportService {
     return { scope, days: Object.values(days).sort((a: any, b: any) => a.date.localeCompare(b.date)) };
   }
 
+  /** Customer 360: one customer's leads/quotations/orders/returns by phone (last-10-digit match),
+   * each respecting the caller's scope, plus total spent and a merged timeline. */
+  async customer360(userId: string, phone: string) {
+    const d = String(phone || "").replace(/\D/g, "");
+    // match on the last 7 digits (the subscriber number): this is contiguous in every stored format
+    // (0300-1234567, +92 300 1234567, 3001234567, ...), unlike the full 10 digits which separators break up.
+    const tail = d.length >= 7 ? d.slice(-7) : d;
+    if (!tail) return { phone, name: "(unknown)", counts: { leads: 0, quotations: 0, orders: 0, returns: 0 }, totalSpent: 0, leads: [], quotations: [], orders: [], returns: [], timeline: [] };
+    const match = { phone: { contains: tail } };
+    const [ls, qs, os, rs] = await Promise.all([resolveScope(userId, "lead"), resolveScope(userId, "quotation"), resolveScope(userId, "order"), resolveScope(userId, "return")]);
+    const [leads, quotations, orders, returns] = await Promise.all([
+      prisma.lead.findMany({ where: { AND: [{ isDeleted: null }, match, ls.where] }, orderBy: { dateReceived: "desc" } }),
+      prisma.quotation.findMany({ where: { AND: [{ isDeleted: null }, match, qs.where] }, orderBy: { createdAt: "desc" } }),
+      prisma.salesOrder.findMany({ where: { AND: [{ isDeleted: null }, match, os.where] }, orderBy: { createdAt: "desc" } }),
+      prisma.salesReturn.findMany({ where: { AND: [{ isDeleted: null }, match, rs.where] }, orderBy: { reportedAt: "desc" } }),
+    ]);
+    const totalSpent = orders.filter((o: any) => o.status === "DELIVERED").reduce((s: number, o: any) => s + (o.total || 0), 0);
+    const name = (leads[0] as any)?.customerName || (orders[0] as any)?.customerName || (returns[0] as any)?.customerName || (quotations[0] as any)?.customerName || "(unknown)";
+    const city = (leads[0] as any)?.city || (orders[0] as any)?.city || null;
+    const timeline = [
+      ...leads.map((l: any) => ({ type: "lead", at: l.dateReceived, label: `Lead ${l.stage}${l.leadNo ? ` (${l.leadNo})` : ""}`, id: l.id })),
+      ...quotations.map((q: any) => ({ type: "quotation", at: q.createdAt, label: `Quotation ${q.quotationNo} v${q.version} ${q.status}`, id: q.id })),
+      ...orders.map((o: any) => ({ type: "order", at: o.createdAt, label: `Order ${o.orderNo} ${o.status}`, id: o.id })),
+      ...returns.map((r: any) => ({ type: "return", at: r.reportedAt, label: `Return ${r.returnNo} ${r.status}`, id: r.id })),
+    ].filter((e) => e.at).sort((a, b) => new Date(b.at as any).getTime() - new Date(a.at as any).getTime());
+    return { phone, name, city, counts: { leads: leads.length, quotations: quotations.length, orders: orders.length, returns: returns.length }, totalSpent, leads, quotations, orders, returns, timeline };
+  }
+
   /** 11. Margin (cost-gated in the controller). */
   async margin(userId: string, f: any = {}) {
     const { scope, rows: orders } = await this.orders(userId, f, { status: "DELIVERED" }, true);

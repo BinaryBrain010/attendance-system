@@ -2,9 +2,29 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import SalesOrderService from "../services/salesOrder.service";
 import { canSeeCost, stripCost } from "../../shared/cost";
+import { OrderPDF } from "../../../../pdf/order";
 
 class SalesOrderController extends BaseController<SalesOrderService> {
   protected service = new SalesOrderService();
+  private pdf = new OrderPDF();
+
+  private async sendPdf(req: Request, res: Response, kind: "invoice" | "delivery") {
+    try {
+      const uid = (req as any).userId;
+      const id = (req.body && req.body.id) || req.query.id;
+      const o: any = await this.service.getById(uid, String(id));
+      if (!o) return res.status(404).json({ success: false, message: "Order not found or out of scope" });
+      const doc = kind === "invoice" ? this.pdf.invoice(o) : this.pdf.deliverySlip(o);
+      doc.getBuffer((buffer: Buffer) => {
+        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${o.orderNo}-${kind}.pdf"` });
+        res.end(buffer);
+      });
+    } catch (err: any) {
+      res.status(err?.statusCode || 500).json({ success: false, message: err?.message || "PDF failed" });
+    }
+  }
+  async invoicePdf(req: Request, res: Response) { await this.sendPdf(req, res, "invoice"); }
+  async deliverySlip(req: Request, res: Response) { await this.sendPdf(req, res, "delivery"); }
 
   async get(req: Request, res: Response) {
     const { page, pageSize, ...filters } = req.body || {};

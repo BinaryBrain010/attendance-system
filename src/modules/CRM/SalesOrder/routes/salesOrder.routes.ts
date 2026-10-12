@@ -24,6 +24,8 @@ class SalesOrderRoutes {
     this.router.put("/update", validate(schemas.order.update), this.controller.update.bind(this.controller));
     this.router.post("/transition", validate(schemas.order.transition), this.controller.transition.bind(this.controller));
     this.router.post("/reattempt", validate(schemas.idOnly), this.controller.reattempt.bind(this.controller));
+    this.router.post("/invoicePdf", validate(schemas.idOnly), this.controller.invoicePdf.bind(this.controller));
+    this.router.post("/deliverySlip", validate(schemas.idOnly), this.controller.deliverySlip.bind(this.controller));
     this.router.post("/delete", validate(schemas.idOnly), this.controller.remove.bind(this.controller));
     this.router.post("/restore", validate(schemas.idOnly), this.controller.restore.bind(this.controller));
   }

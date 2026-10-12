@@ -515,6 +515,19 @@ async function main() {
   // the server must still be alive after all the garbage
   check("server still healthy after fuzz (no crash)", (await api("POST", "/lead/get", tAdmin, { page: 1, pageSize: 1 })).status === 200);
 
+  console.log("\n[crm] ===== Task 4: customer 360 + order PDFs + search =====");
+  const c360Phone = "0300-77" + String(Date.now()).slice(-6);
+  await api("POST", "/lead/create", tAdmin, { customerName: `${QTAG}C360`, phone: c360Phone, agentId: AG001.id });
+  const c360Order = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}C360`, phone: c360Phone, agentId: AG001.id, items: [{ description: "x", quantity: 1, unitPrice: 5000 }] });
+  const c360 = await api("POST", "/crmReport/customer360", tAdmin, { phone: c360Phone });
+  check("customer360 finds lead + order by phone", c360.status === 200 && c360.data?.counts?.leads >= 1 && c360.data?.counts?.orders >= 1 && Array.isArray(c360.data?.timeline), `status ${c360.status} ${JSON.stringify(c360.data?.counts)}`);
+  check("customer360 out-of-scope phone -> empty for AGENT_OWN", ((await api("POST", "/crmReport/customer360", tOwn, { phone: "0300-0000001" })).data?.counts?.orders || 0) === 0);
+  check("order invoice PDF -> 200", (await api("POST", "/salesOrder/invoicePdf", tAdmin, { id: c360Order.data?.id })).status === 200);
+  check("order delivery slip PDF -> 200", (await api("POST", "/salesOrder/deliverySlip", tAdmin, { id: c360Order.data?.id })).status === 200);
+  check("AGENT_OWN cannot PDF out-of-scope order -> 404/403", [403, 404].includes((await api("POST", "/salesOrder/invoicePdf", tOwn, { id: outO.id })).status));
+  check("lead search by phone finds it", ((await api("POST", "/lead/get", tAdmin, { search: c360Phone })).data?.data || []).some((l: any) => l.phone === c360Phone));
+  check("order reattemptMin filter returns only reattempted", ((await api("POST", "/salesOrder/get", tAdmin, { reattemptMin: 1, pageSize: 100 })).data?.data || []).every((o: any) => (o.reattemptCount || 0) >= 1));
+
   // ---- cleanup (drop the entire QA world; real users/agents untouched) ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });
