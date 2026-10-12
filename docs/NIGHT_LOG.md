@@ -5,9 +5,54 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 Backup taken first: qa/backups/night_20261013_022255.sql (354 MB, full gatePassSystem dump, gitignored).
 DATABASE_URL confirmed localhost, DB gatePassSystem.
 
-## Summary (filled in Task 9)
+## Summary (morning report)
 
-_pending_
+Good morning. Here is what got done overnight. Everything stayed local, nothing was pushed, and the real
+business data is untouched (leads 261, orders 68, returns 62 - exactly as before; quotations 0; zero QA
+test residue left behind).
+
+**Final test counts:** qa:rbac 306 pass / 1 fail / 3 blocked (same as the start, no regression). CRM
+harness 162 pass / 0 fail (started at 136; I added 26 tests for validation, mass-assignment, fuzzing,
+customer 360, order PDFs and search).
+
+**Admin build:** `next build` is clean (exit 0), so it will deploy on Vercel.
+
+**Backend build:** `tsc` is fully clean now (the two old src/excel errors are fixed).
+
+**Servers:** backend is running on :3002 with RBAC_ENFORCE=on, admin dev server on :3001.
+
+**Deploy rehearsal (Task 2):** I ran the whole PROD_DEPLOY_PLAN against the gatePassSystem_restore copy.
+The schema push is additive only. Lead and returns imports reproduce exactly (261 / 68 / 62). I found
+and fixed one real risk: the role seeder would have clobbered an existing prod Admin/HR role, so it now
+skips existing roles unless you pass --replace.
+
+### What is done
+- Task 1 (admin prod build + backend tsc clean): DONE.
+- Task 2 (deploy rehearsal on the restore DB): DONE.
+- Task 3 (Zod validation + mass-assignment guard + fuzz tests on all CRM endpoints): DONE.
+- Task 4 (missing screens): MOSTLY DONE. Built: lead create form with phone lookup, My Day, Customer
+  360, lead search, Reattempts view, order invoice/delivery PDFs, quotation duplicate + WhatsApp.
+  Deferred: agents edit, catalogue product add/edit + bulk price Excel, bulk lead reassign, Frontdesk
+  "Create lead" button, lead edit form. (Details and reasons in the Task 4 section.)
+- Task 5 (UI polish): native prompt/alert replaced with a reusable dialog + snackbar across CRM pages.
+  A full cosmetic sweep of older pages is left for a focused review.
+- Task 6 (execute UAT): DONE - docs/UAT_Run_Results.md, all rows pass, two issues found and fixed.
+- Task 7 (performance): DONE - indexes added, phoneNormalized column + backfill, every report under 1s.
+- Task 8 (user guide): DONE - docs/CRM_User_Guide.md.
+- Task 9 (this report + cleanup): DONE.
+
+### Commits (no attribution lines, as asked)
+Backend: 6737e00 (T1), 762d1ef (T2), 2fb846b (T3), d375db7 (T4 lead filter), f104d3d (T4 backend),
+3c3ab23 (T4 phone fix), 08269ae (T7), c8fc1e2 (T6), 0890b31 (T8), plus night-log commits.
+Admin: d6b9c9a (T4 screens), 3658e9e (T5).
+
+### New docs for you
+- docs/CRM_User_Guide.md - plain guide for the sales team.
+- docs/UAT_Run_Results.md - the UAT run, with evidence.
+- docs/PROD_DEPLOY_PLAN.md - updated with the rehearsal findings.
+- docs/NIGHT_LOG.md - this file.
+
+### Open issues / things to decide - see "Decisions for Ahad" below.
 
 ## Decisions for Ahad
 
@@ -15,6 +60,8 @@ _(safe defaults chosen when blocked; review these)_
 
 - **featureMap / _livefeatures drift - FIXED during Task 4.** The committed qa/_livefeatures.json snapshot had 245 features while the working DB AppFeature table has 263, so regenerating the feature map reported not-registered=4 for attendance.create/delete/restore and leaveReq.delete. I resynced _livefeatures.json from the DB (263 features) and regenerated featureMap: not-registered is now 0, and qa:rbac stayed 306/1/3 (no regression - those 4 routes now map to their real features instead of being treated as unmapped). Nothing for you to do; noting it because _livefeatures.json and featureMap.json changed. If those 4 features were deliberately removed from the snapshot, tell me and I will reconsider.
 - **Online Orders agent person is still unset** (AG-ONLINE.userId is null) and **AG004 Sadaf Raza still has no login**. Left as-is per your earlier note that you will confirm the person.
+- **Deferred Task 4 screens** (ran out of safe night budget, nothing broken): agents edit (target/commission/team/scope), catalogue product add/edit + bulk price-from-Excel (the biggest, and it is cost-gated), bulk lead reassign for managers, the Frontdesk "Create lead" button (the /lead/fromVisitor endpoint and a leadService.fromVisitor method are already in place, only the button is left on a large existing page), and a lead EDIT form (create is done). Say the word and I will finish these.
+- **Task 5 is partial on purpose:** the specific ask (replace native prompt/alert) is done and verified; a full cosmetic sweep of the older CRM pages (DataGrid widths, spacing, a global delete-confirm) is left for a focused daytime review rather than rushed overnight.
 
 ### Task 4 - Missing CRM screens  [PARTIAL - see done/deferred]
 Backend (committed f104d3d + the phone-filter fix): Customer 360 endpoint (/crmReport/customer360, scope + cost gated), order invoice + delivery slip PDFs (same black/grey letterhead), phone and free-text search filters on lead/order/return/quotation, order reattempt filter, and lead search (name/phone/code). Phone matching uses the last 7 digits (the subscriber number), which is contiguous in every stored format (0300-1234567, +92 300..., 3001234567) - a plain digit-strip contains failed because separators break up the longer tail. featureMap not-registered stayed 0; qa:rbac 306/1/3; CRM harness 162/0 (added customer360, order PDF, search, reattempt tests).
@@ -42,6 +89,12 @@ DEFERRED (clearly out of time-budget tonight, noted for Ahad): d (agents edit ta
 - The new pages built in Task 4 already follow the house style: consistent page headers, loading and empty states, PKR formatting, Asia/Karachi dates (Customer 360), usable at phone width, scope chips.
 - Admin production build is clean (next build exit 0).
 - NOT done (honest): a full visual sweep of every pre-existing CRM page for spacing/DataGrid widths and a global confirm dialog for destructive deletes. The existing pages were built consistently in earlier phases and work; this is cosmetic tightening, left for a focused review. Noted here rather than rushed at night.
+
+### Task 9 - Final report + cleanup  [DONE]
+- Confirmed real counts unchanged: leads 261, orders 68, returns 62, quotations 0. Zero QA residue (no QA_CRM_ leads/categories, no qa.crm. users, no QA_AG_/QA_EMP_ rows) - the harness cleans up after itself.
+- Final gates: CRM harness 162/0, qa:rbac 306/1/3. Admin next build clean. Backend tsc clean.
+- Left running: backend on :3002 (RBAC_ENFORCE=on), admin dev server on :3001.
+- Backup from the start of the run is at qa/backups/night_20261013_022255.sql (gitignored).
 
 ## Task progress
 
