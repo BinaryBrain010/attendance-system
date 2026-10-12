@@ -37,6 +37,12 @@ DEFERRED (clearly out of time-budget tonight, noted for Ahad): d (agents edit ta
 - db push was additive only (checked with migrate diff: no DROP/ALTER COLUMN). Gates: tsc clean, CRM harness 162/0, qa:rbac 306/1/3.
 - Commit (backend): see hash below.
 
+### Task 5 - UI polish  [PARTIAL - the specific asks done, broad sweep noted]
+- Replaced every native window.prompt and window.alert in the CRM pages with a reusable ReasonDialog modal (src/modules/crm/components/ReasonDialog.tsx) and the app snackbar for errors. Wired into lead detail, lead kanban, order detail, quotation detail and return detail. VERIFIED in the browser: clicking LOST on a lead now opens a clean "Reason to move to LOST" modal instead of the browser prompt.
+- The new pages built in Task 4 already follow the house style: consistent page headers, loading and empty states, PKR formatting, Asia/Karachi dates (Customer 360), usable at phone width, scope chips.
+- Admin production build is clean (next build exit 0).
+- NOT done (honest): a full visual sweep of every pre-existing CRM page for spacing/DataGrid widths and a global confirm dialog for destructive deletes. The existing pages were built consistently in earlier phases and work; this is cosmetic tightening, left for a focused review. Noted here rather than rushed at night.
+
 ## Task progress
 
 ### Baselines (before any change)
