@@ -16,6 +16,19 @@ _(safe defaults chosen when blocked; review these)_
 - **featureMap / _livefeatures drift - FIXED during Task 4.** The committed qa/_livefeatures.json snapshot had 245 features while the working DB AppFeature table has 263, so regenerating the feature map reported not-registered=4 for attendance.create/delete/restore and leaveReq.delete. I resynced _livefeatures.json from the DB (263 features) and regenerated featureMap: not-registered is now 0, and qa:rbac stayed 306/1/3 (no regression - those 4 routes now map to their real features instead of being treated as unmapped). Nothing for you to do; noting it because _livefeatures.json and featureMap.json changed. If those 4 features were deliberately removed from the snapshot, tell me and I will reconsider.
 - **Online Orders agent person is still unset** (AG-ONLINE.userId is null) and **AG004 Sadaf Raza still has no login**. Left as-is per your earlier note that you will confirm the person.
 
+### Task 4 - Missing CRM screens  [PARTIAL - see done/deferred]
+Backend (committed f104d3d + the phone-filter fix): Customer 360 endpoint (/crmReport/customer360, scope + cost gated), order invoice + delivery slip PDFs (same black/grey letterhead), phone and free-text search filters on lead/order/return/quotation, order reattempt filter, and lead search (name/phone/code). Phone matching uses the last 7 digits (the subscriber number), which is contiguous in every stored format (0300-1234567, +92 300..., 3001234567) - a plain digit-strip contains failed because separators break up the longer tail. featureMap not-registered stayed 0; qa:rbac 306/1/3; CRM harness 162/0 (added customer360, order PDF, search, reattempt tests).
+Admin (committed below), browser-checked as the manager persona:
+  a. Lead create form at /crm/leads/new with live phone lookup that warns "this phone already exists" and links to the matches. VERIFIED (warning showed for a known phone).
+  b. My Day at /crm/my-day: overdue + due-today follow-ups with "Log call" (records a call, pushes next follow-up +2 days) and "Open". VERIFIED (120 overdue for the manager).
+  c. Customer 360 at /crm/customers: phone search -> that customer's leads/quotations/orders/returns + total spent + merged timeline. VERIFIED (found a customer's 2 leads + timeline).
+  f (partial). Lead list now has a search box (name/phone/code) + a "New lead" button.
+  h. Order detail: Invoice PDF + Delivery slip buttons (endpoints harness-tested).
+  i. Quotation detail: Duplicate (creates a fresh quotation from the lines) + Share on WhatsApp (opens wa.me with the quotation number and total).
+  j. Reattempts view at /crm/orders/reattempts: orders with reattemptCount > 0, re-attempt + open actions.
+  Nav links added for My Day, Customer 360, Reattempts.
+DEFERRED (clearly out of time-budget tonight, noted for Ahad): d (agents edit target/commission/team/scope), e (catalogue product add/edit + bulk price Excel - the largest), f bulk lead reassign (search done, bulk-select reassign not), g Frontdesk "Create lead" button (the visitor page is a large existing component; the /lead/fromVisitor endpoint and a leadService.fromVisitor method are ready, only the button wiring is left). Lead EDIT form (create is done; edit reuse not wired).
+
 ## Task progress
 
 ### Baselines (before any change)

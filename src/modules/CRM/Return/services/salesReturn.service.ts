@@ -10,7 +10,7 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.status) w.status = f.status;
   if (f.agentId) w.agentId = f.agentId;
   if (f.courier) w.courier = f.courier;
-  if (f.phone) w.phone = { contains: String(f.phone).replace(/\s+/g, ""), mode: "insensitive" };
+  if (f.phone) { const pd = String(f.phone).replace(/\D/g, ""); const n = pd.length >= 7 ? pd.slice(-7) : pd; if (n) w.phone = { contains: n }; }
   if (f.search) {
     const s = String(f.search).trim();
     w.OR = [
