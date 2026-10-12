@@ -248,7 +248,7 @@ class ReportService {
     // (0300-1234567, +92 300 1234567, 3001234567, ...), unlike the full 10 digits which separators break up.
     const tail = d.length >= 7 ? d.slice(-7) : d;
     if (!tail) return { phone, name: "(unknown)", counts: { leads: 0, quotations: 0, orders: 0, returns: 0 }, totalSpent: 0, leads: [], quotations: [], orders: [], returns: [], timeline: [] };
-    const match = { phone: { contains: tail } };
+    const match = { phoneNormalized: { contains: tail } };
     const [ls, qs, os, rs] = await Promise.all([resolveScope(userId, "lead"), resolveScope(userId, "quotation"), resolveScope(userId, "order"), resolveScope(userId, "return")]);
     const [leads, quotations, orders, returns] = await Promise.all([
       prisma.lead.findMany({ where: { AND: [{ isDeleted: null }, match, ls.where] }, orderBy: { dateReceived: "desc" } }),

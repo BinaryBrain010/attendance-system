@@ -3,6 +3,7 @@ import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
+import { normalizePhone, phoneNeedle } from "../../shared/phone";
 
 export interface LeadFilters {
   company?: string; outlet?: string; city?: string; stage?: string;
@@ -19,7 +20,7 @@ function filterWhere(f: LeadFilters = {}): Record<string, any> {
   if (f.priority) w.priority = f.priority;
   if (f.channel) w.channel = f.channel;
   if (f.agentId) w.agentId = f.agentId;
-  if (f.phone) { const pd = String(f.phone).replace(/\D/g, ""); const n = pd.length >= 7 ? pd.slice(-7) : pd; if (n) w.phone = { contains: n }; }
+  if (f.phone) { const n = phoneNeedle(f.phone); if (n) w.phoneNormalized = { contains: n }; }
   if (f.search) {
     const s = String(f.search).trim();
     w.OR = [
@@ -83,6 +84,7 @@ class LeadService {
   async create(userId: string, data: any) {
     const scope = await resolveScope(userId, "lead");
     data.agentId = resolveAssignment(scope, data.agentId);
+    if (data.phone !== undefined) data.phoneNormalized = normalizePhone(data.phone);
     return prisma.lead.gpCreate(data);
   }
 
@@ -93,6 +95,7 @@ class LeadService {
     assertRowInScope(scope, existing.agentId, "Lead");
     if (Object.prototype.hasOwnProperty.call(data, "agentId")) data.agentId = resolveAssignment(scope, data.agentId);
     if (Object.prototype.hasOwnProperty.call(data, "stage")) delete data.stage; // stage only via /transition
+    if (Object.prototype.hasOwnProperty.call(data, "phone")) data.phoneNormalized = normalizePhone(data.phone);
     return prisma.lead.gpUpdate(id, data);
   }
 

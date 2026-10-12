@@ -893,11 +893,15 @@ model Lead {
   isDeleted      DateTime?
   createdBy      String?
   updatedBy      String?
+  phoneNormalized String?
   @@unique([sourceFile, legacyId])
   @@index([agentId])
   @@index([stage])
   @@index([company])
   @@index([city])
+  @@index([dateReceived])
+  @@index([agentId, stage])
+  @@index([phoneNormalized])
 }
 
 model LeadActivity {
@@ -941,10 +945,13 @@ model Quotation {
   isDeleted    DateTime?
   createdBy    String?
   updatedBy    String?
+  phoneNormalized String?
   @@unique([quotationNo, version])
   @@index([agentId])
   @@index([status])
   @@index([company])
+  @@index([createdAt])
+  @@index([phoneNormalized])
 }
 
 model QuotationItem {
@@ -997,11 +1004,15 @@ model SalesOrder {
   isDeleted     DateTime?
   createdBy     String?
   updatedBy     String?
+  phoneNormalized String?
   @@unique([sourceFile, legacyId])
   @@index([agentId])
   @@index([status])
   @@index([company])
   @@index([city])
+  @@index([createdAt])
+  @@index([reattemptCount])
+  @@index([phoneNormalized])
 }
 
 model SalesOrderItem {
@@ -1040,8 +1051,12 @@ model SalesReturn {
   isDeleted    DateTime?
   createdBy    String?
   updatedBy    String?
+  phoneNormalized String?
   @@index([status])
   @@index([city])
+  @@index([agentId])
+  @@index([reportedAt])
+  @@index([phoneNormalized])
 }
 
 model ReturnItem {

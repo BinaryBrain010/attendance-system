@@ -29,6 +29,14 @@ Admin (committed below), browser-checked as the manager persona:
   Nav links added for My Day, Customer 360, Reattempts.
 DEFERRED (clearly out of time-budget tonight, noted for Ahad): d (agents edit target/commission/team/scope), e (catalogue product add/edit + bulk price Excel - the largest), f bulk lead reassign (search done, bulk-select reassign not), g Frontdesk "Create lead" button (the visitor page is a large existing component; the /lead/fromVisitor endpoint and a leadService.fromVisitor method are ready, only the button wiring is left). Lead EDIT form (create is done; edit reuse not wired).
 
+### Task 7 - Performance  [DONE]
+- Added indexes (additive db push): Lead [dateReceived], [agentId, stage], [phoneNormalized]; SalesOrder [createdAt], [reattemptCount], [phoneNormalized]; SalesReturn [agentId], [reportedAt], [phoneNormalized]; Quotation [createdAt], [phoneNormalized]. (Existing agentId/stage/status/company/city indexes kept.)
+- Added a phoneNormalized column (digits only) to Lead/SalesOrder/SalesReturn/Quotation, populated on create/update via shared/phone.ts, backfilled existing rows (261 leads, 68 orders, 62 returns). Phone lookups (lead form, search, customer360) now match on phoneNormalized by the last 7 digits, which is cleaner than matching the raw formatted phone.
+- List endpoints already clamp pageSize to a max of 200 (added in Task 3).
+- Measured every report against the real data (god/ALL scope): dashboard 177ms, all others under 50ms, customer360 15ms, lead search 20ms. Nothing is over 1s, so no report needed further optimization.
+- db push was additive only (checked with migrate diff: no DROP/ALTER COLUMN). Gates: tsc clean, CRM harness 162/0, qa:rbac 306/1/3.
+- Commit (backend): see hash below.
+
 ## Task progress
 
 ### Baselines (before any change)

@@ -1,6 +1,7 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { priceLines } from "../../shared/pricing";
+import { normalizePhone, phoneNeedle } from "../../shared/phone";
 import { assertTransition } from "../../shared/stateMachine";
 import { syncLeadStage } from "../../shared/leadSync";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
@@ -13,7 +14,7 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.tier) w.tier = f.tier;
   if (f.agentId) w.agentId = f.agentId;
   if (f.activeOnly) w.isActive = true;
-  if (f.phone) { const pd = String(f.phone).replace(/\D/g, ""); const n = pd.length >= 7 ? pd.slice(-7) : pd; if (n) w.phone = { contains: n }; }
+  if (f.phone) { const n = phoneNeedle(f.phone); if (n) w.phoneNormalized = { contains: n }; }
   if (f.search) {
     const s = String(f.search).trim();
     w.OR = [
@@ -89,7 +90,7 @@ class QuotationService {
     return prisma.$transaction(async (tx) => {
       const q = await tx.quotation.create({
         data: {
-          quotationNo, version: 1, isActive: true, leadId: h.leadId ?? null, customerName: h.customerName, phone: h.phone ?? null,
+          quotationNo, version: 1, isActive: true, leadId: h.leadId ?? null, customerName: h.customerName, phone: h.phone ?? null, phoneNormalized: normalizePhone(h.phone),
           tier: h.tier ?? "RETAIL", status: "DRAFT", subtotal, discount: h.discount || 0, total,
           validUntil: h.validUntil ? new Date(h.validUntil) : null, agentId: h.agentId ?? null, outlet: h.outlet ?? null,
           company: h.company ?? "OKASHASMART", createdBy: userId,
@@ -138,7 +139,7 @@ class QuotationService {
     const quotationNo = await nextQuotationNo();
     return prisma.$transaction(async (tx) => {
       const q = await tx.quotation.create({
-        data: { quotationNo, version: 1, isActive: true, leadId: lead.id, customerName: lead.customerName, phone: lead.phone,
+        data: { quotationNo, version: 1, isActive: true, leadId: lead.id, customerName: lead.customerName, phone: lead.phone, phoneNormalized: normalizePhone(lead.phone),
           tier: "RETAIL", status: "DRAFT", subtotal, discount: 0, total, agentId, outlet: lead.outlet, company: "OKASHASMART", createdBy: userId },
       });
       for (const l of lines) await tx.quotationItem.create({ data: lineData(q.id, l) });

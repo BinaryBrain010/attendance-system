@@ -1,6 +1,7 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { assertTransition } from "../../shared/stateMachine";
+import { normalizePhone, phoneNeedle } from "../../shared/phone";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 
 function filterWhere(f: any = {}): Record<string, any> {
@@ -10,7 +11,7 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.status) w.status = f.status;
   if (f.agentId) w.agentId = f.agentId;
   if (f.courier) w.courier = f.courier;
-  if (f.phone) { const pd = String(f.phone).replace(/\D/g, ""); const n = pd.length >= 7 ? pd.slice(-7) : pd; if (n) w.phone = { contains: n }; }
+  if (f.phone) { const n = phoneNeedle(f.phone); if (n) w.phoneNormalized = { contains: n }; }
   if (f.search) {
     const s = String(f.search).trim();
     w.OR = [
@@ -59,7 +60,7 @@ class SalesReturnService {
     const returnNo = h.returnNo || (await nextReturnNo());
     return prisma.$transaction(async (tx) => {
       const r = await tx.salesReturn.create({
-        data: { returnNo, orderId: h.orderId ?? null, customerName: h.customerName, phone: h.phone ?? null, city: h.city ?? null,
+        data: { returnNo, orderId: h.orderId ?? null, customerName: h.customerName, phone: h.phone ?? null, phoneNormalized: normalizePhone(h.phone), city: h.city ?? null,
           status: "REPORTED", reason: h.reason, courier: h.courier ?? null, trackingNo: h.trackingNo ?? null, agentId: h.agentId ?? null,
           company: h.company ?? "OKASHASMART", createdBy: userId },
       });
@@ -79,7 +80,7 @@ class SalesReturnService {
     const returnNo = await nextReturnNo();
     return prisma.$transaction(async (tx) => {
       const r = await tx.salesReturn.create({
-        data: { returnNo, orderId: order.id, customerName: order.customerName, phone: order.phone, city: order.city, status: "REPORTED",
+        data: { returnNo, orderId: order.id, customerName: order.customerName, phone: order.phone, phoneNormalized: normalizePhone(order.phone), city: order.city, status: "REPORTED",
           reason, courier: order.courier, trackingNo: order.trackingNo, agentId, company: order.company, createdBy: userId },
       });
       for (const it of order.items) await tx.returnItem.create({ data: itemData(r.id, { productId: it.productId, description: it.description, quantity: it.quantity }) });
@@ -95,6 +96,7 @@ class SalesReturnService {
     assertRowInScope(scope, existing.agentId, "Return");
     const d: any = {};
     for (const k of ["customerName", "phone", "city", "courier", "trackingNo", "reason"]) if (k in data) d[k] = data[k];
+    if ("phone" in data) d.phoneNormalized = normalizePhone(data.phone);
     return prisma.salesReturn.gpUpdate(id, { ...d, updatedBy: userId });
   }
 

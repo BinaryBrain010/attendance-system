@@ -1,5 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
+import { normalizePhone, phoneNeedle } from "../../shared/phone";
 import { priceLines } from "../../shared/pricing";
 import { assertTransition } from "../../shared/stateMachine";
 import { syncLeadStage } from "../../shared/leadSync";
@@ -13,7 +14,7 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.status) w.status = f.status;
   if (f.channel) w.channel = f.channel;
   if (f.agentId) w.agentId = f.agentId;
-  if (f.phone) { const pd = String(f.phone).replace(/\D/g, ""); const n = pd.length >= 7 ? pd.slice(-7) : pd; if (n) w.phone = { contains: n }; }
+  if (f.phone) { const n = phoneNeedle(f.phone); if (n) w.phoneNormalized = { contains: n }; }
   if (f.reattemptMin != null) w.reattemptCount = { gte: Number(f.reattemptMin) || 1 };
   if (f.search) {
     const s = String(f.search).trim();
@@ -75,7 +76,7 @@ class SalesOrderService {
     return prisma.$transaction(async (tx) => {
       const o = await tx.salesOrder.create({
         data: {
-          orderNo, leadId: h.leadId ?? null, quotationId: h.quotationId ?? null, customerName: h.customerName, phone: h.phone ?? null,
+          orderNo, leadId: h.leadId ?? null, quotationId: h.quotationId ?? null, customerName: h.customerName, phone: h.phone ?? null, phoneNormalized: normalizePhone(h.phone),
           city: h.city ?? null, area: h.area ?? null, outlet: h.outlet ?? null, address: h.address ?? null, status: "DRAFT", subtotal, discount: h.discount || 0,
           total, channel: h.channel ?? null, externalOrderNo: h.externalOrderNo ?? null, courier: h.courier ?? null, trackingNo: h.trackingNo ?? null,
           paymentType: h.paymentType ?? null, amountReceived: h.amountReceived ?? null, agentId: h.agentId ?? null,
