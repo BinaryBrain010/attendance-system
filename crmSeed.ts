@@ -13,11 +13,12 @@ import fs from "fs";
 import path from "path";
 import prisma from "./src/core/models/base.model";
 
-// ---- hard local guard ----
+// ---- hard local guard (prod run is an explicit opt-in: --allow-remote, per PROD_DEPLOY_PLAN) ----
 const DB = process.env.DATABASE_URL || "";
 const host = (() => { try { return DB.split("://")[1].split("@").pop()!.split("/")[0].split(":")[0]; } catch { return ""; } })();
-if (!["localhost", "127.0.0.1", "[::1]"].includes(host)) {
-  console.error(`[crmSeed] REFUSING — DATABASE_URL host "${host}" is not local.`); process.exit(2);
+const ALLOW_REMOTE = process.argv.includes("--allow-remote");
+if (!["localhost", "127.0.0.1", "[::1]"].includes(host) && !ALLOW_REMOTE) {
+  console.error(`[crmSeed] REFUSING — DATABASE_URL host "${host}" is not local (pass --allow-remote for the prod run per the deploy plan).`); process.exit(2);
 }
 
 type F = [name: string, parent: string | null, label: string];
