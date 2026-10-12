@@ -15,7 +15,8 @@
  */
 import fs from "fs";
 import path from "path";
-import { mintTokenFor, api, IS_LOCAL } from "./lib";
+import bcrypt from "bcrypt";
+import { mintTokenFor, api, IS_LOCAL, QA_PASSWORD, QA_EMAIL_DOMAIN } from "./lib";
 import prisma from "../src/core/models/base.model";
 
 if (!IS_LOCAL) process.exit(2);
@@ -40,20 +41,57 @@ const TEAM = (e: string) => `crm.${e}.read.team.*`;
 const ALL = (e: string) => `crm.${e}.read.all.*`;
 const ENTS = ["lead", "quotation", "order"];
 
-async function pickNonAgentUsers(n: number, exclude: string[]): Promise<string[]> {
-  const agents = await prisma.salesAgent.findMany({ select: { userId: true } });
-  const agentUserIds = new Set(agents.map((a) => a.userId).filter(Boolean) as string[]);
-  const users = await prisma.user.findMany({
-    where: { isDeleted: null, NOT: { username: { startsWith: "qa." } }, employeeId: { not: null } },
-    select: { id: true }, take: 200,
+// ---- dedicated QA world (NEVER touch real users/employees/agents) ----
+// Every persona is a `qa.crm.*` user; agent personas get their own QA employees + SalesAgents. All of
+// it is created at setup and dropped at teardown, so real users' grants and the real agent team are
+// left completely untouched.
+const QA_U = "qa.crm.";          // username prefix (under lib's qa. convention)
+const QA_AGCODE = "QA_AG_";      // SalesAgent.agentCode prefix (no collision with real AG001..)
+const QA_EMPCODE = "QA_EMP_";    // Employee.code prefix
+
+async function mkEmp(slug: string, name: string) {
+  return prisma.employee.create({
+    data: {
+      name, surname: "QA", address: "QA", dob: new Date("1990-01-01"), joiningDate: new Date("2020-01-01"),
+      bloodGroup: "O+", contactNo: "0000000000", designation: "QA Sales Agent", department: "Sales",
+      martialStatus: "Single", company: "OKASHASMART", code: `${QA_EMPCODE}${slug}`, status: "ACTIVE",
+    },
   });
-  const out: string[] = [];
-  for (const u of users) {
-    if (agentUserIds.has(u.id) || exclude.includes(u.id) || u.id === "58c55d6a-910c-46f8-a422-4604bea6cd15") continue;
-    out.push(u.id);
-    if (out.length >= n) break;
+}
+let QA_HASH = "";
+async function mkUser(slug: string, employeeId: string | null = null) {
+  if (!QA_HASH) QA_HASH = await bcrypt.hash(QA_PASSWORD, 4);
+  return prisma.user.create({ data: { username: `${QA_U}${slug}${QA_EMAIL_DOMAIN}`, password: QA_HASH, employeeId, createdAt: new Date() } });
+}
+async function mkAgent(code: string, employeeId: string, userId: string, scope: "OWN" | "TEAM" | "ALL", teamLeadId: string | null = null) {
+  return prisma.salesAgent.create({ data: { agentCode: `${QA_AGCODE}${code}`, employeeId, userId, scope: scope as any, teamLeadId, company: "OKASHASMART" } });
+}
+
+/** Delete the entire QA world (docs, grants, activity logs, agents, users, employees) in FK-safe order. */
+async function dropQaWorld() {
+  const agents = await prisma.salesAgent.findMany({ where: { agentCode: { startsWith: QA_AGCODE } }, select: { id: true } });
+  const aids = agents.map((a) => a.id);
+  if (aids.length) {
+    await prisma.returnItem.deleteMany({ where: { return: { agentId: { in: aids } } } }).catch(() => {});
+    await prisma.salesReturn.deleteMany({ where: { agentId: { in: aids } } }).catch(() => {});
+    await prisma.salesOrderItem.deleteMany({ where: { order: { agentId: { in: aids } } } }).catch(() => {});
+    await prisma.salesOrder.deleteMany({ where: { agentId: { in: aids } } }).catch(() => {});
+    await prisma.quotationItem.deleteMany({ where: { quotation: { agentId: { in: aids } } } }).catch(() => {});
+    await prisma.quotation.deleteMany({ where: { agentId: { in: aids } } }).catch(() => {});
+    const leads = await prisma.lead.findMany({ where: { agentId: { in: aids } }, select: { id: true } });
+    const lids = leads.map((l) => l.id);
+    if (lids.length) await prisma.leadActivity.deleteMany({ where: { leadId: { in: lids } } }).catch(() => {});
+    await prisma.lead.deleteMany({ where: { agentId: { in: aids } } }).catch(() => {});
   }
-  return out;
+  const users = await prisma.user.findMany({ where: { username: { startsWith: QA_U } }, select: { id: true } });
+  const uids = users.map((u) => u.id);
+  if (uids.length) {
+    await prisma.activityLog.deleteMany({ where: { userId: { in: uids } } }).catch(() => {});
+    await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: uids } } }).catch(() => {});
+  }
+  await prisma.salesAgent.deleteMany({ where: { agentCode: { startsWith: QA_AGCODE } } }).catch(() => {});
+  await prisma.user.deleteMany({ where: { username: { startsWith: QA_U } } }).catch(() => {});
+  await prisma.employee.deleteMany({ where: { code: { startsWith: QA_EMPCODE } } }).catch(() => {});
 }
 
 const QTAG = "QA_CRM_";
@@ -75,28 +113,22 @@ async function cleanupFixtures() {
 }
 
 async function main() {
-  // ---- resolve agents ----
-  const ag = async (code: string) => prisma.salesAgent.findUnique({ where: { agentCode: code } });
-  const AG001 = await ag("AG001"), AG003 = await ag("AG003"), AG004 = await ag("AG004"), AG006 = await ag("AG006");
-  if (!AG001?.userId || !AG006?.userId || !AG003 || !AG004) {
-    console.error("[crm] required seeded agents missing (need AG001+user, AG003, AG004, AG006+user). Run crmSeed.ts and resolve agent gaps.");
-    process.exit(1);
-  }
-  // team: AG006 leads AG001 + AG003
-  await prisma.salesAgent.update({ where: { id: AG006.id }, data: { scope: "TEAM" } });
-  await prisma.salesAgent.update({ where: { id: AG001.id }, data: { scope: "OWN", teamLeadId: AG006.id } });
-  await prisma.salesAgent.update({ where: { id: AG003.id }, data: { scope: "OWN", teamLeadId: AG006.id } });
-  await prisma.salesAgent.update({ where: { id: AG004.id }, data: { scope: "OWN", teamLeadId: null } });
-
-  const agentOwnUser = AG001.userId!, teamLeadUser = AG006.userId!;
-  const [adminUser, viewerUser, noCrmUser, umbrellaUser] = await pickNonAgentUsers(4, [agentOwnUser, teamLeadUser]);
-
-  // ---- clean any prior run, then grant ----
-  await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: [adminUser, viewerUser, umbrellaUser, agentOwnUser, teamLeadUser] }, permissions: { path: ["allowedFeatures"], array_contains: ["crm.*"] } as any } }).catch(() => {});
-  // also remove any crmBrowserPersonas grant on the agent users (marked by login.admin.*), so the
-  // persona's report.export/cost grants don't bleed into these scope/cost assertions.
-  await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: [agentOwnUser, teamLeadUser] }, permissions: { path: ["allowedFeatures"], array_contains: ["login.admin.*"] } as any } }).catch(() => {});
+  // ---- build the dedicated QA world (real users/agents are never touched) ----
+  await dropQaWorld();          // clear any leftovers from a crashed prior run
   await cleanupFixtures();
+  // agent personas: a TEAM lead (AG006) over two OWN members (AG001, AG003), plus a standalone OUT agent (AG004)
+  const empTeam = await mkEmp("TEAM", "QA Team Lead"), uTeam = await mkUser("teamlead", empTeam.id);
+  const AG006 = await mkAgent("TEAM", empTeam.id, uTeam.id, "TEAM");
+  const empOwn = await mkEmp("OWN", "QA Own Agent"), uOwn = await mkUser("own", empOwn.id);
+  const AG001 = await mkAgent("OWN", empOwn.id, uOwn.id, "OWN", AG006.id);
+  const empMem = await mkEmp("MEM", "QA Team Member"), uMem = await mkUser("member", empMem.id);
+  const AG003 = await mkAgent("MEM", empMem.id, uMem.id, "OWN", AG006.id);
+  const empOut = await mkEmp("OUT", "QA Out Agent"), uOut = await mkUser("out", empOut.id);
+  const AG004 = await mkAgent("OUT", empOut.id, uOut.id, "OWN");
+  // non-agent persona users (no employee, no agent)
+  const adminUser = (await mkUser("admin")).id, viewerUser = (await mkUser("viewer")).id,
+    noCrmUser = (await mkUser("nocrm")).id, umbrellaUser = (await mkUser("umbrella")).id;
+  const agentOwnUser = AG001.userId!, teamLeadUser = AG006.userId!;
 
   // write features (create/update/delete/restore) a selling agent needs; scope of WHICH rows they can
   // touch is then enforced in the service layer, not by these features.
@@ -452,16 +484,14 @@ async function main() {
   const vord = await api("POST", "/salesOrder/getById", tViewer, { id: ofo.data?.id });
   check("no-cost getById keeps Date fields intact (stripCost bug)", typeof vord.data?.createdAt === "string" && vord.data?.margin === undefined, `createdAt type ${typeof vord.data?.createdAt}`);
 
-  // ---- cleanup ----
+  // ---- cleanup (drop the entire QA world; real users/agents untouched) ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });
-  await prisma.salesAgent.update({ where: { id: AG006.id }, data: { scope: "OWN" } }).catch(() => {});
-  await prisma.salesAgent.update({ where: { id: AG001.id }, data: { teamLeadId: null } }).catch(() => {});
-  await prisma.salesAgent.update({ where: { id: AG003.id }, data: { teamLeadId: null } }).catch(() => {});
+  await dropQaWorld();
 
   console.log(`\n[crm] ===== RESULT: ${pass} pass / ${fail} fail =====`);
   if (fail) { console.log("FAILURES:\n - " + fails.join("\n - ")); }
   await prisma.$disconnect();
   process.exit(fail ? 1 : 0);
 }
-main().catch(async (e) => { console.error(e); try { await cleanupFixtures(); await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } }); } catch {} process.exit(1); });
+main().catch(async (e) => { console.error(e); try { await cleanupFixtures(); await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } }); await dropQaWorld(); } catch {} process.exit(1); });
