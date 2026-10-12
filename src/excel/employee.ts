@@ -76,7 +76,7 @@ export class EmployeeExcelUtility {
     });
 
     // Write the workbook to a buffer
-    const wbout = await workbook.xlsx.writeBuffer() as Buffer;  // Cast to Buffer
+    const wbout = Buffer.from(await workbook.xlsx.writeBuffer());  // ExcelJS buffer -> Node Buffer
 
     // Clean up temporary images (if any)
     // fs.readdirSync(tempDir).forEach((file) => {

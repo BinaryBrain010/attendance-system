@@ -38,7 +38,7 @@ export class AttendanceExcelUtility {
     this.createDepartmentSummarySheet(deptSummarySheet, attendanceData);
     
     // Write workbook to buffer
-    const wbout = await workbook.xlsx.writeBuffer() as Buffer;
+    const wbout = Buffer.from(await workbook.xlsx.writeBuffer());
     
     // Format current date and time for filename using timezone
     const currentDateTime = this.convertToTimezone(new Date(), this.timezone)
