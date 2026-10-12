@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-443 routes walked from the live routers. Real DB users counted: 179.
+443 routes walked from the live routers. Real DB users counted: 187.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -13,22 +13,22 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 11. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 179) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 187) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
 | POST | /access/getPermission | read | token | `-` | - | - | internal permission check |
 | GET | /access/getUserGroup | read | token | `-` | - | - | internal permission check |
 | GET | /access/getUserRole | read | token | `-` | - | - | internal permission check |
-| GET | /activityLog/count | read | feature | `activityLog.read.*` | yes | 1 |  |
-| GET | /activityLog/get | read | feature | `activityLog.read.*` | yes | 1 |  |
-| POST | /activityLog/get | read | feature | `activityLog.read.*` | yes | 1 |  |
-| POST | /activityLog/getByEntity | read | feature | `activityLog.read.*` | yes | 1 |  |
-| POST | /activityLog/getById | read | feature | `activityLog.read.*` | yes | 1 |  |
-| POST | /activityLog/getByUnit | read | feature | `activityLog.read.*` | yes | 1 |  |
-| POST | /activityLog/getByUser | read | feature | `activityLog.read.*` | yes | 1 |  |
-| GET | /activityLog/me | self | self | `activityLog.read.own.*` | - | 1 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /activityLog/me | read | feature | `activityLog.read.*` | yes | 1 |  |
+| GET | /activityLog/count | read | feature | `activityLog.read.*` | yes | 3 |  |
+| GET | /activityLog/get | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/get | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getByEntity | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getById | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getByUnit | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getByUser | read | feature | `activityLog.read.*` | yes | 3 |  |
+| GET | /activityLog/me | self | self | `activityLog.read.own.*` | - | 3 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /activityLog/me | read | feature | `activityLog.read.*` | yes | 3 |  |
 | GET | /analytics/personalAttendance | self | self | `analytics.read.*` | - | 38 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /analytics/personalAttendance | read | feature | `analytics.read.*` | yes | 38 |  |
 | GET | /analytics/topAttendance | read | feature | `analytics.read.*` | yes | 38 |  |
@@ -117,7 +117,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /crmPriceList/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmPriceList/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
 | PUT | /crmPriceList/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
-| POST | /crmPriceList/withCost | read | feature | `crm.catalogue.cost.*` | yes | 1 | cost/margin visibility |
+| POST | /crmPriceList/withCost | read | feature | `crm.catalogue.cost.*` | yes | 2 | cost/margin visibility |
 | POST | /crmProduct/byCategory | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmProduct/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmProduct/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
@@ -132,18 +132,18 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmProduct/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
 | POST | /crmProduct/variant | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
-| POST | /crmReport/agentPerformance | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/dailySummary | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/dashboard | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 1 |  |
-| POST | /crmReport/funnel | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/leadAging | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/lostReasons | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/margin | read | feature | `crm.report.read.*` | yes | 1 | cost enforced in controller via crm.catalogue.cost.* |
-| POST | /crmReport/pipeline | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/repeatCustomers | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/returns | read | feature | `crm.report.read.*` | yes | 1 |  |
-| POST | /crmReport/sales | read | feature | `crm.report.read.*` | yes | 1 |  |
+| POST | /crmReport/agentPerformance | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/dailySummary | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/dashboard | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 3 |  |
+| POST | /crmReport/funnel | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/leadAging | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/lostReasons | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/margin | read | feature | `crm.report.read.*` | yes | 3 | cost enforced in controller via crm.catalogue.cost.* |
+| POST | /crmReport/pipeline | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/repeatCustomers | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/returns | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/sales | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /customer/create | create | feature | `customer.create.*` | yes | 3 |  |
 | POST | /customer/delete | delete | feature | `customer.delete.*` | yes | 3 |  |
 | GET | /customer/get | read | feature | `customer.read.*` | yes | 3 |  |
@@ -224,18 +224,18 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /groupRole/get | read | feature | `group.read.*` | yes | 2 |  |
 | POST | /groupRole/restore | update | feature | `group.update.*` | yes | 2 | assigning roles to a group |
 | PUT | /groupRole/update | update | feature | `group.update.*` | yes | 2 | assigning roles to a group |
-| POST | /holiday/create | create | feature | `holiday.create.*` | yes | 1 |  |
-| POST | /holiday/delete | delete | feature | `holiday.delete.*` | yes | 1 |  |
-| GET | /holiday/deleted | read | feature | `holiday.read.*` | yes | 1 |  |
-| GET | /holiday/get | read | feature | `holiday.read.*` | yes | 1 |  |
-| GET | /holiday/getAll | read | feature | `holiday.read.*` | yes | 1 |  |
-| GET | /holiday/getById | read | feature | `holiday.read.*` | yes | 1 |  |
-| POST | /holiday/getHistoryById | history | feature | `holiday.viewPreviousUpdate.*` | yes | 1 |  |
-| POST | /holiday/markSundays | create | feature | `holiday.markSundays.*` | yes | 1 |  |
-| POST | /holiday/restore | restore | feature | `holiday.restore.*` | yes | 1 |  |
-| POST | /holiday/search | read | feature | `holiday.read.*` | yes | 1 |  |
-| GET | /holiday/total | read | feature | `holiday.read.*` | yes | 1 |  |
-| PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 1 |  |
+| POST | /holiday/create | create | feature | `holiday.create.*` | yes | 3 |  |
+| POST | /holiday/delete | delete | feature | `holiday.delete.*` | yes | 3 |  |
+| GET | /holiday/deleted | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/get | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/getAll | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/getById | read | feature | `holiday.read.*` | yes | 3 |  |
+| POST | /holiday/getHistoryById | history | feature | `holiday.viewPreviousUpdate.*` | yes | 3 |  |
+| POST | /holiday/markSundays | create | feature | `holiday.markSundays.*` | yes | 3 |  |
+| POST | /holiday/restore | restore | feature | `holiday.restore.*` | yes | 3 |  |
+| POST | /holiday/search | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/total | read | feature | `holiday.read.*` | yes | 3 |  |
+| PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 3 |  |
 | POST | /item/create | create | feature | `item.create.*` | yes | 3 |  |
 | POST | /item/delete | delete | feature | `item.delete.*` | yes | 3 |  |
 | GET | /item/get | read | feature | `item.read.*` | yes | 3 |  |

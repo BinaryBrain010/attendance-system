@@ -7,6 +7,7 @@ import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../.
 export interface LeadFilters {
   company?: string; outlet?: string; city?: string; stage?: string;
   priority?: string; channel?: string; agentId?: string; followUp?: string; from?: string; to?: string;
+  search?: string; phone?: string;
 }
 
 function filterWhere(f: LeadFilters = {}): Record<string, any> {
@@ -18,6 +19,15 @@ function filterWhere(f: LeadFilters = {}): Record<string, any> {
   if (f.priority) w.priority = f.priority;
   if (f.channel) w.channel = f.channel;
   if (f.agentId) w.agentId = f.agentId;
+  if (f.phone) w.phone = { contains: String(f.phone).replace(/\s+/g, ""), mode: "insensitive" };
+  if (f.search) {
+    const s = String(f.search).trim();
+    w.OR = [
+      { customerName: { contains: s, mode: "insensitive" } },
+      { phone: { contains: s, mode: "insensitive" } },
+      { leadNo: { contains: s, mode: "insensitive" } },
+    ];
+  }
   if (f.from || f.to) {
     w.dateReceived = {};
     if (f.from) w.dateReceived.gte = new Date(f.from);
