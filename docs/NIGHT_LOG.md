@@ -8,6 +8,23 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 Backup first: qa/backups/night2_20261013_132704.sql (gitignored).
 
+### Run 2 summary
+All four tasks done. Real data untouched (leads 261, orders 68, returns 62, quotations 0; zero QA or UAT
+residue). Final gates: CRM harness 170/0, qa:rbac 306/1/3, admin next build clean, backend tsc clean.
+Both servers left running (backend :3002 RBAC on, admin :3001). One real bug was found during the honest
+UAT and fixed (out-of-scope detail pages crashed instead of refusing).
+
+Commits (no attribution): backend 824a2fb (phone exact match), 8aee327 (bulk price), 349df7c (manager
+perms + log), eca71e4 (UAT results + log); admin ac0aa46 (Task 2 screens), fef03d9 (out-of-scope fix),
+057ab45 (cosmetic subtitles).
+
+Tasks:
+- T1 phoneNormalized exact matching everywhere + test that 0300 vs 0321 do not match. DONE.
+- T2 deferred screens (lead edit, catalogue product/variants/prices + bulk Excel, agents edit, bulk
+  reassign, Frontdesk Create-lead). DONE, browser-verified.
+- T3 honest browser UAT, 42/43 UI verified, 1 bug fixed. DONE (docs/UAT_Run_Results.md).
+- T4 cosmetic sweep. DONE (subtitles added; headers/loading/empty states already consistent).
+
 ### Run 2, Task 1 - Phone matching via phoneNormalized (full national number)  [DONE]
 - Rewrote shared/phone.ts: normalizePhone now returns the full 10-digit national number (strips +92 / 0092 / leading 0), so 0300-1234567 -> "3001234567", +92 300 1234567 -> "3001234567", 0321-1234567 -> "3211234567". Removed all last-7 and last-10 digit tail matching (phoneNeedle is gone).
 - Phone lookups now EXACT-match phoneNormalized: the lead/order/return/quotation `phone` filter, and customer360. The free-text search box uses a looser searchPhoneDigits + contains so partial phone search still works, but that is not the exact lookup.
@@ -33,7 +50,14 @@ All five built and, where I could exercise them, browser-verified as the manager
 - Created a full lead -> quotation -> order -> return chain in the UI to verify sections 4-7, then deleted all of it. Real counts confirmed back to 261 / 68 / 62 / 0.
 - BUG FOUND AND FIXED during 4.7: opening an out-of-scope record crashed ("timeline.map is not a function") or showed an empty record instead of refusing. Root cause: the admin axios uses validateStatus: status < 500, so a 403 resolves with the error envelope as the body; the detail pages then rendered it. Fixed the lead, order, quotation and return detail pages to treat a response with no id as not-found. Re-verified: out-of-scope now shows "not found or outside your scope". The backend was always correct (403, no data leak).
 - Gates: CRM harness 170/0, qa:rbac 306/1/3.
-- Commit (admin bug fix + this doc): see hash below.
+- Commit (admin bug fix + this doc): admin fef03d9, backend eca71e4.
+
+### Run 2, Task 4 - Cosmetic sweep of all CRM pages  [DONE]
+- Audited every CRM page. They already share the house style: p-4 md:p-6 container, text-xl font-semibold header, Suspense + Loader for loading, noDataMessage / empty states, scope chips, PKR formatting, Asia/Karachi dates on Customer 360.
+- The only inconsistency found: the orders / quotations / returns list pages had no one-line description under the title, while Leads / Reports / My Day / Customer 360 do. Added a consistent subtitle to each.
+- Confirmed the detail pages share a consistent not-found message (standardised during the Task 3 fix) and max-width containers, and the quotation builder matches.
+- Admin next build clean. Final counts verified 261/68/62/0, zero residue.
+- Commit: 057ab45.
 
 Backup taken first: qa/backups/night_20261013_022255.sql (354 MB, full gatePassSystem dump, gitignored).
 DATABASE_URL confirmed localhost, DB gatePassSystem.
