@@ -4,6 +4,51 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 4 (2026-10-13, follow-up)
+
+CRM navigation restructure, same rules (local only, gates, commit per step, no attribution). Eight
+tasks, all done and browser-verified. Screenshots of the new menu + leads list/board sent to the user.
+
+Gates (final): admin next build clean (exit 0), CRM harness 176/0, qa:rbac 306/1/3, backend tsc clean,
+featureMap not-registered 0. Real counts unchanged: leads 261, orders 68, returns 62, quotations 0.
+Both servers left running (backend :3002 RBAC on, admin :3001).
+
+Commits: backend 99f2ab9 (customers endpoint + featureMap), 92e2b12 (qa:cleanup fix); admin 7ffd754
+(grouped nav), 3158906 (leads merge + orders tabs), 7b18e71 (customers list), 27dbe02 (breadcrumbs).
+
+- **T1 Leads list+board merged.** /crm/leads has a List|Board toggle, remembered per user (localStorage
+  + URL ?view=). Same search, stage filters and scope chip apply to both. The old /crm/leads/kanban
+  redirects to /crm/leads?view=board. Verified: toggle switches view and persists; redirect works.
+- **T2 Reattempts folded into Orders.** /crm/orders has All | Needs reattempt | Returned tabs (reattempt
+  = reattemptMin filter, returned = status RETURNED). Old /crm/orders/reattempts redirects to
+  /crm/orders?view=reattempts. Verified.
+- **T3 Customers list.** New /crm/customers list (name, phone, city, leads, orders, total spent, last
+  activity) backed by a new POST /crmReport/customers (scoped aggregate by phoneNormalized). A row opens
+  the existing 360 profile at /crm/customers/<phone>. Verified end to end (list -> profile with
+  breadcrumb showing the customer name).
+- **T4 CRM mega menu.** Grouped dropdown: Workspace (My Day, Leads, Customers), Sales (Quotations,
+  Orders), After sales (Returns), Setup (Catalogue, Agents), Insights (Reports), with quick actions
+  (+ New lead / quotation / order) and one-line descriptions. Minimal, two-column, permission-gated,
+  empty groups/menus hidden. Driven by a shared navModel.
+- **T5 Mobile hamburger** uses the same navModel: each module is a collapsible with the same groups +
+  quick actions. Verified at 414px.
+- **T6 Breadcrumbs** on every CRM page (CRM > Group > Section, detail pages add the record, e.g. SO-0069).
+- **T7 Consistent menus.** Access Control, Quick Mark and Frontdesk now use the same grouped mega-menu
+  style (routes and permissions unchanged; Quick Mark grouped into People / Attendance / Setup).
+- **T8 qa:cleanup fixed.** It hard-deletes each run's full world by QA pattern via Prisma deleteMany
+  (the old API sweep was paginated and soft-deleting, and never removed the @phw users auto-provisioned
+  for QA employees). Proved the cycle: qa:rbac (33 test.local users / 4 roles / 2 QA employees created)
+  then qa:cleanup -> zero residue (users/roles/groups/employees/items/customers/shifts all 0), real data
+  untouched. Also sweeps the QA gate-pass/customer/item chain (GatePassItem RESTRICT handled).
+
+Browser verification as both personas (local test logins usama_liaqat@phw OWN, usman_arshad@phw TEAM):
+the menu shows only allowed items. The agent sees only the CRM menu (no Access Control / Quick Mark /
+Frontdesk); the manager sees CRM. Both show the grouped CRM dropdown with their permitted items.
+
+Note: a bug slipped into the first customers detail route (passing a prop through the withPermission HOC
+failed the type check); fixed by reading the phone from the route params inside Customer 360. Also the
+qa:cleanup docstring first contained a literal "*/" that closed the block comment early; reworded.
+
 ## Run 3 (2026-10-13, follow-up)
 
 Backup first: qa/backups/night3_20261013_144429.sql (gitignored).
