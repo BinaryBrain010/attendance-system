@@ -325,6 +325,47 @@ async function main() {
   await prisma.quotationItem.deleteMany({ where: { quotation: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
 
+  console.log("\n[crm] ===== product picker: tier/variant pricing + cost enrichment + search =====");
+  const ppCat = await prisma.category.findFirst({ where: { isDeleted: null }, select: { id: true } });
+  const ppProd = await prisma.product.create({ data: { sku: `QA-PICK-${Date.now()}`, name: `${QTAG}PickerProd`, categoryId: ppCat!.id, status: "ACTIVE" } });
+  const ppVar = await prisma.productVariant.create({ data: { productId: ppProd.id, name: "Large" } });
+  // product-level RETAIL=5000/cost3000, DEALER=4000/cost3000; variant Large RETAIL=5500/cost3200
+  await prisma.priceList.createMany({ data: [
+    { productId: ppProd.id, variantId: null, tier: "RETAIL", price: 5000, cost: 3000, pricePending: false },
+    { productId: ppProd.id, variantId: null, tier: "DEALER", price: 4000, cost: 3000, pricePending: false },
+    { productId: ppProd.id, variantId: ppVar.id, tier: "RETAIL", price: 5500, cost: 3200, pricePending: false },
+  ] });
+  // search returns the product with variants + prices; cost stripped for an agent, present for admin
+  const srchA = await api("POST", "/crmProduct/search", tAdmin, { searchTerm: "PickerProd" });
+  const sp = (srchA.data?.data || []).find((p: any) => p.id === ppProd.id);
+  check("search returns product with variants + prices (admin sees cost)", srchA.status === 200 && !!sp && (sp.variants || []).length === 1 && (sp.prices || []).some((x: any) => x.tier === "RETAIL" && x.price === 5000 && x.cost === 3000), `${JSON.stringify(sp?.prices)}`);
+  const srchO = await api("POST", "/crmProduct/search", tOwn, { searchTerm: "PickerProd" });
+  const spo = (srchO.data?.data || []).find((p: any) => p.id === ppProd.id);
+  check("search strips cost for agent", srchO.status === 200 && !!spo && (spo.prices || []).every((x: any) => !("cost" in x)), `${JSON.stringify(spo?.prices)}`);
+  // product-linked line, no unitPrice, RETAIL -> priced 5000 + unitCost 3000 filled
+  const qR = await api("POST", "/quotation/create", tAdmin, { customerName: `${QTAG}Pick`, tier: "RETAIL", items: [{ productId: ppProd.id, quantity: 2 }] });
+  const qRg = await api("POST", "/quotation/getById", tAdmin, { id: qR.data?.id });
+  check("RETAIL product line priced at 5000 + cost 3000 + productId stored", qR.status === 201 && qRg.data?.items?.[0]?.unitPrice === 5000 && qRg.data?.items?.[0]?.unitCost === 3000 && qRg.data?.items?.[0]?.productId === ppProd.id, `${JSON.stringify(qRg.data?.items?.[0])}`);
+  // DEALER tier -> priced 4000
+  const qD = await api("POST", "/quotation/create", tAdmin, { customerName: `${QTAG}PickD`, tier: "DEALER", items: [{ productId: ppProd.id, quantity: 1 }] });
+  const qDg = await api("POST", "/quotation/getById", tAdmin, { id: qD.data?.id });
+  check("DEALER tier prices the line at the DEALER price (4000)", qDg.data?.items?.[0]?.unitPrice === 4000, `${JSON.stringify(qDg.data?.items?.[0])}`);
+  // variant-specific price preferred (Large RETAIL=5500)
+  const qV = await api("POST", "/quotation/create", tAdmin, { customerName: `${QTAG}PickV`, tier: "RETAIL", items: [{ productId: ppProd.id, variantId: ppVar.id, quantity: 1 }] });
+  const qVg = await api("POST", "/quotation/getById", tAdmin, { id: qV.data?.id });
+  check("variant-specific price preferred (5500) + variantId stored", qVg.data?.items?.[0]?.unitPrice === 5500 && qVg.data?.items?.[0]?.variantId === ppVar.id, `${JSON.stringify(qVg.data?.items?.[0])}`);
+  // order with a product line also prices + stores productId
+  const oP = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}PickOrd`, tier: "RETAIL", items: [{ productId: ppProd.id, quantity: 1 }] });
+  const oPg = await api("POST", "/salesOrder/getById", tAdmin, { id: oP.data?.id });
+  check("order product line priced 5000 + productId stored", oP.status === 201 && oPg.data?.items?.[0]?.unitPrice === 5000 && oPg.data?.items?.[0]?.productId === ppProd.id, `${JSON.stringify(oPg.data?.items?.[0])}`);
+  await prisma.quotationItem.deleteMany({ where: { quotation: { customerName: { startsWith: QTAG } } } }).catch(() => {});
+  await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
+  await prisma.salesOrderItem.deleteMany({ where: { order: { customerName: { startsWith: QTAG } } } }).catch(() => {});
+  await prisma.salesOrder.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
+  await prisma.priceList.deleteMany({ where: { productId: ppProd.id } }).catch(() => {});
+  await prisma.productVariant.deleteMany({ where: { productId: ppProd.id } }).catch(() => {});
+  await prisma.product.delete({ where: { id: ppProd.id } }).catch(() => {});
+
   console.log("\n[crm] ===== bulk price update from Excel (cost-gated) =====");
   const anyCat = await prisma.category.findFirst({ where: { isDeleted: null }, select: { id: true } });
   const bulkProd = await prisma.product.create({ data: { sku: `QA-BULK-${Date.now()}`, name: `${QTAG}BulkProd`, categoryId: anyCat!.id, status: "ACTIVE" } });

@@ -96,8 +96,8 @@ class ProductController extends BaseController<ProductService> {
     });
   }
   async search(req: Request, res: Response) {
-    const { searchTerm, page, pageSize } = req.body;
-    await this.handleRequest(() => this.service.search(searchTerm, page, pageSize), res, { successMessage: "Products retrieved successfully!" });
+    const { searchTerm, search, page, pageSize } = req.body;
+    await this.readGated(req, res, () => this.service.search(searchTerm ?? search ?? "", page, pageSize), "Products retrieved successfully!");
   }
 }
 

@@ -86,7 +86,7 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const { items = [], ...h } = data;
     h.agentId = resolveAssignment(scope, h.agentId);
-    const priced = await priceLines(items);
+    const priced = await priceLines(items, h.tier ?? "RETAIL");
     const { lines, subtotal, total } = computeTotals(priced, h.discount || 0);
     const quotationNo = h.quotationNo || (await nextQuotationNo());
     return prisma.$transaction(async (tx) => {
@@ -113,7 +113,7 @@ class QuotationService {
     return prisma.$transaction(async (tx) => {
       let subtotal = existing.subtotal, total = existing.total;
       if (items) {
-        const priced = await priceLines(items);
+        const priced = await priceLines(items, (h.tier ?? existing.tier ?? "RETAIL") as any);
         const c = computeTotals(priced, h.discount ?? existing.discount);
         subtotal = c.subtotal; total = c.total;
         await tx.quotationItem.deleteMany({ where: { quotationId: id } });

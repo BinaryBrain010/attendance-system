@@ -72,7 +72,9 @@ class SalesOrderService {
   }
 
   private async persist(userId: string, h: any, items: any[], extra: any = {}) {
-    const priced = await priceLines(items);
+    // `tier` is transient: an order has no tier column, but product-linked lines with no explicit
+    // unitPrice are priced at it (default RETAIL). It is never stored on the order.
+    const priced = await priceLines(items, h.tier ?? "RETAIL");
     const { lines, subtotal, total } = computeTotals(priced, h.discount || 0);
     const orderNo = h.orderNo || (await nextOrderNo());
     return prisma.$transaction(async (tx) => {
@@ -94,7 +96,7 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const { items = [], ...h } = data;
     h.agentId = resolveAssignment(scope, h.agentId);
-    return this.persist(userId, h, items);
+    return this.persist(userId, h, items); // h.tier (if any) is used for pricing only, not stored
   }
 
   /** Lead -> SalesOrder (carries customer + the lead's product as a line if it has a current price). */
@@ -129,7 +131,7 @@ class SalesOrderService {
     return prisma.$transaction(async (tx) => {
       let subtotal = existing.subtotal, total = existing.total;
       if (items) {
-        const priced = await priceLines(items);
+        const priced = await priceLines(items, h.tier ?? "RETAIL");
         const c = computeTotals(priced, h.discount ?? existing.discount);
         subtotal = c.subtotal; total = c.total;
         await tx.salesOrderItem.deleteMany({ where: { orderId: id } });

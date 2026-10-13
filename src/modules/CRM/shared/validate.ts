@@ -117,6 +117,7 @@ export const schemas = {
       trackingNo: shortStr(80).optional(), paymentType: PaymentType.optional(), amountReceived: money.optional(),
       dispatchedAt: dt.optional(), deliveredAt: dt.optional(), discount: money.optional(),
       agentId: idStr.nullable().optional(), company: Company.optional(), items: items(lineItem).optional(),
+      tier: PriceTier.optional(), // transient: prices product-linked lines, not stored on the order
     }),
     update: z.object({
       id: idStr, customerName: name.optional(), phone: shortStr(40).optional(), city: shortStr(120).optional(),
@@ -125,6 +126,7 @@ export const schemas = {
       trackingNo: shortStr(80).optional(), paymentType: PaymentType.optional(), amountReceived: money.optional(),
       dispatchedAt: dt.optional(), deliveredAt: dt.optional(), discount: money.optional(),
       agentId: idStr.nullable().optional(), items: items(lineItem).optional(),
+      tier: PriceTier.optional(), // transient: prices product-linked lines, not stored on the order
     }), // no status/subtotal/total/reattemptCount
     transition: z.object({ id: idStr, to: OrderStatus, reason: longStr.optional() }),
   },

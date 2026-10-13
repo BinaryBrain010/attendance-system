@@ -51,8 +51,22 @@ class ProductService {
   restore(id: string) {
     return prisma.product.gpRestore(id);
   }
-  search(term: string, page = 1, pageSize = 10) {
-    return prisma.product.gpSearch(term, ["name", "sku", "description"], page, pageSize);
+  /** Typeahead for the quotation/order product picker: matches name or SKU, and returns each
+   * product with its variants and current prices (cost stripped by the controller) so the picker
+   * can show the tier price and block pending lines without extra round-trips. */
+  async search(term: string, page = 1, pageSize = 10) {
+    const t = String(term ?? "").trim();
+    const where: any = { isDeleted: null };
+    if (t) where.OR = [
+      { name: { contains: t, mode: "insensitive" } },
+      { sku: { contains: t, mode: "insensitive" } },
+    ];
+    const skip = (page - 1) * pageSize;
+    const [data, totalSize] = await Promise.all([
+      prisma.product.findMany({ where, include, skip, take: pageSize, orderBy: { name: "asc" } }),
+      prisma.product.count({ where }),
+    ]);
+    return { data, totalSize };
   }
 }
 
