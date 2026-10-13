@@ -325,6 +325,19 @@ async function main() {
   await prisma.quotationItem.deleteMany({ where: { quotation: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.quotation.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
 
+  console.log("\n[crm] ===== bulk price update from Excel (cost-gated) =====");
+  const anyCat = await prisma.category.findFirst({ where: { isDeleted: null }, select: { id: true } });
+  const bulkProd = await prisma.product.create({ data: { sku: `QA-BULK-${Date.now()}`, name: `${QTAG}BulkProd`, categoryId: anyCat!.id, status: "ACTIVE" } });
+  const bpDry = await api("POST", "/crmPriceList/bulkPrice", tAdmin, { rows: [{ sku: bulkProd.sku, price: 5000, cost: 3000 }, { sku: "NOPE-SKU-X", price: 1 }], dryRun: true });
+  check("bulkPrice dry-run: 1 matched + 1 unmatched, no write", bpDry.status === 200 && bpDry.data?.matched === 1 && (bpDry.data?.unmatched || []).length === 1 && bpDry.data?.dryRun === true, `${JSON.stringify(bpDry.data)}`);
+  check("AGENT_OWN bulkPrice -> 403 (no cost)", (await api("POST", "/crmPriceList/bulkPrice", tOwn, { rows: [] })).status === 403);
+  const bpReal = await api("POST", "/crmPriceList/bulkPrice", tAdmin, { rows: [{ sku: bulkProd.sku, price: 5000, cost: 3000 }], dryRun: false });
+  check("bulkPrice persists (updated 1)", bpReal.status === 200 && bpReal.data?.updated === 1, `${JSON.stringify(bpReal.data)}`);
+  const bpPrices = (await api("POST", "/crmPriceList/byProduct", tAdmin, { productId: bulkProd.id })).data || [];
+  check("bulk price set RETAIL=5000 not pending", bpPrices.some((p: any) => p.tier === "RETAIL" && p.price === 5000 && p.pricePending === false));
+  await prisma.priceList.deleteMany({ where: { productId: bulkProd.id } }).catch(() => {});
+  await prisma.product.delete({ where: { id: bulkProd.id } }).catch(() => {});
+
   console.log("\n[crm] ===== Phase 2: lead state machine =====");
   const newLead = async (t: string, agentId: string, extra: any = {}) => {
     const r = await api("POST", "/lead/create", t, { customerName: `${QTAG}SM ${Date.now()}${Math.random()}`, stage: "NEW", agentId, ...extra });

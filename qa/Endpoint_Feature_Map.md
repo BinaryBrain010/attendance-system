@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-446 routes walked from the live routers. Real DB users counted: 189.
+447 routes walked from the live routers. Real DB users counted: 199.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -13,7 +13,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 11. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 189) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 199) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -113,6 +113,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /crmCategory/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | GET | /crmCategory/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmCategory/update | update | feature | `crm.catalogue.update.*` | yes | 1 |  |
+| POST | /crmPriceList/bulkPrice | update | feature | `crm.catalogue.cost.*` | yes | 2 | bulk price/cost from Excel (cost-gated) |
 | POST | /crmPriceList/byProduct | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | POST | /crmPriceList/create | create | feature | `crm.catalogue.create.*` | yes | 1 |  |
 | POST | /crmPriceList/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |

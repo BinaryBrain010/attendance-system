@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import ExcelJS from "exceljs";
 import BaseController from "../../../../../core/controllers/base.controller";
 import PriceListService from "../services/pricelist.service";
 import { canSeeCost, stripCost } from "../../../shared/cost";
@@ -6,6 +7,29 @@ import { ForbiddenError } from "../../../../../core/errors/app.error";
 
 class PriceListController extends BaseController<PriceListService> {
   protected service = new PriceListService();
+
+  /** Bulk price/cost update. Accepts an uploaded .xlsx (field "file", columns SKU/Price/Cost) or
+   * body.rows [{sku,price,cost}]. Cost-gated. dryRun defaults TRUE (pass dryRun=false to persist). */
+  async bulkPrice(req: Request, res: Response) {
+    await this.handleRequest(async () => {
+      const uid = (req as any).userId;
+      if (!(await canSeeCost(uid))) throw new ForbiddenError("crm.catalogue.cost.* required for bulk price update");
+      let rows: any[] = Array.isArray(req.body?.rows) ? req.body.rows : [];
+      const file = (req as any).file;
+      if (file?.buffer) {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(file.buffer);
+        const ws = wb.worksheets[0];
+        const header: Record<string, number> = {};
+        ws.getRow(1).eachCell((cell, col) => { header[String(cell.value || "").trim().toLowerCase()] = col; });
+        const skuCol = header["sku"] || 1, priceCol = header["price"] || header["retail price"] || 2, costCol = header["cost"] || header["cost per item"] || 3;
+        rows = [];
+        ws.eachRow((row, i) => { if (i === 1) return; const sku = row.getCell(skuCol).value; if (sku) rows.push({ sku, price: row.getCell(priceCol).value, cost: row.getCell(costCol).value }); });
+      }
+      const dryRun = !(String(req.query.dryRun ?? req.body?.dryRun) === "false");
+      return this.service.bulkSetPrices(rows, dryRun ? null : uid, dryRun);
+    }, res, { successMessage: "Bulk price update processed" });
+  }
 
   async byProduct(req: Request, res: Response) {
     const { productId } = req.body;

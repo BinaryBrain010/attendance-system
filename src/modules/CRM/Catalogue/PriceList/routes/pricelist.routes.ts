@@ -1,6 +1,9 @@
 import { Router } from "express";
+import multer from "multer";
 import PriceListController from "../controllers/pricelist.controller";
 import { validate, schemas } from "../../../shared/validate";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 /** Mounts at /crmPriceList. */
 class CrmPriceListRoutes {
@@ -19,6 +22,7 @@ class CrmPriceListRoutes {
     this.router.post("/create", validate(schemas.priceList.create), this.controller.create.bind(this.controller));
     this.router.put("/update", validate(schemas.priceList.update), this.controller.update.bind(this.controller));
     this.router.post("/delete", validate(schemas.idOnly), this.controller.remove.bind(this.controller));
+    this.router.post("/bulkPrice", upload.single("file"), this.controller.bulkPrice.bind(this.controller));
   }
 
   public getRouter(): Router {

@@ -99,6 +99,7 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /crmProduct/image": { feature: "crm.catalogue.create.*", kind: "create", access: "feature" },
   "POST /crmProduct/import": { feature: "crm.catalogue.import.*", kind: "import", access: "feature", note: "Shopify CSV import (dry-run default)" },
   "POST /crmPriceList/withCost": { feature: "crm.catalogue.cost.*", kind: "read", access: "feature", note: "cost/margin visibility" },
+  "POST /crmPriceList/bulkPrice": { feature: "crm.catalogue.cost.*", kind: "update", access: "feature", note: "bulk price/cost from Excel (cost-gated)" },
   "POST /crmReport/margin": { feature: "crm.report.read.*", kind: "read", access: "feature", note: "cost enforced in controller via crm.catalogue.cost.*" },
   "POST /crmReport/export": { feature: "crm.report.export.*", kind: "export", access: "feature" },
   "POST /lead/transition": { feature: "crm.lead.transition.*", kind: "update", access: "feature", note: "server-enforced stage change" },

@@ -489,6 +489,11 @@
     "feature": "crm.catalogue.update.*",
     "kind": "update"
   },
+  "POST /crmPriceList/bulkPrice": {
+    "access": "feature",
+    "feature": "crm.catalogue.cost.*",
+    "kind": "update"
+  },
   "POST /crmPriceList/byProduct": {
     "access": "feature",
     "feature": "crm.catalogue.read.*",
