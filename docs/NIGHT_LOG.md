@@ -58,7 +58,64 @@ Browser checks (main flows):
 
 Gates: admin next build clean (exit 0), CRM harness 170/0, qa:rbac 306/1/3, backend tsc --noEmit
 clean. Change is admin-only; backend source unchanged.
-Commit (admin): 9d66241.
+Commit (admin): 9d66241. Log commit (backend): 67a71a9.
+
+### Run 3, Task 2 - Catalogue product picker in the quotation and order builders  [DONE]
+A line can now come from the catalogue (search by name or SKU, pick a variant, price auto-fills
+from the chosen tier, blocked if the price is pending) or stay a free-text custom item. Catalogue
+lines store productId/variantId so the sales-by-product/category and margin reports work.
+
+Backend (commit 6d7514a):
+- shared/pricing.ts: priceLines(items, defaultTier). Was hardcoded to RETAIL — now prices a
+  product-linked line at the header tier. Prefers a variant-specific PriceList row when the line
+  carries a variantId, falls back to the product-level row. For a product-linked line it fills
+  unitCost from the catalogue even when an explicit unitPrice is supplied, so margin is correct for
+  picker lines (the agent who builds the quote never sees or sends cost). Explicit unitPrice still
+  wins for the price itself (keeps the harness's pending-product + explicit-price case at 201).
+- quotation.service + salesOrder.service: pass the header tier into priceLines on create and update.
+  An order has no tier column, so its tier is transient (used for pricing only, never stored); added
+  tier to the order create/update Zod schemas for that.
+- product.service.search: now returns each product with variants + current prices + category (one
+  call for the picker) and the search controller runs through readGated, so cost is stripped unless
+  the caller has crm.catalogue.cost.*.
+- 6 harness tests added (tier pricing, DEALER tier, variant-specific price, cost enrichment, search
+  shape with cost stripped for an agent, order product line). CRM harness 176/0.
+
+Admin (commit 80021b5):
+- New ProductPicker component (debounced search, variant select, tier price shown, pending shown as
+  a disabled "Blocked" row). Used by both builders.
+- Quotation builder: picker + free-text "custom item" lines; sends productId/variantId.
+- Order builder: new page /crm/orders/new (mirrors the quotation builder) + a "New order" button on
+  the orders list. Orders previously came only from lead/quotation conversion or import.
+
+Browser verification (as the MANAGER persona usman_arshad@phw, who has order.create + cost + report):
+- Created a QA test product (RETAIL 10000 / cost 6000) and a pending-price QA product.
+- Quotation: picker found the product by name, showed category + the RETAIL price 10000, added it;
+  the pending product showed "Price pending / Blocked" (UAT 5.6 verified in the UI); added a custom
+  free-text line too. Saved -> Q-0001 with both lines and Margin PKR 6,000 (50%) (cost enriched).
+- Order: picker added the product -> SO-0069, Margin PKR 4,000 (40%).
+- Moved the order to DELIVERED, then checked the reports: Sales by product = QA_PICKTEST Widget
+  1 / 10,000; Sales by category = Smart Locks 1 / 10,000; Margin = revenue 10,000 / cost 6,000 /
+  margin 4,000 (40%) / 0 pending. All three reports correctly pick up a picker line.
+- Deleted all test data (product, prices, quotation, order). Real counts back to 261/68/62/0.
+- Gates: CRM harness 176/0, qa:rbac 306/1/3, backend tsc clean, admin next build clean (exit 0).
+
+### Run 3 - DB hygiene: purged leaked QA harness residue  [DONE]
+While doing the Task 1 old-module browser check I found a large amount of leaked test data from many
+prior qa:rbac / attendance-workflow / UAT runs. qa:cleanup only removes the LAST run (by id from
+_created.json) and its safety sweep is paginated (GET /user/get returns one page), so earlier runs'
+worlds were never removed. Purged it all, strictly by test pattern (cannot match real data):
+- qa.*@test.local users (528), QA_ roles (64), QA_ groups (48), QAWF employees (15) + their 1320
+  attendance / 45 attendance-requests / 30 leave-requests.
+- Second wave: test users with the @phw domain but QA prefixes (qawf_*, qaself_* = 34) and the 15
+  "QASelf" test employees they link to (+ 1230 attendance rows).
+- Then ran qa:rbac once more (306/1/3) and purged its fresh world too.
+Verified with a precise prefix scan (not the _ -wildcard one): 0 test users/roles/groups/employees,
+0 QA_/UAT leads/orders/returns/quotations/visitors. Real data intact: leads 261, orders 68, returns
+62, quotations 0; 209 real @phw users, 220 employees. No real row was touched (patterns are
+qa.*/QA_/QAWF/qawf_/qaself_/QASelf only; real users are normal-name@phw, real employees are not
+QASelf/QAWF). Known follow-up for a later session: fix qa:cleanup to page through all users and to
+also sweep qawf_/qaself_ @phw users + QASelf employees, so runs self-clean.
 
 ## Run 2 (2026-10-13, follow-up)
 
