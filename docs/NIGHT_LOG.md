@@ -27,6 +27,14 @@ All five built and, where I could exercise them, browser-verified as the manager
 - Gates: tsc clean, admin next build clean, CRM harness 170/0, qa:rbac 306/1/3.
 - Commits: backend 8aee327 (bulk price) + the persona/recipe commit below; admin ac0aa46.
 
+### Run 2, Task 3 - Redo UAT honestly in the browser  [DONE]
+- Went through every row of CRM_UAT_Checklist.md in the browser as the agent (usama) and the manager (usman). Results in docs/UAT_Run_Results.md with "UI verified" / "not done" per row. Harness is NOT counted as UI.
+- 42 of 43 rows UI verified. 1 row not done: 5.6 (pending-price line block) is not reachable through the current free-text quotation builder; it is an API rule for product-linked lines.
+- Created a full lead -> quotation -> order -> return chain in the UI to verify sections 4-7, then deleted all of it. Real counts confirmed back to 261 / 68 / 62 / 0.
+- BUG FOUND AND FIXED during 4.7: opening an out-of-scope record crashed ("timeline.map is not a function") or showed an empty record instead of refusing. Root cause: the admin axios uses validateStatus: status < 500, so a 403 resolves with the error envelope as the body; the detail pages then rendered it. Fixed the lead, order, quotation and return detail pages to treat a response with no id as not-found. Re-verified: out-of-scope now shows "not found or outside your scope". The backend was always correct (403, no data leak).
+- Gates: CRM harness 170/0, qa:rbac 306/1/3.
+- Commit (admin bug fix + this doc): see hash below.
+
 Backup taken first: qa/backups/night_20261013_022255.sql (354 MB, full gatePassSystem dump, gitignored).
 DATABASE_URL confirmed localhost, DB gatePassSystem.
 
