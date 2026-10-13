@@ -1,13 +1,15 @@
 /**
  * QA cleanup.  npm run qa:cleanup
- * Removes everything the harness created: records (visitor/holiday/unit/shift/leaveConf/feature),
- * link rows, feature-permissions, users, roles, groups — by id from _created.json, plus a
- * safety sweep that deletes any leftover QA-tagged users/roles/groups by name pattern.
- * Local-only (lib.ts refuses non-localhost).
+ * Fully removes everything the harness creates, for EVERY past run (not just the last one), by
+ * hard-deleting against unambiguous QA patterns via Prisma (deleteMany is not paginated, so there is
+ * no "first page only" gap). Real data is never matched: QA users are "*@test.local" or the users
+ * auto-provisioned for QA employees (name QAWF or QASelf, code starting QAWF- or QAUT-SELF-); QA
+ * roles/groups are "QA_..."; QA records carry QA_ name prefixes. Record ids from _created.json are
+ * also removed as a complement. Local-only (lib.ts refuses a non-localhost DATABASE_URL).
  */
 import fs from "fs";
 import path from "path";
-import { api, http, mintGodToken } from "./lib";
+import { api, mintGodToken } from "./lib";
 
 async function main() {
   const GOD = mintGodToken();
@@ -20,85 +22,92 @@ async function main() {
     return r.status;
   };
 
+  // Record types from _created.json that pattern-matching cannot cleanly target (holiday/unit/
+  // leaveConf). API delete works for these QA-named records; ignore failures.
   if (c) {
-    // records first (depend on nothing)
     for (const id of c.records?.visitor || []) await del("/visitor", id);
     for (const id of c.records?.holiday || []) await del("/holiday", id);
     for (const id of c.records?.unit || []) await del("/unit", id);
-    for (const id of c.records?.shift || []) await del("/shift", id);
     for (const id of c.records?.leaveconf || c.records?.leaveConf || []) await del("/leave/leave-configurations", id);
-    for (const name of c.records?.feature || []) await del("/appFeature", name);
-    // links (hard delete)
-    for (const id of c.userRole || []) await del("/userRole", id);
-    for (const id of c.userGroup || []) await del("/userGroup", id);
-    for (const id of c.groupRole || []) await del("/groupRole", id);
-    // feature permissions
-    for (const id of c.featurePerms || []) await del("/featurePermission", id);
-    // users, roles, groups
-    for (const u of c.users || []) await del("/user", u.id);
-    for (const r of c.roles || []) await del("/role", r.id);
-    for (const g of c.groups || []) await del("/group", g.id);
   }
 
-  // safety sweep by name pattern
-  const users = await api("GET", "/user/get", GOD);
-  const uarr = Array.isArray(users.data?.data) ? users.data.data : (Array.isArray(users.data) ? users.data : []);
-  for (const u of uarr) if (typeof u.username === "string" && /^qa\..*@test\.local$/.test(u.username)) await del("/user", u.id);
-  const roles = await api("GET", "/role/get", GOD);
-  const rarr = Array.isArray(roles.data?.data) ? roles.data.data : (Array.isArray(roles.data) ? roles.data : []);
-  for (const r of rarr) if (typeof r.name === "string" && r.name.startsWith("QA_")) await del("/role", r.id);
-  const groups = await api("GET", "/group/get", GOD);
-  const garr = Array.isArray(groups.data?.data) ? groups.data.data : (Array.isArray(groups.data) ? groups.data : []);
-  for (const g of garr) if (typeof g.name === "string" && g.name.startsWith("QA_")) await del("/group", g.id);
+  // Comprehensive hard delete by QA pattern (all runs). lib.ts guarantees local-only.
+  const summary: Record<string, number> = {};
+  const prisma = require("../src/core/models/base.model").default;
+  const run = async (label: string, fn: () => Promise<{ count: number }>) => {
+    try { const r = await fn(); summary[label] = (summary[label] || 0) + (r?.count || 0); }
+    catch (e: any) { console.warn(`[QA cleanup] ${label} skipped:`, (e?.message || e).split("\n")[0]); }
+  };
+  const ids = async (model: string, where: any): Promise<string[]> =>
+    (await prisma[model].findMany({ where, select: { id: true } })).map((x: any) => x.id);
 
-  // Direct local-DB sweep for things the API cannot cleanly remove (AppFeature delete is broken;
-  // workflow records have dependents / touch real tables). lib.ts guarantees local-only.
-  let featSwept = 0, wfSwept = 0;
   try {
-    const prisma = require("../src/core/models/base.model").default;
-    // per-statement try/catch so one FK error does not abort the rest of the sweep
-    const q = async (sql: any) => { try { const r = await prisma.$executeRaw(sql); return typeof r === "number" ? r : 0; } catch (e: any) { console.warn("[QA cleanup] sweep stmt skipped:", (e?.message || e).split("\n")[0]); return 0; } };
-    const { Prisma } = require("@prisma/client");
+    const QA_NAME = { startsWith: "QA_" };
+    const empWhere = { OR: [{ name: "QAWF" }, { name: "QASelf" }, { code: { startsWith: "QAWF-" } }, { code: { startsWith: "QAUT-SELF-" } }] };
+    const qaEmpIds = await ids("employee", empWhere);
+    // QA users: the RBAC personas (*@test.local) + the users auto-provisioned for QA employees
+    const qaUserIds = await ids("user", { OR: [{ username: { contains: "@test.local" } }, ...(qaEmpIds.length ? [{ employeeId: { in: qaEmpIds } }] : [])] });
+    const qaRoleIds = await ids("role", { name: QA_NAME });
+    const qaGroupIds = await ids("group", { name: QA_NAME });
 
-    featSwept = await q(Prisma.sql`DELETE FROM public."AppFeature" WHERE "name" LIKE 'QA\_feat.%' ESCAPE '\'`);
-
-    const empIds: string[] = (c?.records?.wfEmployee || []);
-    const gpIds: string[] = (c?.records?.gatePass || []);
-    const custIds: string[] = (c?.records?.customer || []);
-    const itemIds: string[] = (c?.records?.item || []);
-
-    if (gpIds.length) {
-      await q(Prisma.sql`DELETE FROM public."GatePassItem" WHERE "gatePassId" IN (${Prisma.join(gpIds)})`);
-      wfSwept += await q(Prisma.sql`DELETE FROM public."GatePass" WHERE "id" IN (${Prisma.join(gpIds)})`);
+    // dependents of QA employees
+    if (qaEmpIds.length) {
+      const eIn = { employeeId: { in: qaEmpIds } };
+      await run("attendanceRequest", () => prisma.attendanceRequest.deleteMany({ where: eIn }));
+      await run("attendance", () => prisma.attendance.deleteMany({ where: eIn }));
+      await run("leaveRequest", () => prisma.leaveRequest.deleteMany({ where: eIn }));
+      await run("leaveAllocation", () => prisma.leaveAllocation.deleteMany({ where: eIn }));
+      await run("shiftAssignment(emp)", () => prisma.shiftAssignment.deleteMany({ where: eIn }));
+      await run("unitEmployee", () => prisma.unitEmployee.deleteMany({ where: eIn }));
+      await run("todo", () => prisma.todo.deleteMany({ where: eIn }));
     }
-    if (empIds.length) {
-      await q(Prisma.sql`DELETE FROM public."Attendance" WHERE "employeeId" IN (${Prisma.join(empIds)})`);
-      await q(Prisma.sql`DELETE FROM public."AttendanceRequest" WHERE "employeeId" IN (${Prisma.join(empIds)})`);
-      await q(Prisma.sql`DELETE FROM public."LeaveRequest" WHERE "employeeId" IN (${Prisma.join(empIds)})`);
-      await q(Prisma.sql`DELETE FROM public."LeaveAllocation" WHERE "employeeId" IN (${Prisma.join(empIds)})`);
-      await q(Prisma.sql`DELETE FROM public."ShiftAssignment" WHERE "employeeId" IN (${Prisma.join(empIds)})`);
-      wfSwept += await q(Prisma.sql`DELETE FROM public."Employee" WHERE "id" IN (${Prisma.join(empIds)})`);
+    // dependents of QA users
+    if (qaUserIds.length) {
+      const uIn = { userId: { in: qaUserIds } };
+      await run("activityLog", () => prisma.activityLog.deleteMany({ where: uIn }));
+      await run("loggedInUsers", () => prisma.loggedInUsers.deleteMany({ where: uIn }));
+      await run("blacklistToken", () => prisma.blacklistToken.deleteMany({ where: uIn }));
     }
-    // QA shifts/customers/items (by id if tracked, plus a name-pattern safety net)
-    // QA shifts and their children (ShiftAssignment, ShiftTimetable reference Shift). Delete
-    // children first, keyed by the QA shift name pattern, then the shifts themselves.
-    await q(Prisma.sql`DELETE FROM public."ShiftAssignment" WHERE "shiftId" IN (SELECT "id" FROM public."Shift" WHERE "name" LIKE 'QA\_Shift\_%' ESCAPE '\')`);
-    await q(Prisma.sql`DELETE FROM public."ShiftTimetable" WHERE "shiftId" IN (SELECT "id" FROM public."Shift" WHERE "name" LIKE 'QA\_Shift\_%' ESCAPE '\')`);
-    wfSwept += await q(Prisma.sql`DELETE FROM public."Shift" WHERE "name" LIKE 'QA\_Shift\_%' ESCAPE '\'`);
-    if (custIds.length) await q(Prisma.sql`DELETE FROM public."Customer" WHERE "id" IN (${Prisma.join(custIds)})`);
-    await q(Prisma.sql`DELETE FROM public."Customer" WHERE "name" LIKE 'QA\_Cust\_%' ESCAPE '\'`);
-    if (itemIds.length) await q(Prisma.sql`DELETE FROM public."Item" WHERE "id" IN (${Prisma.join(itemIds)})`);
-    await q(Prisma.sql`DELETE FROM public."Item" WHERE "name" LIKE 'QA\_Item\_%' ESCAPE '\'`);
-    // QA workflow employee safety net by code
-    await q(Prisma.sql`DELETE FROM public."Employee" WHERE "code" LIKE 'QAWF-%'`);
-    // QA visitors created by the security/multi-user/CRUD tests (names start with QA_)
-    wfSwept += await q(Prisma.sql`DELETE FROM public."Visitor" WHERE "name" LIKE 'QA\_%' ESCAPE '\'`);
+    // link rows (users, roles, groups)
+    await run("userRole", () => prisma.userRole.deleteMany({ where: { OR: [{ userId: { in: qaUserIds } }, { roleId: { in: qaRoleIds } }] } }));
+    await run("userGroup", () => prisma.userGroup.deleteMany({ where: { OR: [{ userId: { in: qaUserIds } }, { groupId: { in: qaGroupIds } }] } }));
+    await run("groupRole", () => prisma.groupRole.deleteMany({ where: { OR: [{ roleId: { in: qaRoleIds } }, { groupId: { in: qaGroupIds } }] } }));
+    // feature permissions (parentId is a plain string: user/role/group)
+    const parents = [...qaUserIds, ...qaRoleIds, ...qaGroupIds];
+    if (parents.length) await run("featurePermission", () => prisma.featurePermission.deleteMany({ where: { parentId: { in: parents } } }));
+    // principals: users first (clears user.employeeId FK), then employees, roles, groups
+    await run("user", () => prisma.user.deleteMany({ where: { id: { in: qaUserIds } } }));
+    await run("employee", () => prisma.employee.deleteMany({ where: { id: { in: qaEmpIds } } }));
+    await run("role", () => prisma.role.deleteMany({ where: { id: { in: qaRoleIds } } }));
+    await run("group", () => prisma.group.deleteMany({ where: { id: { in: qaGroupIds } } }));
 
-    await prisma.$disconnect();
+    // QA records by name/code pattern (shifts + their children, customers, items, visitors, features,
+    // gate passes from _created.json).
+    const qaShiftIds = await ids("shift", { name: { startsWith: "QA_Shift_" } });
+    if (qaShiftIds.length) {
+      await run("shiftAssignment(shift)", () => prisma.shiftAssignment.deleteMany({ where: { shiftId: { in: qaShiftIds } } }));
+      await run("shiftTimetable", () => prisma.shiftTimetable.deleteMany({ where: { shiftId: { in: qaShiftIds } } }));
+      await run("shift", () => prisma.shift.deleteMany({ where: { id: { in: qaShiftIds } } }));
+    }
+    // QA gate-pass chain: customers (QA_Cust_), items (QA_Item_), and the gate passes / gate-pass
+    // items that reference them (GatePassItem RESTRICTs deleting a referenced Item/GatePass).
+    const qaCustIds = await ids("customer", { name: { startsWith: "QA_Cust_" } });
+    const qaItemIds = await ids("item", { name: { startsWith: "QA_Item_" } });
+    const gpIds = Array.from(new Set([...(c?.records?.gatePass || []), ...(qaCustIds.length ? await ids("gatePass", { customerId: { in: qaCustIds } }) : [])]));
+    if (gpIds.length || qaItemIds.length) {
+      await run("gatePassItem", () => prisma.gatePassItem.deleteMany({ where: { OR: [{ gatePassId: { in: gpIds } }, { itemId: { in: qaItemIds } }] } }));
+    }
+    if (gpIds.length) await run("gatePass", () => prisma.gatePass.deleteMany({ where: { id: { in: gpIds } } }));
+    if (qaCustIds.length) await run("customer", () => prisma.customer.deleteMany({ where: { id: { in: qaCustIds } } }));
+    if (qaItemIds.length) await run("item", () => prisma.item.deleteMany({ where: { id: { in: qaItemIds } } }));
+    await run("visitor", () => prisma.visitor.deleteMany({ where: { name: QA_NAME } }));
+    await run("appFeature", () => prisma.appFeature.deleteMany({ where: { name: { startsWith: "QA_feat." } } }));
+
+    await prisma.$disconnect().catch(() => {});
   } catch (e: any) {
-    console.warn("[QA cleanup] DB sweep skipped:", e?.message || e);
+    console.warn("[QA cleanup] DB sweep error:", e?.message || e);
   }
 
-  console.log(`[QA cleanup] delete calls succeeded: ${removed}. QA features removed: ${featSwept}. Workflow rows removed: ${wfSwept}. Safety sweep done.`);
+  console.log(`[QA cleanup] API record deletes: ${removed}. Hard-deleted:`, JSON.stringify(summary));
 }
 main().catch((e) => { console.error("[QA cleanup] error", e); process.exit(1); });
