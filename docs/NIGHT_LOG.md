@@ -4,6 +4,62 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 3 (2026-10-13, follow-up)
+
+Backup first: qa/backups/night3_20261013_144429.sql (gitignored).
+
+Three tasks, same rules (local only, gates after each step, commit per step, no attribution).
+1. Axios 4xx handling fixed at the interceptor. 2. Catalogue product picker in the quotation and
+order builders. 3. Refresh SOLARMAX_PROJECT_HANDOFF.md.
+
+### Run 3, Task 1 - Axios 4xx handling at the interceptor  [DONE]
+Problem: the admin axios instance used validateStatus: status < 500, so every 4xx resolved as a
+successful response with the error envelope as the body. Pages then rendered the error body as data,
+no error toast showed, and a bogus "403 -> logout" branch in handleError could log a user out on a
+forbidden (out-of-scope) response. Run 2 worked around the symptom on the four CRM detail pages; this
+is the proper fix at the one place every call goes through.
+
+Change (admin src/utils/header.ts):
+- validateStatus is now status < 400. 2xx and 3xx resolve; 4xx and 5xx reject, so the error
+  interceptor runs and callers' .catch / try-catch fire.
+- handleError rewritten: ONLY 401 (or an explicit "Invalid Token" / Unauthorized body) clears the
+  token and reloads. 403 and every other non-401 error now just shows the server's message in the
+  snackbar (message, then error, then axios message as fallbacks). The old "403 -> logout" branch is
+  gone, so an out-of-scope click no longer logs the user out.
+- The success interceptor (unwrap of {success,data} envelopes, read-like toast suppression) and the
+  5xx/network retry are unchanged.
+
+What depended on the old behaviour (checked every service + page that calls the API):
+- CRM detail pages (lead/order/quotation/return): already handle an id-less response as not-found
+  (Run 2 fix) AND have .catch -> setLead(false). With 4xx now rejecting, the .catch fires and the page
+  shows "not found or outside your scope" while the interceptor shows the server message. No double
+  handling problem (TOAST_LIMIT=1 collapses to one toast). No change needed.
+- AMS attendance.service.ts checkAttendance / markAttendance: had .then-side guards reading
+  response.data.success === false to catch a 4xx that used to resolve. Those branches are now mostly
+  unreachable (4xx rejects first) but still guard the rare HTTP-200-with-success:false case, and the
+  .catch rethrow + the component try/catch (markAttendance.tsx, reads error.response.data.message)
+  surface the message exactly as before. Net: a latent bug is fixed (a 4xx whose body carried a data
+  key used to be unwrapped and silently treated as success). No change needed.
+- base.service.ts: creates its own raw axios client with empty 401/403 handlers that just reject; old
+  modules extend it but actually call the shared axiosInstance, so it is unaffected (raw axios already
+  rejected 4xx). Login (auth.service) and the permissions webhook use raw axios too, unaffected.
+- No service was found that READ a 4xx body as success data for rendering, so nothing broke.
+
+Browser checks (main flows):
+- CRM in-scope lead opens normally (envelope unwrap intact, all fields + timeline render).
+- CRM out-of-scope lead (agent -> another agent's lead): snackbar "Lead is outside your scope",
+  page shows "Lead not found or outside your scope", NO logout, no crash. Console shows only the
+  intentional console.error, no uncaught exception.
+- Old module via a throwaway HR user (created with a cloned password hash + HR role, deleted after):
+  the analytics dashboard renders and a genuine 403 from the attendance endpoint now surfaces "You
+  don't have permission to read attendance" in the snackbar (previously that 403 resolved silently).
+  The AMS attendance-request list (stats + paginated list) renders fully on the success path.
+- Throwaway HR user deleted and verified gone; no real user touched.
+
+Gates: admin next build clean (exit 0), CRM harness 170/0, qa:rbac 306/1/3, backend tsc --noEmit
+clean. Change is admin-only; backend source unchanged.
+Commit (admin): 9d66241.
+
 ## Run 2 (2026-10-13, follow-up)
 
 Backup first: qa/backups/night2_20261013_132704.sql (gitignored).
