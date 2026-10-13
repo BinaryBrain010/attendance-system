@@ -49,6 +49,14 @@ Note: a bug slipped into the first customers detail route (passing a prop throug
 failed the type check); fixed by reading the phone from the route params inside Customer 360. Also the
 qa:cleanup docstring first contained a literal "*/" that closed the block comment early; reworded.
 
+Follow-up (same run): on review, the Customers directory was gated on crm.report.read.*. The real Sales
+Agent role recipe does include report.read, so it was not actually broken, but a customer directory
+should not need the reports permission. Changed /crmReport/customers and /crmReport/customer360 (and the
+admin pages + nav item) to require crm.lead.read.own.* instead, so any lead-reader sees Customers while
+reports stay separate. Proven: a user with only crm.lead.read.own.* gets 200 on /crmReport/customers and
+403 on /crmReport/margin. Gates still green (CRM 176/0, qa:rbac 306/1/3, featureMap not-registered 0,
+admin build clean). Commits: backend 6e2eacc, admin 18ef974.
+
 ## Run 3 (2026-10-13, follow-up)
 
 Backup first: qa/backups/night3_20261013_144429.sql (gitignored).
