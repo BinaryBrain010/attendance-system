@@ -20,18 +20,18 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /access/getPermission | read | token | `-` | - | - | internal permission check |
 | GET | /access/getUserGroup | read | token | `-` | - | - | internal permission check |
 | GET | /access/getUserRole | read | token | `-` | - | - | internal permission check |
-| GET | /activityLog/count | read | feature | `activityLog.read.*` | yes | 0 |  |
-| GET | /activityLog/get | read | feature | `activityLog.read.*` | yes | 0 |  |
-| POST | /activityLog/get | read | feature | `activityLog.read.*` | yes | 0 |  |
-| POST | /activityLog/getByEntity | read | feature | `activityLog.read.*` | yes | 0 |  |
-| POST | /activityLog/getById | read | feature | `activityLog.read.*` | yes | 0 |  |
-| POST | /activityLog/getByUnit | read | feature | `activityLog.read.*` | yes | 0 |  |
-| POST | /activityLog/getByUser | read | feature | `activityLog.read.*` | yes | 0 |  |
-| GET | /activityLog/me | self | self | `activityLog.read.own.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /activityLog/me | read | feature | `activityLog.read.*` | yes | 0 |  |
-| GET | /analytics/personalAttendance | self | self | `analytics.read.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /analytics/personalAttendance | read | feature | `analytics.read.*` | yes | 0 |  |
-| GET | /analytics/topAttendance | read | feature | `analytics.read.*` | yes | 0 |  |
+| GET | /activityLog/count | read | feature | `activityLog.read.*` | yes | 3 |  |
+| GET | /activityLog/get | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/get | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getByEntity | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getById | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getByUnit | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/getByUser | read | feature | `activityLog.read.*` | yes | 3 |  |
+| GET | /activityLog/me | self | self | `activityLog.read.own.*` | - | 3 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /activityLog/me | read | feature | `activityLog.read.*` | yes | 3 |  |
+| GET | /analytics/personalAttendance | self | self | `analytics.read.*` | - | 38 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /analytics/personalAttendance | read | feature | `analytics.read.*` | yes | 38 |  |
+| GET | /analytics/topAttendance | read | feature | `analytics.read.*` | yes | 38 |  |
 | POST | /appFeature/create | create | god | `-` | - | - | feature tree edits are god-only |
 | POST | /appFeature/delete | delete | god | `-` | - | - | feature tree edits are god-only |
 | GET | /appFeature/get | read | token | `-` | - | - | permission UI needs feature tree |
@@ -41,144 +41,144 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /appFeature/restore | restore | god | `-` | - | - | feature tree edits are god-only |
 | GET | /appFeature/total | read | token | `-` | - | - | permission UI needs feature tree |
 | PUT | /appFeature/update | update | god | `-` | - | - | feature tree edits are god-only |
-| POST | /attendance/bulkMarkAttendance | create | feature | `attendance.markAttendance.*` | yes | 0 |  |
-| POST | /attendance/bulkMarkAttendanceByEmployee | create | feature | `attendance.markAttendance.*` | yes | 0 |  |
-| POST | /attendance/bulkMarkLeave | create | feature | `attendance.markAttendance.*` | yes | 0 |  |
-| POST | /attendance/checkAttendance | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/create | create | feature | `attendance.create.*` | yes | 0 |  |
-| POST | /attendance/delete | delete | feature | `attendance.delete.*` | yes | 0 |  |
-| POST | /attendance/excel | export | feature | `attendance.export.*` | yes | 0 |  |
-| POST | /attendance/face-attendance | create | feature | `attendance.markAttendance.*` | yes | 0 | marks attendance via face recognition |
-| GET | /attendance/get | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/get | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/getById | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/getDate | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/getEmployeeAttendance | self | self | `attendance.read.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /attendance/history | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/import | import | feature | `attendance.excelImport.*` | yes | 0 |  |
-| POST | /attendance/markAttendance | self | self | `attendance.markAttendance.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /attendance/pdf | export | feature | `attendance.export.*` | yes | 0 |  |
-| GET | /attendance/requestSummary | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/restore | restore | feature | `attendance.restore.*` | yes | 0 |  |
-| POST | /attendance/search | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/specific | read | feature | `attendance.read.*` | yes | 0 |  |
-| POST | /attendance/summary | read | feature | `attendance.read.*` | yes | 0 |  |
-| GET | /attendance/total | read | feature | `attendance.read.*` | yes | 0 |  |
-| PUT | /attendance/update | update | feature | `attendance.update.*` | yes | 0 |  |
-| POST | /attendanceReq/bulkUpdateStatus | approve | feature | `attendance.request.approve.*` | yes | 0 | covers approve and reject |
-| POST | /attendanceReq/create | self | self | `attendanceReq.create.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /attendanceReq/delete | delete | feature | `attendanceReq.delete.*` | yes | 0 |  |
-| GET | /attendanceReq/deleted | read | feature | `attendanceReq.read.*` | yes | 0 |  |
-| GET | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 0 |  |
-| POST | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 0 |  |
-| POST | /attendanceReq/getById | read | feature | `attendanceReq.read.*` | yes | 0 |  |
-| POST | /attendanceReq/getEmployee | self | self | `attendanceReq.read.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /attendanceReq/restore | restore | feature | `attendanceReq.restore.*` | yes | 0 |  |
-| POST | /attendanceReq/search | read | feature | `attendanceReq.read.*` | yes | 0 |  |
-| GET | /attendanceReq/total | read | feature | `attendanceReq.read.*` | yes | 0 |  |
-| PUT | /attendanceReq/update | update | feature | `attendanceReq.update.*` | yes | 0 |  |
-| POST | /attendanceReq/updateStatus | approve | feature | `attendance.request.approve.*` | yes | 0 | covers approve and reject |
+| POST | /attendance/bulkMarkAttendance | create | feature | `attendance.markAttendance.*` | yes | 22 |  |
+| POST | /attendance/bulkMarkAttendanceByEmployee | create | feature | `attendance.markAttendance.*` | yes | 22 |  |
+| POST | /attendance/bulkMarkLeave | create | feature | `attendance.markAttendance.*` | yes | 22 |  |
+| POST | /attendance/checkAttendance | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/create | create | feature | `attendance.create.*` | yes | 22 |  |
+| POST | /attendance/delete | delete | feature | `attendance.delete.*` | yes | 22 |  |
+| POST | /attendance/excel | export | feature | `attendance.export.*` | yes | 22 |  |
+| POST | /attendance/face-attendance | create | feature | `attendance.markAttendance.*` | yes | 22 | marks attendance via face recognition |
+| GET | /attendance/get | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/get | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/getById | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/getDate | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/getEmployeeAttendance | self | self | `attendance.read.*` | - | 22 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /attendance/history | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/import | import | feature | `attendance.excelImport.*` | yes | 22 |  |
+| POST | /attendance/markAttendance | self | self | `attendance.markAttendance.*` | - | 22 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /attendance/pdf | export | feature | `attendance.export.*` | yes | 22 |  |
+| GET | /attendance/requestSummary | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/restore | restore | feature | `attendance.restore.*` | yes | 22 |  |
+| POST | /attendance/search | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/specific | read | feature | `attendance.read.*` | yes | 22 |  |
+| POST | /attendance/summary | read | feature | `attendance.read.*` | yes | 22 |  |
+| GET | /attendance/total | read | feature | `attendance.read.*` | yes | 22 |  |
+| PUT | /attendance/update | update | feature | `attendance.update.*` | yes | 22 |  |
+| POST | /attendanceReq/bulkUpdateStatus | approve | feature | `attendance.request.approve.*` | yes | 22 | covers approve and reject |
+| POST | /attendanceReq/create | self | self | `attendanceReq.create.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /attendanceReq/delete | delete | feature | `attendanceReq.delete.*` | yes | 4 |  |
+| GET | /attendanceReq/deleted | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| GET | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| POST | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| POST | /attendanceReq/getById | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| POST | /attendanceReq/getEmployee | self | self | `attendanceReq.read.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /attendanceReq/restore | restore | feature | `attendanceReq.restore.*` | yes | 4 |  |
+| POST | /attendanceReq/search | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| GET | /attendanceReq/total | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| PUT | /attendanceReq/update | update | feature | `attendanceReq.update.*` | yes | 4 |  |
+| POST | /attendanceReq/updateStatus | approve | feature | `attendance.request.approve.*` | yes | 22 | covers approve and reject |
 | POST | /auth/login | open | open | `-` | - | - |  |
 | GET | /auth/logout | open | open | `-` | - | - |  |
 | GET | /auth/logoutOfAllDevices | open | open | `-` | - | - |  |
 | POST | /auth/logoutUserOfAllDevices | open | open | `-` | - | - |  |
-| POST | /crmBrand/create | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmBrand/delete | delete | feature | `crm.catalogue.delete.*` | yes | 0 |  |
-| POST | /crmBrand/get | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmBrand/getAll | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmBrand/getById | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmBrand/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmBrand/restore | restore | feature | `crm.catalogue.restore.*` | yes | 0 |  |
-| POST | /crmBrand/search | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmBrand/total | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| PUT | /crmBrand/update | update | feature | `crm.catalogue.update.*` | yes | 0 |  |
-| POST | /crmBundle/addItem | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmBundle/create | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmBundle/delete | delete | feature | `crm.catalogue.delete.*` | yes | 0 |  |
-| POST | /crmBundle/get | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmBundle/getAll | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmBundle/getById | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmBundle/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmBundle/restore | restore | feature | `crm.catalogue.restore.*` | yes | 0 |  |
-| POST | /crmBundle/search | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmBundle/total | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| PUT | /crmBundle/update | update | feature | `crm.catalogue.update.*` | yes | 0 |  |
-| POST | /crmCategory/create | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmCategory/delete | delete | feature | `crm.catalogue.delete.*` | yes | 0 |  |
-| POST | /crmCategory/get | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmCategory/getAll | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmCategory/getById | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmCategory/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmCategory/restore | restore | feature | `crm.catalogue.restore.*` | yes | 0 |  |
-| POST | /crmCategory/search | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmCategory/total | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| PUT | /crmCategory/update | update | feature | `crm.catalogue.update.*` | yes | 0 |  |
-| POST | /crmPriceList/bulkPrice | update | feature | `crm.catalogue.cost.*` | yes | 0 | bulk price/cost from Excel (cost-gated) |
-| POST | /crmPriceList/byProduct | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmPriceList/create | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmPriceList/delete | delete | feature | `crm.catalogue.delete.*` | yes | 0 |  |
-| PUT | /crmPriceList/update | update | feature | `crm.catalogue.update.*` | yes | 0 |  |
-| POST | /crmPriceList/withCost | read | feature | `crm.catalogue.cost.*` | yes | 0 | cost/margin visibility |
-| POST | /crmProduct/byCategory | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmProduct/create | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmProduct/delete | delete | feature | `crm.catalogue.delete.*` | yes | 0 |  |
-| POST | /crmProduct/get | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmProduct/getAll | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmProduct/getById | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmProduct/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| POST | /crmProduct/image | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmProduct/import | import | feature | `crm.catalogue.import.*` | yes | 0 | Shopify CSV import (dry-run default) |
-| POST | /crmProduct/restore | restore | feature | `crm.catalogue.restore.*` | yes | 0 |  |
-| POST | /crmProduct/search | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 0 |  |
-| PUT | /crmProduct/update | update | feature | `crm.catalogue.update.*` | yes | 0 |  |
-| POST | /crmProduct/variant | create | feature | `crm.catalogue.create.*` | yes | 0 |  |
-| POST | /crmReport/agentPerformance | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/customer360 | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/customers | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/dailySummary | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/dashboard | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 0 |  |
-| POST | /crmReport/funnel | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/leadAging | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/lostReasons | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/margin | read | feature | `crm.report.read.*` | yes | 0 | cost enforced in controller via crm.catalogue.cost.* |
-| POST | /crmReport/pipeline | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/repeatCustomers | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/returns | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /crmReport/sales | read | feature | `crm.report.read.*` | yes | 0 |  |
-| POST | /customer/create | create | feature | `customer.create.*` | yes | 0 |  |
-| POST | /customer/delete | delete | feature | `customer.delete.*` | yes | 0 |  |
-| GET | /customer/get | read | feature | `customer.read.*` | yes | 0 |  |
-| POST | /customer/get | read | feature | `customer.read.*` | yes | 0 |  |
-| POST | /customer/getById | read | feature | `customer.read.*` | yes | 0 |  |
-| POST | /customer/getDeleted | read | feature | `customer.read.*` | yes | 0 |  |
-| GET | /customer/getFrequent | read | feature | `customer.read.*` | yes | 0 |  |
-| POST | /customer/restore | restore | feature | `customer.restore.*` | yes | 0 |  |
-| POST | /customer/search | read | feature | `customer.read.*` | yes | 0 |  |
-| GET | /customer/total | read | feature | `customer.read.*` | yes | 0 |  |
-| PUT | /customer/update | update | feature | `customer.update.*` | yes | 0 |  |
-| POST | /employee/create | create | feature | `employee.create.*` | yes | 0 |  |
-| POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 0 |  |
-| POST | /employee/files | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/filesDel | update | feature | `employee.update.*` | yes | 0 |  |
-| GET | /employee/get | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/get | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/getByCode | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/getById | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/getByUserId | read | self | `employee.read.*` | - | 0 | own user (body.userId) else employee.read.* |
-| POST | /employee/getCard | export | feature | `employee.excel.*` | yes | 0 |  |
-| POST | /employee/getDeleted | read | feature | `employee.read.*` | yes | 0 |  |
-| GET | /employee/getExcel | export | feature | `employee.excel.*` | yes | 0 |  |
-| GET | /employee/getFaceRecognitionData | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/getHistoryById | history | feature | `employee.viewPreviousUpdate.*` | yes | 0 |  |
-| POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 0 | own user (body.userId) else employee.read.* |
-| POST | /employee/restore | restore | feature | `employee.restore.*` | yes | 0 |  |
-| POST | /employee/search | read | feature | `employee.read.*` | yes | 0 |  |
-| POST | /employee/stats | read | feature | `employee.read.*` | yes | 0 |  |
-| GET | /employee/total | read | feature | `employee.read.*` | yes | 0 |  |
-| PUT | /employee/update | update | feature | `employee.update.*` | yes | 0 |  |
-| POST | /employee/updateFile | update | feature | `employee.update.*` | yes | 0 |  |
+| POST | /crmBrand/create | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmBrand/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
+| POST | /crmBrand/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBrand/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBrand/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBrand/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBrand/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
+| POST | /crmBrand/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBrand/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| PUT | /crmBrand/update | update | feature | `crm.catalogue.update.*` | yes | 2 |  |
+| POST | /crmBundle/addItem | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmBundle/create | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmBundle/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
+| POST | /crmBundle/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBundle/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBundle/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBundle/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmBundle/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
+| POST | /crmBundle/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmBundle/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| PUT | /crmBundle/update | update | feature | `crm.catalogue.update.*` | yes | 2 |  |
+| POST | /crmCategory/create | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmCategory/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
+| POST | /crmCategory/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmCategory/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmCategory/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmCategory/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmCategory/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
+| POST | /crmCategory/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmCategory/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| PUT | /crmCategory/update | update | feature | `crm.catalogue.update.*` | yes | 2 |  |
+| POST | /crmPriceList/bulkPrice | update | feature | `crm.catalogue.cost.*` | yes | 2 | bulk price/cost from Excel (cost-gated) |
+| POST | /crmPriceList/byProduct | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmPriceList/create | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmPriceList/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
+| PUT | /crmPriceList/update | update | feature | `crm.catalogue.update.*` | yes | 2 |  |
+| POST | /crmPriceList/withCost | read | feature | `crm.catalogue.cost.*` | yes | 2 | cost/margin visibility |
+| POST | /crmProduct/byCategory | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmProduct/create | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmProduct/delete | delete | feature | `crm.catalogue.delete.*` | yes | 1 |  |
+| POST | /crmProduct/get | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmProduct/getAll | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmProduct/getById | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmProduct/getDeleted | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| POST | /crmProduct/image | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmProduct/import | import | feature | `crm.catalogue.import.*` | yes | 1 | Shopify CSV import (dry-run default) |
+| POST | /crmProduct/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
+| POST | /crmProduct/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
+| PUT | /crmProduct/update | update | feature | `crm.catalogue.update.*` | yes | 2 |  |
+| POST | /crmProduct/variant | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
+| POST | /crmReport/agentPerformance | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/customer360 | read | feature | `crm.lead.read.own.*` | yes | 3 | customer 360 profile; gated on lead read |
+| POST | /crmReport/customers | read | feature | `crm.lead.read.own.*` | yes | 3 | customer directory; gated on lead read |
+| POST | /crmReport/dailySummary | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/dashboard | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 3 |  |
+| POST | /crmReport/funnel | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/leadAging | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/lostReasons | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/margin | read | feature | `crm.report.read.*` | yes | 3 | cost enforced in controller via crm.catalogue.cost.* |
+| POST | /crmReport/pipeline | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/repeatCustomers | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/returns | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /crmReport/sales | read | feature | `crm.report.read.*` | yes | 3 |  |
+| POST | /customer/create | create | feature | `customer.create.*` | yes | 3 |  |
+| POST | /customer/delete | delete | feature | `customer.delete.*` | yes | 3 |  |
+| GET | /customer/get | read | feature | `customer.read.*` | yes | 3 |  |
+| POST | /customer/get | read | feature | `customer.read.*` | yes | 3 |  |
+| POST | /customer/getById | read | feature | `customer.read.*` | yes | 3 |  |
+| POST | /customer/getDeleted | read | feature | `customer.read.*` | yes | 3 |  |
+| GET | /customer/getFrequent | read | feature | `customer.read.*` | yes | 3 |  |
+| POST | /customer/restore | restore | feature | `customer.restore.*` | yes | 3 |  |
+| POST | /customer/search | read | feature | `customer.read.*` | yes | 3 |  |
+| GET | /customer/total | read | feature | `customer.read.*` | yes | 3 |  |
+| PUT | /customer/update | update | feature | `customer.update.*` | yes | 3 |  |
+| POST | /employee/create | create | feature | `employee.create.*` | yes | 22 |  |
+| POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 22 |  |
+| POST | /employee/files | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/filesDel | update | feature | `employee.update.*` | yes | 22 |  |
+| GET | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getByCode | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getById | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getByUserId | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
+| POST | /employee/getCard | export | feature | `employee.excel.*` | yes | 22 |  |
+| POST | /employee/getDeleted | read | feature | `employee.read.*` | yes | 22 |  |
+| GET | /employee/getExcel | export | feature | `employee.excel.*` | yes | 22 |  |
+| GET | /employee/getFaceRecognitionData | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getHistoryById | history | feature | `employee.viewPreviousUpdate.*` | yes | 22 |  |
+| POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
+| POST | /employee/restore | restore | feature | `employee.restore.*` | yes | 22 |  |
+| POST | /employee/search | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/stats | read | feature | `employee.read.*` | yes | 22 |  |
+| GET | /employee/total | read | feature | `employee.read.*` | yes | 22 |  |
+| PUT | /employee/update | update | feature | `employee.update.*` | yes | 22 |  |
+| POST | /employee/updateFile | update | feature | `employee.update.*` | yes | 22 |  |
 | POST | /featurePermission/allowedFeatures | read | dynamic | `(dynamic) {parentType}.read.*` | - | - | parentType in body: user/role/group.read.* |
 | POST | /featurePermission/create | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
 | POST | /featurePermission/delete | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
@@ -186,280 +186,280 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /featurePermission/get | read | dynamic | `(dynamic) {parentType}.read.*` | - | - | parentType in body: user/role/group.read.* |
 | POST | /featurePermission/restore | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
 | PUT | /featurePermission/update | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
-| POST | /gatePass/approve | approve | feature | `voucher.post.*` | yes | 0 | feature QuickPass checks before approve |
-| POST | /gatePass/create | create | feature | `voucher.create.*` | yes | 0 |  |
-| POST | /gatePass/customerId | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/date | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/delete | delete | feature | `voucher.delete.*` | yes | 0 |  |
-| GET | /gatePass/get | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/get | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/getById | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/getDeleted | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/itemId | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/pdf | export | feature | `voucher.pdf.*` | yes | 0 |  |
-| GET | /gatePass/report | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePass/restore | restore | feature | `voucher.restore.*` | yes | 0 |  |
-| POST | /gatePass/status | read | feature | `voucher.read.*` | yes | 0 |  |
-| GET | /gatePass/total | read | feature | `voucher.read.*` | yes | 0 |  |
-| PUT | /gatePass/update | update | feature | `voucher.update.*` | yes | 0 |  |
-| POST | /gatePassItem/create | create | feature | `voucher.create.*` | yes | 0 |  |
-| POST | /gatePassItem/delete | delete | feature | `voucher.delete.*` | yes | 0 |  |
-| GET | /gatePassItem/get | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePassItem/get | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePassItem/getById | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /gatePassItem/restore | restore | feature | `voucher.restore.*` | yes | 0 |  |
-| GET | /gatePassItem/total | read | feature | `voucher.read.*` | yes | 0 |  |
-| PUT | /gatePassItem/update | update | feature | `voucher.update.*` | yes | 0 |  |
-| POST | /group/create | create | feature | `group.create.*` | yes | 0 |  |
-| POST | /group/delete | delete | feature | `group.delete.*` | yes | 0 |  |
-| GET | /group/get | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /group/get | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /group/getById | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /group/getByName | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /group/getGroupById | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /group/restore | restore | feature | `group.delete.*` | yes | 0 | restore mapped to delete feature |
-| POST | /group/search | read | feature | `group.read.*` | yes | 0 |  |
-| GET | /group/total | read | feature | `group.read.*` | yes | 0 |  |
-| PUT | /group/update | update | feature | `group.update.*` | yes | 0 |  |
-| POST | /groupRole/create | update | feature | `group.update.*` | yes | 0 | assigning roles to a group |
-| POST | /groupRole/delete | update | feature | `group.update.*` | yes | 0 | assigning roles to a group |
-| GET | /groupRole/get | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /groupRole/get | read | feature | `group.read.*` | yes | 0 |  |
-| POST | /groupRole/restore | update | feature | `group.update.*` | yes | 0 | assigning roles to a group |
-| PUT | /groupRole/update | update | feature | `group.update.*` | yes | 0 | assigning roles to a group |
-| POST | /holiday/create | create | feature | `holiday.create.*` | yes | 0 |  |
-| POST | /holiday/delete | delete | feature | `holiday.delete.*` | yes | 0 |  |
-| GET | /holiday/deleted | read | feature | `holiday.read.*` | yes | 0 |  |
-| GET | /holiday/get | read | feature | `holiday.read.*` | yes | 0 |  |
-| GET | /holiday/getAll | read | feature | `holiday.read.*` | yes | 0 |  |
-| GET | /holiday/getById | read | feature | `holiday.read.*` | yes | 0 |  |
-| POST | /holiday/getHistoryById | history | feature | `holiday.viewPreviousUpdate.*` | yes | 0 |  |
-| POST | /holiday/markSundays | create | feature | `holiday.markSundays.*` | yes | 0 |  |
-| POST | /holiday/restore | restore | feature | `holiday.restore.*` | yes | 0 |  |
-| POST | /holiday/search | read | feature | `holiday.read.*` | yes | 0 |  |
-| GET | /holiday/total | read | feature | `holiday.read.*` | yes | 0 |  |
-| PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 0 |  |
-| POST | /item/create | create | feature | `item.create.*` | yes | 0 |  |
-| POST | /item/delete | delete | feature | `item.delete.*` | yes | 0 |  |
-| GET | /item/get | read | feature | `item.read.*` | yes | 0 |  |
-| POST | /item/get | read | feature | `item.read.*` | yes | 0 |  |
-| POST | /item/getById | read | feature | `item.read.*` | yes | 0 |  |
-| POST | /item/getBySerialNo | read | feature | `item.read.*` | yes | 0 |  |
-| POST | /item/getDeleted | read | feature | `item.read.*` | yes | 0 |  |
-| GET | /item/getOutOfStock | read | feature | `item.read.*` | yes | 0 |  |
-| POST | /item/restore | restore | feature | `item.restore.*` | yes | 0 |  |
-| POST | /item/search | read | feature | `item.read.*` | yes | 0 |  |
-| GET | /item/total | read | feature | `item.read.*` | yes | 0 |  |
-| PUT | /item/update | update | feature | `item.update.*` | yes | 0 |  |
-| POST | /lead/assign | update | feature | `crm.lead.assign.*` | yes | 0 | reassign agent |
-| POST | /lead/create | create | feature | `crm.lead.create.*` | yes | 0 |  |
-| POST | /lead/delete | delete | feature | `crm.lead.delete.*` | yes | 0 |  |
-| POST | /lead/filtered | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/fromVisitor | create | feature | `crm.lead.create.*` | yes | 0 | Visitor -> Lead |
-| POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/import | import | feature | `crm.lead.import.*` | yes | 0 | lead register CSV import (dry-run default) |
-| POST | /lead/restore | restore | feature | `crm.lead.restore.*` | yes | 0 |  |
-| POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /lead/transition | update | feature | `crm.lead.transition.*` | yes | 0 | server-enforced stage change |
-| PUT | /lead/update | update | feature | `crm.lead.update.*` | yes | 0 |  |
-| POST | /leadActivity/byLead | read | feature | `crm.lead.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /leadActivity/create | create | feature | `crm.lead.create.*` | yes | 0 |  |
-| POST | /leadActivity/delete | delete | feature | `crm.lead.delete.*` | yes | 0 |  |
-| PUT | /leadActivity/update | update | feature | `crm.lead.update.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/assignToAll | create | feature | `leaveAlloc.create.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/create | create | feature | `leaveAlloc.create.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/delete | delete | feature | `leaveAlloc.delete.*` | yes | 0 |  |
-| GET | /leave/leave-allocations/deleted | read | feature | `leaveAlloc.read.*` | yes | 0 |  |
-| GET | /leave/leave-allocations/get | read | feature | `leaveAlloc.read.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/get | read | feature | `leaveAlloc.read.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/getByEmployeeId | self | self | `leaveAlloc.read.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| GET | /leave/leave-allocations/getById | read | feature | `leaveAlloc.read.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/restore | restore | feature | `leaveAlloc.restore.*` | yes | 0 |  |
-| POST | /leave/leave-allocations/search | read | feature | `leaveAlloc.read.*` | yes | 0 |  |
-| GET | /leave/leave-allocations/total | read | feature | `leaveAlloc.read.*` | yes | 0 |  |
-| PUT | /leave/leave-allocations/update | update | feature | `leaveAlloc.update.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/create | create | feature | `leaveConfig.create.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/delete | delete | feature | `leaveConfig.delete.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/get | read | feature | `leaveConfig.read.*` | yes | 0 |  |
-| GET | /leave/leave-configurations/getAll | read | feature | `leaveConfig.read.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/getById | read | feature | `leaveConfig.read.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/getDeleted | read | feature | `leaveConfig.read.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/restore | restore | feature | `leaveConfig.restore.*` | yes | 0 |  |
-| POST | /leave/leave-configurations/search | read | feature | `leaveConfig.read.*` | yes | 0 |  |
-| GET | /leave/leave-configurations/total | read | feature | `leaveConfig.read.*` | yes | 0 |  |
-| PUT | /leave/leave-configurations/update | update | feature | `leaveConfig.update.*` | yes | 0 |  |
-| POST | /leave/leave-requests/create | self | self | `leaveReq.create.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /leave/leave-requests/delete | delete | feature | `leaveReq.delete.*` | yes | 0 |  |
-| GET | /leave/leave-requests/deleted | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| GET | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| POST | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| GET | /leave/leave-requests/getById | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| POST | /leave/leave-requests/getEmployee | self | self | `leaveReq.read.*` | - | 0 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /leave/leave-requests/overviewByEmployee | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| POST | /leave/leave-requests/restore | restore | feature | `leaveReq.restore.*` | yes | 0 |  |
-| POST | /leave/leave-requests/search | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| GET | /leave/leave-requests/total | read | feature | `leaveReq.read.*` | yes | 0 |  |
-| PUT | /leave/leave-requests/update | update | feature | `leaveReq.update.*` | yes | 0 |  |
-| POST | /leave/leave-requests/updateStatus | approve | feature | `leaveReq.approve.*` | yes | 0 | covers approve and reject |
-| POST | /quotation/create | create | feature | `crm.quotation.create.*` | yes | 0 |  |
-| POST | /quotation/delete | delete | feature | `crm.quotation.delete.*` | yes | 0 |  |
-| POST | /quotation/filtered | read | feature | `crm.quotation.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /quotation/fromLead | create | feature | `crm.quotation.create.*` | yes | 0 | Lead -> Quotation |
-| POST | /quotation/get | read | feature | `crm.quotation.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /quotation/getById | read | feature | `crm.quotation.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /quotation/newVersion | create | feature | `crm.quotation.create.*` | yes | 0 | new quotation version |
-| POST | /quotation/pdf | export | feature | `crm.quotation.export.*` | yes | 0 | quotation PDF |
-| POST | /quotation/restore | restore | feature | `crm.quotation.restore.*` | yes | 0 |  |
-| POST | /quotation/total | read | feature | `crm.quotation.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /quotation/transition | update | feature | `crm.quotation.transition.*` | yes | 0 | quotation status change |
-| PUT | /quotation/update | update | feature | `crm.quotation.update.*` | yes | 0 |  |
-| PUT | /role/changeRole | update | feature | `role.update.*` | yes | 0 |  |
-| POST | /role/create | create | feature | `role.create.*` | yes | 0 |  |
-| POST | /role/delete | delete | feature | `role.delete.*` | yes | 0 |  |
-| GET | /role/get | read | feature | `role.read.*` | yes | 0 |  |
-| POST | /role/get | read | feature | `role.read.*` | yes | 0 |  |
-| POST | /role/getById | read | feature | `role.read.*` | yes | 0 |  |
-| POST | /role/getByName | read | feature | `role.read.*` | yes | 0 |  |
-| POST | /role/getRoleById | read | feature | `role.read.*` | yes | 0 |  |
-| POST | /role/restore | restore | feature | `role.delete.*` | yes | 0 | restore mapped to delete feature |
-| POST | /role/search | read | feature | `role.read.*` | yes | 0 |  |
-| GET | /role/total | read | feature | `role.read.*` | yes | 0 |  |
-| PUT | /role/update | update | feature | `role.update.*` | yes | 0 |  |
-| POST | /salesAgent/create | create | feature | `crm.agent.create.*` | yes | 0 |  |
-| POST | /salesAgent/delete | delete | feature | `crm.agent.delete.*` | yes | 0 |  |
-| POST | /salesAgent/get | read | feature | `crm.agent.read.*` | yes | 0 |  |
-| GET | /salesAgent/getAll | read | feature | `crm.agent.read.*` | yes | 0 |  |
-| POST | /salesAgent/getById | read | feature | `crm.agent.read.*` | yes | 0 |  |
-| GET | /salesAgent/me | read | feature | `crm.agent.read.*` | yes | 0 |  |
-| POST | /salesAgent/restore | restore | feature | `crm.agent.restore.*` | yes | 0 |  |
-| POST | /salesAgent/search | read | feature | `crm.agent.read.*` | yes | 0 |  |
-| GET | /salesAgent/total | read | feature | `crm.agent.read.*` | yes | 0 |  |
-| PUT | /salesAgent/update | update | feature | `crm.agent.update.*` | yes | 0 |  |
-| POST | /salesOrder/create | create | feature | `crm.order.create.*` | yes | 0 |  |
-| POST | /salesOrder/delete | delete | feature | `crm.order.delete.*` | yes | 0 |  |
-| POST | /salesOrder/deliverySlip | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesOrder/filtered | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesOrder/fromLead | create | feature | `crm.order.create.*` | yes | 0 | Lead -> Order |
-| POST | /salesOrder/fromQuotation | create | feature | `crm.order.create.*` | yes | 0 | Quotation -> Order |
-| POST | /salesOrder/get | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesOrder/getById | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesOrder/invoicePdf | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesOrder/reattempt | update | feature | `crm.order.reattempt.*` | yes | 0 | re-attempt delivery |
-| POST | /salesOrder/restore | restore | feature | `crm.order.restore.*` | yes | 0 |  |
-| POST | /salesOrder/total | read | feature | `crm.order.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesOrder/transition | update | feature | `crm.order.transition.*` | yes | 0 | order status change |
-| PUT | /salesOrder/update | update | feature | `crm.order.update.*` | yes | 0 |  |
-| POST | /salesReturn/create | create | feature | `crm.return.create.*` | yes | 0 |  |
-| POST | /salesReturn/delete | delete | feature | `crm.return.delete.*` | yes | 0 |  |
-| POST | /salesReturn/filtered | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesReturn/fromOrder | create | feature | `crm.return.create.*` | yes | 0 | Order -> Return |
-| POST | /salesReturn/get | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesReturn/getById | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesReturn/total | read | feature | `crm.return.read.own.*` | yes | 0 | scope from read.{own,team,all}.* leaf (cumulative) |
-| POST | /salesReturn/transition | update | feature | `crm.return.transition.*` | yes | 0 | return status change |
-| PUT | /salesReturn/update | update | feature | `crm.return.update.*` | yes | 0 |  |
-| POST | /shift/assignedEmployees | special | feature | `shift.assignments.assignedEmployees.*` | yes | 0 |  |
-| POST | /shift/assignmentsByEmployee | read | feature | `shift.read.*` | yes | 0 |  |
-| POST | /shift/assignToEmployee | special | feature | `shift.assignments.assignToEmployee.*` | yes | 0 |  |
-| POST | /shift/assignToEmployees | special | feature | `shift.assignments.assignToEmployee.*` | yes | 0 |  |
-| POST | /shift/assignToUnit | special | feature | `shift.assignments.assignToUnit.*` | yes | 0 |  |
-| POST | /shift/checkAssignmentConflicts | read | feature | `shift.read.*` | yes | 0 |  |
-| POST | /shift/create | create | feature | `shift.create.*` | yes | 0 |  |
-| POST | /shift/delete | delete | feature | `shift.delete.*` | yes | 0 |  |
-| GET | /shift/deleted | read | feature | `shift.read.*` | yes | 0 |  |
-| GET | /shift/get | read | feature | `shift.read.*` | yes | 0 |  |
-| GET | /shift/getAll | read | feature | `shift.read.*` | yes | 0 |  |
-| GET | /shift/getById | read | feature | `shift.read.*` | yes | 0 |  |
-| POST | /shift/removeAssignment | special | feature | `shift.assignments.removeAssignment.*` | yes | 0 |  |
-| POST | /shift/restore | restore | feature | `shift.restore.*` | yes | 0 |  |
-| POST | /shift/search | read | feature | `shift.read.*` | yes | 0 |  |
-| POST | /shift/timetable/delete | update | feature | `shift.update.*` | yes | 0 |  |
-| POST | /shift/timetable/get | read | feature | `shift.read.*` | yes | 0 |  |
-| POST | /shift/timetable/upsert | update | feature | `shift.update.*` | yes | 0 |  |
-| POST | /shift/timetableBlock/create | create | feature | `shift.timetableBlock.create.*` | yes | 0 |  |
-| POST | /shift/timetableBlock/delete | delete | feature | `shift.timetableBlock.delete.*` | yes | 0 |  |
-| POST | /shift/timetableBlock/get | read | feature | `shift.timetableBlock.read.*` | yes | 0 |  |
-| POST | /shift/timetableBlock/update | update | feature | `shift.timetableBlock.update.*` | yes | 0 |  |
-| GET | /shift/total | read | feature | `shift.read.*` | yes | 0 |  |
-| PUT | /shift/update | update | feature | `shift.update.*` | yes | 0 |  |
-| GET | /stats/customer | read | feature | `voucher.read.*` | yes | 0 |  |
-| GET | /stats/dashboard | read | feature | `voucher.read.*` | yes | 0 |  |
-| POST | /stats/dateRange | read | feature | `voucher.read.*` | yes | 0 |  |
-| GET | /stats/gatePass | read | feature | `voucher.read.*` | yes | 0 |  |
-| GET | /stats/item | read | feature | `voucher.read.*` | yes | 0 |  |
-| GET | /stats/widgets | read | feature | `voucher.read.*` | yes | 0 |  |
-| GET | /systemConfig/get | read | feature | `systemConfig.read.*` | yes | 0 |  |
-| GET | /systemConfig/schedulerLogs | read | feature | `systemConfig.read.*` | yes | 0 |  |
-| PUT | /systemConfig/update | update | feature | `systemConfig.update.*` | yes | 0 |  |
-| POST | /unit/create | create | feature | `unit.create.*` | yes | 0 |  |
-| POST | /unit/delete | delete | feature | `unit.delete.*` | yes | 0 |  |
-| GET | /unit/deleted | read | feature | `unit.read.*` | yes | 0 |  |
-| GET | /unit/get | read | feature | `unit.read.*` | yes | 0 |  |
-| GET | /unit/getAll | read | feature | `unit.read.*` | yes | 0 |  |
-| POST | /unit/getAttendanceAndStats | read | feature | `unit.read.*` | yes | 0 |  |
-| GET | /unit/getById | read | feature | `unit.read.*` | yes | 0 |  |
-| POST | /unit/getHistoryById | history | feature | `unit.viewPreviousUpdate.*` | yes | 0 |  |
-| POST | /unit/restore | restore | feature | `unit.restore.*` | yes | 0 |  |
-| POST | /unit/search | read | feature | `unit.read.*` | yes | 0 |  |
-| GET | /unit/total | read | feature | `unit.read.*` | yes | 0 |  |
-| PUT | /unit/update | update | feature | `unit.update.*` | yes | 0 |  |
-| POST | /unitEmployee/addEmployeesToUnit | update | feature | `unit.update.*` | yes | 0 |  |
-| POST | /unitEmployee/assignEmployeesToUnit | update | feature | `unit.update.*` | yes | 0 |  |
-| POST | /unitEmployee/getEmployeesByUnitId | read | feature | `unit.read.*` | yes | 0 |  |
-| POST | /unitEmployee/getUnitsByEmployeeId | read | feature | `unit.read.*` | yes | 0 |  |
-| POST | /unitEmployee/removeEmployeeFromUnit | update | feature | `unit.update.*` | yes | 0 |  |
-| POST | /unitEmployee/removeEmployeesFromUnit | update | feature | `unit.update.*` | yes | 0 |  |
+| POST | /gatePass/approve | approve | feature | `voucher.post.*` | yes | 3 | feature QuickPass checks before approve |
+| POST | /gatePass/create | create | feature | `voucher.create.*` | yes | 3 |  |
+| POST | /gatePass/customerId | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/date | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/delete | delete | feature | `voucher.delete.*` | yes | 3 |  |
+| GET | /gatePass/get | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/get | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/getById | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/getDeleted | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/itemId | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/pdf | export | feature | `voucher.pdf.*` | yes | 3 |  |
+| GET | /gatePass/report | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/restore | restore | feature | `voucher.restore.*` | yes | 3 |  |
+| POST | /gatePass/status | read | feature | `voucher.read.*` | yes | 3 |  |
+| GET | /gatePass/total | read | feature | `voucher.read.*` | yes | 3 |  |
+| PUT | /gatePass/update | update | feature | `voucher.update.*` | yes | 3 |  |
+| POST | /gatePassItem/create | create | feature | `voucher.create.*` | yes | 3 |  |
+| POST | /gatePassItem/delete | delete | feature | `voucher.delete.*` | yes | 3 |  |
+| GET | /gatePassItem/get | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePassItem/get | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePassItem/getById | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePassItem/restore | restore | feature | `voucher.restore.*` | yes | 3 |  |
+| GET | /gatePassItem/total | read | feature | `voucher.read.*` | yes | 3 |  |
+| PUT | /gatePassItem/update | update | feature | `voucher.update.*` | yes | 3 |  |
+| POST | /group/create | create | feature | `group.create.*` | yes | 2 |  |
+| POST | /group/delete | delete | feature | `group.delete.*` | yes | 2 |  |
+| GET | /group/get | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /group/get | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /group/getById | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /group/getByName | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /group/getGroupById | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /group/restore | restore | feature | `group.delete.*` | yes | 2 | restore mapped to delete feature |
+| POST | /group/search | read | feature | `group.read.*` | yes | 2 |  |
+| GET | /group/total | read | feature | `group.read.*` | yes | 2 |  |
+| PUT | /group/update | update | feature | `group.update.*` | yes | 2 |  |
+| POST | /groupRole/create | update | feature | `group.update.*` | yes | 2 | assigning roles to a group |
+| POST | /groupRole/delete | update | feature | `group.update.*` | yes | 2 | assigning roles to a group |
+| GET | /groupRole/get | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /groupRole/get | read | feature | `group.read.*` | yes | 2 |  |
+| POST | /groupRole/restore | update | feature | `group.update.*` | yes | 2 | assigning roles to a group |
+| PUT | /groupRole/update | update | feature | `group.update.*` | yes | 2 | assigning roles to a group |
+| POST | /holiday/create | create | feature | `holiday.create.*` | yes | 3 |  |
+| POST | /holiday/delete | delete | feature | `holiday.delete.*` | yes | 3 |  |
+| GET | /holiday/deleted | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/get | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/getAll | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/getById | read | feature | `holiday.read.*` | yes | 3 |  |
+| POST | /holiday/getHistoryById | history | feature | `holiday.viewPreviousUpdate.*` | yes | 3 |  |
+| POST | /holiday/markSundays | create | feature | `holiday.markSundays.*` | yes | 3 |  |
+| POST | /holiday/restore | restore | feature | `holiday.restore.*` | yes | 3 |  |
+| POST | /holiday/search | read | feature | `holiday.read.*` | yes | 3 |  |
+| GET | /holiday/total | read | feature | `holiday.read.*` | yes | 3 |  |
+| PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 3 |  |
+| POST | /item/create | create | feature | `item.create.*` | yes | 3 |  |
+| POST | /item/delete | delete | feature | `item.delete.*` | yes | 3 |  |
+| GET | /item/get | read | feature | `item.read.*` | yes | 3 |  |
+| POST | /item/get | read | feature | `item.read.*` | yes | 3 |  |
+| POST | /item/getById | read | feature | `item.read.*` | yes | 3 |  |
+| POST | /item/getBySerialNo | read | feature | `item.read.*` | yes | 3 |  |
+| POST | /item/getDeleted | read | feature | `item.read.*` | yes | 3 |  |
+| GET | /item/getOutOfStock | read | feature | `item.read.*` | yes | 3 |  |
+| POST | /item/restore | restore | feature | `item.restore.*` | yes | 3 |  |
+| POST | /item/search | read | feature | `item.read.*` | yes | 3 |  |
+| GET | /item/total | read | feature | `item.read.*` | yes | 3 |  |
+| PUT | /item/update | update | feature | `item.update.*` | yes | 3 |  |
+| POST | /lead/assign | update | feature | `crm.lead.assign.*` | yes | 3 | reassign agent |
+| POST | /lead/create | create | feature | `crm.lead.create.*` | yes | 3 |  |
+| POST | /lead/delete | delete | feature | `crm.lead.delete.*` | yes | 1 |  |
+| POST | /lead/filtered | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/fromVisitor | create | feature | `crm.lead.create.*` | yes | 3 | Visitor -> Lead |
+| POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/import | import | feature | `crm.lead.import.*` | yes | 1 | lead register CSV import (dry-run default) |
+| POST | /lead/restore | restore | feature | `crm.lead.restore.*` | yes | 1 |  |
+| POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/transition | update | feature | `crm.lead.transition.*` | yes | 3 | server-enforced stage change |
+| PUT | /lead/update | update | feature | `crm.lead.update.*` | yes | 3 |  |
+| POST | /leadActivity/byLead | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /leadActivity/create | create | feature | `crm.lead.create.*` | yes | 3 |  |
+| POST | /leadActivity/delete | delete | feature | `crm.lead.delete.*` | yes | 1 |  |
+| PUT | /leadActivity/update | update | feature | `crm.lead.update.*` | yes | 3 |  |
+| POST | /leave/leave-allocations/assignToAll | create | feature | `leaveAlloc.create.*` | yes | 4 |  |
+| POST | /leave/leave-allocations/create | create | feature | `leaveAlloc.create.*` | yes | 4 |  |
+| POST | /leave/leave-allocations/delete | delete | feature | `leaveAlloc.delete.*` | yes | 4 |  |
+| GET | /leave/leave-allocations/deleted | read | feature | `leaveAlloc.read.*` | yes | 4 |  |
+| GET | /leave/leave-allocations/get | read | feature | `leaveAlloc.read.*` | yes | 4 |  |
+| POST | /leave/leave-allocations/get | read | feature | `leaveAlloc.read.*` | yes | 4 |  |
+| POST | /leave/leave-allocations/getByEmployeeId | self | self | `leaveAlloc.read.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| GET | /leave/leave-allocations/getById | read | feature | `leaveAlloc.read.*` | yes | 4 |  |
+| POST | /leave/leave-allocations/restore | restore | feature | `leaveAlloc.restore.*` | yes | 4 |  |
+| POST | /leave/leave-allocations/search | read | feature | `leaveAlloc.read.*` | yes | 4 |  |
+| GET | /leave/leave-allocations/total | read | feature | `leaveAlloc.read.*` | yes | 4 |  |
+| PUT | /leave/leave-allocations/update | update | feature | `leaveAlloc.update.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/create | create | feature | `leaveConfig.create.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/delete | delete | feature | `leaveConfig.delete.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/get | read | feature | `leaveConfig.read.*` | yes | 4 |  |
+| GET | /leave/leave-configurations/getAll | read | feature | `leaveConfig.read.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/getById | read | feature | `leaveConfig.read.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/getDeleted | read | feature | `leaveConfig.read.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/restore | restore | feature | `leaveConfig.restore.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/search | read | feature | `leaveConfig.read.*` | yes | 4 |  |
+| GET | /leave/leave-configurations/total | read | feature | `leaveConfig.read.*` | yes | 4 |  |
+| PUT | /leave/leave-configurations/update | update | feature | `leaveConfig.update.*` | yes | 4 |  |
+| POST | /leave/leave-requests/create | self | self | `leaveReq.create.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /leave/leave-requests/delete | delete | feature | `leaveReq.delete.*` | yes | 4 |  |
+| GET | /leave/leave-requests/deleted | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| GET | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| POST | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| GET | /leave/leave-requests/getById | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| POST | /leave/leave-requests/getEmployee | self | self | `leaveReq.read.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
+| POST | /leave/leave-requests/overviewByEmployee | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| POST | /leave/leave-requests/restore | restore | feature | `leaveReq.restore.*` | yes | 4 |  |
+| POST | /leave/leave-requests/search | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| GET | /leave/leave-requests/total | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| PUT | /leave/leave-requests/update | update | feature | `leaveReq.update.*` | yes | 4 |  |
+| POST | /leave/leave-requests/updateStatus | approve | feature | `leaveReq.approve.*` | yes | 4 | covers approve and reject |
+| POST | /quotation/create | create | feature | `crm.quotation.create.*` | yes | 3 |  |
+| POST | /quotation/delete | delete | feature | `crm.quotation.delete.*` | yes | 1 |  |
+| POST | /quotation/filtered | read | feature | `crm.quotation.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /quotation/fromLead | create | feature | `crm.quotation.create.*` | yes | 3 | Lead -> Quotation |
+| POST | /quotation/get | read | feature | `crm.quotation.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /quotation/getById | read | feature | `crm.quotation.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /quotation/newVersion | create | feature | `crm.quotation.create.*` | yes | 3 | new quotation version |
+| POST | /quotation/pdf | export | feature | `crm.quotation.export.*` | yes | 3 | quotation PDF |
+| POST | /quotation/restore | restore | feature | `crm.quotation.restore.*` | yes | 1 |  |
+| POST | /quotation/total | read | feature | `crm.quotation.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /quotation/transition | update | feature | `crm.quotation.transition.*` | yes | 3 | quotation status change |
+| PUT | /quotation/update | update | feature | `crm.quotation.update.*` | yes | 3 |  |
+| PUT | /role/changeRole | update | feature | `role.update.*` | yes | 2 |  |
+| POST | /role/create | create | feature | `role.create.*` | yes | 2 |  |
+| POST | /role/delete | delete | feature | `role.delete.*` | yes | 2 |  |
+| GET | /role/get | read | feature | `role.read.*` | yes | 2 |  |
+| POST | /role/get | read | feature | `role.read.*` | yes | 2 |  |
+| POST | /role/getById | read | feature | `role.read.*` | yes | 2 |  |
+| POST | /role/getByName | read | feature | `role.read.*` | yes | 2 |  |
+| POST | /role/getRoleById | read | feature | `role.read.*` | yes | 2 |  |
+| POST | /role/restore | restore | feature | `role.delete.*` | yes | 2 | restore mapped to delete feature |
+| POST | /role/search | read | feature | `role.read.*` | yes | 2 |  |
+| GET | /role/total | read | feature | `role.read.*` | yes | 2 |  |
+| PUT | /role/update | update | feature | `role.update.*` | yes | 2 |  |
+| POST | /salesAgent/create | create | feature | `crm.agent.create.*` | yes | 1 |  |
+| POST | /salesAgent/delete | delete | feature | `crm.agent.delete.*` | yes | 1 |  |
+| POST | /salesAgent/get | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| GET | /salesAgent/getAll | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| POST | /salesAgent/getById | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| GET | /salesAgent/me | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| POST | /salesAgent/restore | restore | feature | `crm.agent.restore.*` | yes | 1 |  |
+| POST | /salesAgent/search | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| GET | /salesAgent/total | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| PUT | /salesAgent/update | update | feature | `crm.agent.update.*` | yes | 2 |  |
+| POST | /salesOrder/create | create | feature | `crm.order.create.*` | yes | 3 |  |
+| POST | /salesOrder/delete | delete | feature | `crm.order.delete.*` | yes | 1 |  |
+| POST | /salesOrder/deliverySlip | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/filtered | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/fromLead | create | feature | `crm.order.create.*` | yes | 3 | Lead -> Order |
+| POST | /salesOrder/fromQuotation | create | feature | `crm.order.create.*` | yes | 3 | Quotation -> Order |
+| POST | /salesOrder/get | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/getById | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/invoicePdf | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/reattempt | update | feature | `crm.order.reattempt.*` | yes | 3 | re-attempt delivery |
+| POST | /salesOrder/restore | restore | feature | `crm.order.restore.*` | yes | 1 |  |
+| POST | /salesOrder/total | read | feature | `crm.order.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesOrder/transition | update | feature | `crm.order.transition.*` | yes | 3 | order status change |
+| PUT | /salesOrder/update | update | feature | `crm.order.update.*` | yes | 3 |  |
+| POST | /salesReturn/create | create | feature | `crm.return.create.*` | yes | 3 |  |
+| POST | /salesReturn/delete | delete | feature | `crm.return.delete.*` | yes | 1 |  |
+| POST | /salesReturn/filtered | read | feature | `crm.return.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/fromOrder | create | feature | `crm.return.create.*` | yes | 3 | Order -> Return |
+| POST | /salesReturn/get | read | feature | `crm.return.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/getById | read | feature | `crm.return.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/total | read | feature | `crm.return.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /salesReturn/transition | update | feature | `crm.return.transition.*` | yes | 3 | return status change |
+| PUT | /salesReturn/update | update | feature | `crm.return.update.*` | yes | 3 |  |
+| POST | /shift/assignedEmployees | special | feature | `shift.assignments.assignedEmployees.*` | yes | 3 |  |
+| POST | /shift/assignmentsByEmployee | read | feature | `shift.read.*` | yes | 3 |  |
+| POST | /shift/assignToEmployee | special | feature | `shift.assignments.assignToEmployee.*` | yes | 3 |  |
+| POST | /shift/assignToEmployees | special | feature | `shift.assignments.assignToEmployee.*` | yes | 3 |  |
+| POST | /shift/assignToUnit | special | feature | `shift.assignments.assignToUnit.*` | yes | 3 |  |
+| POST | /shift/checkAssignmentConflicts | read | feature | `shift.read.*` | yes | 3 |  |
+| POST | /shift/create | create | feature | `shift.create.*` | yes | 3 |  |
+| POST | /shift/delete | delete | feature | `shift.delete.*` | yes | 3 |  |
+| GET | /shift/deleted | read | feature | `shift.read.*` | yes | 3 |  |
+| GET | /shift/get | read | feature | `shift.read.*` | yes | 3 |  |
+| GET | /shift/getAll | read | feature | `shift.read.*` | yes | 3 |  |
+| GET | /shift/getById | read | feature | `shift.read.*` | yes | 3 |  |
+| POST | /shift/removeAssignment | special | feature | `shift.assignments.removeAssignment.*` | yes | 3 |  |
+| POST | /shift/restore | restore | feature | `shift.restore.*` | yes | 3 |  |
+| POST | /shift/search | read | feature | `shift.read.*` | yes | 3 |  |
+| POST | /shift/timetable/delete | update | feature | `shift.update.*` | yes | 3 |  |
+| POST | /shift/timetable/get | read | feature | `shift.read.*` | yes | 3 |  |
+| POST | /shift/timetable/upsert | update | feature | `shift.update.*` | yes | 3 |  |
+| POST | /shift/timetableBlock/create | create | feature | `shift.timetableBlock.create.*` | yes | 3 |  |
+| POST | /shift/timetableBlock/delete | delete | feature | `shift.timetableBlock.delete.*` | yes | 3 |  |
+| POST | /shift/timetableBlock/get | read | feature | `shift.timetableBlock.read.*` | yes | 3 |  |
+| POST | /shift/timetableBlock/update | update | feature | `shift.timetableBlock.update.*` | yes | 3 |  |
+| GET | /shift/total | read | feature | `shift.read.*` | yes | 3 |  |
+| PUT | /shift/update | update | feature | `shift.update.*` | yes | 3 |  |
+| GET | /stats/customer | read | feature | `voucher.read.*` | yes | 3 |  |
+| GET | /stats/dashboard | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /stats/dateRange | read | feature | `voucher.read.*` | yes | 3 |  |
+| GET | /stats/gatePass | read | feature | `voucher.read.*` | yes | 3 |  |
+| GET | /stats/item | read | feature | `voucher.read.*` | yes | 3 |  |
+| GET | /stats/widgets | read | feature | `voucher.read.*` | yes | 3 |  |
+| GET | /systemConfig/get | read | feature | `systemConfig.read.*` | yes | 1 |  |
+| GET | /systemConfig/schedulerLogs | read | feature | `systemConfig.read.*` | yes | 1 |  |
+| PUT | /systemConfig/update | update | feature | `systemConfig.update.*` | yes | 1 |  |
+| POST | /unit/create | create | feature | `unit.create.*` | yes | 3 |  |
+| POST | /unit/delete | delete | feature | `unit.delete.*` | yes | 3 |  |
+| GET | /unit/deleted | read | feature | `unit.read.*` | yes | 3 |  |
+| GET | /unit/get | read | feature | `unit.read.*` | yes | 3 |  |
+| GET | /unit/getAll | read | feature | `unit.read.*` | yes | 3 |  |
+| POST | /unit/getAttendanceAndStats | read | feature | `unit.read.*` | yes | 3 |  |
+| GET | /unit/getById | read | feature | `unit.read.*` | yes | 3 |  |
+| POST | /unit/getHistoryById | history | feature | `unit.viewPreviousUpdate.*` | yes | 3 |  |
+| POST | /unit/restore | restore | feature | `unit.restore.*` | yes | 3 |  |
+| POST | /unit/search | read | feature | `unit.read.*` | yes | 3 |  |
+| GET | /unit/total | read | feature | `unit.read.*` | yes | 3 |  |
+| PUT | /unit/update | update | feature | `unit.update.*` | yes | 3 |  |
+| POST | /unitEmployee/addEmployeesToUnit | update | feature | `unit.update.*` | yes | 3 |  |
+| POST | /unitEmployee/assignEmployeesToUnit | update | feature | `unit.update.*` | yes | 3 |  |
+| POST | /unitEmployee/getEmployeesByUnitId | read | feature | `unit.read.*` | yes | 3 |  |
+| POST | /unitEmployee/getUnitsByEmployeeId | read | feature | `unit.read.*` | yes | 3 |  |
+| POST | /unitEmployee/removeEmployeeFromUnit | update | feature | `unit.update.*` | yes | 3 |  |
+| POST | /unitEmployee/removeEmployeesFromUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /user/changePassword | self | self | `(own account)` | - | - | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /user/changeUserPassword | update | feature | `user.update.*` | yes | 0 |  |
+| POST | /user/changeUserPassword | update | feature | `user.update.*` | yes | 2 |  |
 | POST | /user/checkPassword | self | self | `(own account)` | - | - | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /user/create | create | feature | `user.create.*` | yes | 0 |  |
-| POST | /user/delete | delete | feature | `user.delete.*` | yes | 0 |  |
-| GET | /user/get | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /user/get | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /user/getById | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /user/getDetaileUserById | read | feature | `user.read.*` | yes | 0 |  |
+| POST | /user/create | create | feature | `user.create.*` | yes | 2 |  |
+| POST | /user/delete | delete | feature | `user.delete.*` | yes | 2 |  |
+| GET | /user/get | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/get | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/getById | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/getDetaileUserById | read | feature | `user.read.*` | yes | 2 |  |
 | GET | /user/getLoggedInUser | read | token | `-` | - | - | every logged-in user needs their own profile |
-| GET | /user/getNonAssociatedUsers | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /user/restore | restore | feature | `user.delete.*` | yes | 0 | restore mapped to delete feature |
-| POST | /user/search | read | feature | `user.read.*` | yes | 0 |  |
-| GET | /user/total | read | feature | `user.read.*` | yes | 0 |  |
-| PUT | /user/update | update | feature | `user.update.*` | yes | 0 |  |
-| POST | /userGroup/create | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| POST | /userGroup/delete | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| GET | /userGroup/get | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /userGroup/getById | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /userGroup/getByUserId | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /userGroup/restore | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| PUT | /userGroup/update | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| POST | /userRole/create | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| POST | /userRole/delete | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| GET | /userRole/get | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /userRole/getById | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /userRole/getByUserId | read | feature | `user.read.*` | yes | 0 |  |
-| POST | /userRole/restore | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| PUT | /userRole/update | update | feature | `user.update.*` | yes | 0 | assigning roles/groups to a user |
-| POST | /visitor/checkout | update | feature | `visitor.checkout.*` | yes | 0 |  |
-| POST | /visitor/create | create | feature | `visitor.create.*` | yes | 0 |  |
-| POST | /visitor/delete | delete | feature | `visitor.delete.*` | yes | 0 |  |
-| GET | /visitor/deleted | read | feature | `visitor.read.*` | yes | 0 |  |
-| POST | /visitor/excel | export | feature | `visitor.export.*` | yes | 0 |  |
-| POST | /visitor/filtered | read | feature | `visitor.read.*` | yes | 0 |  |
-| GET | /visitor/get | read | feature | `visitor.read.*` | yes | 0 |  |
-| GET | /visitor/getAll | read | feature | `visitor.read.*` | yes | 0 |  |
-| GET | /visitor/getById | read | feature | `visitor.read.*` | yes | 0 |  |
-| POST | /visitor/getHistoryById | history | feature | `visitor.viewPreviousUpdate.*` | yes | 0 |  |
-| POST | /visitor/import | import | feature | `visitor.import.*` | yes | 0 |  |
-| POST | /visitor/lookup | read | feature | `visitor.read.*` | yes | 0 |  |
-| POST | /visitor/personHistory | read | feature | `visitor.read.*` | yes | 0 |  |
-| GET | /visitor/present | read | feature | `visitor.read.*` | yes | 0 |  |
-| POST | /visitor/restore | restore | feature | `visitor.restore.*` | yes | 0 |  |
-| POST | /visitor/search | read | feature | `visitor.read.*` | yes | 0 |  |
-| POST | /visitor/stats | read | feature | `visitor.read.*` | yes | 0 |  |
-| POST | /visitor/suggest | read | feature | `visitor.read.*` | yes | 0 |  |
-| GET | /visitor/template | export | feature | `visitor.export.*` | yes | 0 |  |
-| GET | /visitor/total | read | feature | `visitor.read.*` | yes | 0 |  |
-| PUT | /visitor/update | update | feature | `visitor.update.*` | yes | 0 |  |
+| GET | /user/getNonAssociatedUsers | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/restore | restore | feature | `user.delete.*` | yes | 2 | restore mapped to delete feature |
+| POST | /user/search | read | feature | `user.read.*` | yes | 2 |  |
+| GET | /user/total | read | feature | `user.read.*` | yes | 2 |  |
+| PUT | /user/update | update | feature | `user.update.*` | yes | 2 |  |
+| POST | /userGroup/create | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| POST | /userGroup/delete | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| GET | /userGroup/get | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /userGroup/getById | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /userGroup/getByUserId | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /userGroup/restore | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| PUT | /userGroup/update | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| POST | /userRole/create | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| POST | /userRole/delete | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| GET | /userRole/get | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /userRole/getById | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /userRole/getByUserId | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /userRole/restore | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| PUT | /userRole/update | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| POST | /visitor/checkout | update | feature | `visitor.checkout.*` | yes | 1 |  |
+| POST | /visitor/create | create | feature | `visitor.create.*` | yes | 1 |  |
+| POST | /visitor/delete | delete | feature | `visitor.delete.*` | yes | 1 |  |
+| GET | /visitor/deleted | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/excel | export | feature | `visitor.export.*` | yes | 1 |  |
+| POST | /visitor/filtered | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/get | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/getAll | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/getById | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/getHistoryById | history | feature | `visitor.viewPreviousUpdate.*` | yes | 1 |  |
+| POST | /visitor/import | import | feature | `visitor.import.*` | yes | 1 |  |
+| POST | /visitor/lookup | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/personHistory | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/present | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/restore | restore | feature | `visitor.restore.*` | yes | 1 |  |
+| POST | /visitor/search | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/stats | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/suggest | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/template | export | feature | `visitor.export.*` | yes | 1 |  |
+| GET | /visitor/total | read | feature | `visitor.read.*` | yes | 1 |  |
+| PUT | /visitor/update | update | feature | `visitor.update.*` | yes | 1 |  |
 | GET | /webhook/permissions | open | open | `-` | - | - |  |
 | POST | /webhook/permissions | open | open | `-` | - | - |  |

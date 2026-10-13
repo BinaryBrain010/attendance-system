@@ -102,6 +102,10 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /crmPriceList/bulkPrice": { feature: "crm.catalogue.cost.*", kind: "update", access: "feature", note: "bulk price/cost from Excel (cost-gated)" },
   "POST /crmReport/margin": { feature: "crm.report.read.*", kind: "read", access: "feature", note: "cost enforced in controller via crm.catalogue.cost.*" },
   "POST /crmReport/export": { feature: "crm.report.export.*", kind: "export", access: "feature" },
+  // Customer directory (list + 360) is gated on LEAD read, not report read, so any salesperson who can
+  // read leads sees their customers; the data is still scope-checked per entity inside the service.
+  "POST /crmReport/customers": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer directory; gated on lead read" },
+  "POST /crmReport/customer360": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer 360 profile; gated on lead read" },
   "POST /lead/transition": { feature: "crm.lead.transition.*", kind: "update", access: "feature", note: "server-enforced stage change" },
   "POST /lead/assign": { feature: "crm.lead.assign.*", kind: "update", access: "feature", note: "reassign agent" },
   "POST /lead/fromVisitor": { feature: "crm.lead.create.*", kind: "create", access: "feature", note: "Visitor -> Lead" },

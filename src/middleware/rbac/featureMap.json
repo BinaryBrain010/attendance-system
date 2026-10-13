@@ -596,12 +596,12 @@
   },
   "POST /crmReport/customer360": {
     "access": "feature",
-    "feature": "crm.report.read.*",
+    "feature": "crm.lead.read.own.*",
     "kind": "read"
   },
   "POST /crmReport/customers": {
     "access": "feature",
-    "feature": "crm.report.read.*",
+    "feature": "crm.lead.read.own.*",
     "kind": "read"
   },
   "POST /crmReport/dailySummary": {
