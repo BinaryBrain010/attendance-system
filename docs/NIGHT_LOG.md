@@ -14,7 +14,18 @@ Backup first: qa/backups/night2_20261013_132704.sql (gitignored).
 - Importers set phoneNormalized: leadImport and returnImport both populate it, and returnImport's phone->lead linking now uses the full national number too.
 - Re-backfilled phoneNormalized on all existing rows to the canonical form (261 leads, 68 orders, 62 returns). Sample: "305 4053333" -> "3054053333".
 - Harness test added proving 0300-1234567 and 0321-1234567 do NOT match, the same number in +92 format still matches, and customer360 is exact. CRM harness 166/0, qa:rbac 306/1/3, tsc clean.
-- Commit: see hash below.
+- Commit: 824a2fb.
+
+### Run 2, Task 2 - Finish the deferred screens  [DONE]
+All five built and, where I could exercise them, browser-verified as the manager.
+- Lead edit: /crm/leads/[id]/edit (the lead form now does create and edit), all fields, scope + audit via the existing scoped update (out-of-scope is refused, the change is logged on the timeline). An Edit button is on the lead detail.
+- Catalogue product add/edit + variants + price list + bulk price from Excel: the catalogue page is now manageable. Add product, edit product (name/category/brand/protocol/status/description/SKU), set per-tier prices (cost field shown only with cost permission), add variants, and a "Bulk price (Excel)" upload with a preview-then-apply flow. New backend: POST /crmPriceList/bulkPrice (cost-gated, dry-run default, parses an .xlsx with SKU/Price/Cost), commit 8aee327, 4 harness tests. VERIFIED in the browser: product edit modal with prices + variants renders; I did not persist a real price to keep the catalogue pending.
+- Agents edit (managers only): click an agent to edit scope, team lead, monthly target, commission, outlet. VERIFIED end to end (set AG001 target to 500,000, saw the success toast and the table update, then reverted it to null).
+- Bulk lead reassign (managers): checkbox-select leads on the list, pick a target agent, Reassign (loops the scoped assign). Added onSelectionChange to the shared TableComponent.
+- Frontdesk "Create lead" button: in the visitor history dialog, gated on crm.lead.create.*, uses the existing /lead/fromVisitor.
+- Persona/role note: gave the Sales Manager role (and the manager browser persona) crm.agent.update.* and crm.catalogue.{create,update}.* so a manager can edit agents and manage the catalogue in this small-business setup. Sales Agent is unchanged.
+- Gates: tsc clean, admin next build clean, CRM harness 170/0, qa:rbac 306/1/3.
+- Commits: backend 8aee327 (bulk price) + the persona/recipe commit below; admin ac0aa46.
 
 Backup taken first: qa/backups/night_20261013_022255.sql (354 MB, full gatePassSystem dump, gitignored).
 DATABASE_URL confirmed localhost, DB gatePassSystem.

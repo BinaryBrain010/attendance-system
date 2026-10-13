@@ -34,11 +34,11 @@ export const ROLE_RECIPES: Record<string, { description: string; features: strin
     features: [...CRM_AGENT_BASE],
   },
   "Sales Manager": {
-    description: "Team-scope: everything a Sales Agent has, plus team reads and cost/margin. Link to a SalesAgent with scope TEAM.",
+    description: "Team-scope: everything a Sales Agent has, plus team reads, cost/margin, agent edits and catalogue management. Link to a SalesAgent with scope TEAM.",
     features: [
       ...CRM_AGENT_BASE,
       "crm.lead.read.team.*", "crm.quotation.read.team.*", "crm.order.read.team.*", "crm.return.read.team.*",
-      "crm.catalogue.cost.*",
+      "crm.catalogue.cost.*", "crm.catalogue.create.*", "crm.catalogue.update.*", "crm.agent.update.*",
     ],
   },
   "Order Ops": {

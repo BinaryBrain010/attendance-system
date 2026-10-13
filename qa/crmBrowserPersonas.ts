@@ -25,8 +25,9 @@ const AGENT_FEATURES = [
   "crm.return.read.own.*", "crm.return.create.*", "crm.return.update.*", "crm.return.transition.*",
   "crm.report.read.*", "crm.report.export.*",
 ];
-// The manager also sees cost/margin (crm.catalogue.cost.*) so the Margin report is visible.
-const MANAGER_FEATURES = [...AGENT_FEATURES, "crm.lead.read.team.*", "crm.quotation.read.team.*", "crm.order.read.team.*", "crm.return.read.team.*", "crm.catalogue.cost.*"];
+// The manager also sees cost/margin, edits agents (team/target/commission), and manages the catalogue.
+const MANAGER_FEATURES = [...AGENT_FEATURES, "crm.lead.read.team.*", "crm.quotation.read.team.*", "crm.order.read.team.*", "crm.return.read.team.*",
+  "crm.catalogue.cost.*", "crm.catalogue.create.*", "crm.catalogue.update.*", "crm.agent.update.*"];
 
 async function setPassword(userId: string) {
   const hash = await bcrypt.hash(PASSWORD, 10);
