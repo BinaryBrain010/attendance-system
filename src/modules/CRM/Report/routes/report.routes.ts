@@ -23,6 +23,7 @@ class CrmReportRoutes {
     this.router.post("/leadAging", this.controller.leadAging.bind(this.controller));
     this.router.post("/repeatCustomers", this.controller.repeatCustomers.bind(this.controller));
     this.router.post("/dailySummary", this.controller.dailySummary.bind(this.controller));
+    this.router.post("/customers", this.controller.customers.bind(this.controller));
     this.router.post("/customer360", this.controller.customer360.bind(this.controller));
     this.router.post("/margin", this.controller.margin.bind(this.controller));
     this.router.post("/export", this.controller.export.bind(this.controller));

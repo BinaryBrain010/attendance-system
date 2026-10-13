@@ -599,6 +599,11 @@
     "feature": "crm.report.read.*",
     "kind": "read"
   },
+  "POST /crmReport/customers": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
   "POST /crmReport/dailySummary": {
     "access": "feature",
     "feature": "crm.report.read.*",

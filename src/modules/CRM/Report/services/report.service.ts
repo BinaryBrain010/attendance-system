@@ -267,6 +267,37 @@ class ReportService {
     return { phone, name, city, counts: { leads: leads.length, quotations: quotations.length, orders: orders.length, returns: returns.length }, totalSpent, leads, quotations, orders, returns, timeline };
   }
 
+  /** Customers list: distinct customers (by phoneNormalized) across leads/orders/returns in scope,
+   * with lead + order counts, total spent (delivered orders) and last activity. Optional `search`
+   * matches the name or the phone digits. Row key is the normalized phone, used to open Customer 360. */
+  async customers(userId: string, f: any = {}) {
+    const [{ scope, rows: leads }, { rows: orders }, { rows: returns }] = await Promise.all([
+      this.leads(userId, f), this.orders(userId, f), this.returns(userId, f),
+    ]);
+    type Row = { key: string; name: string; phone: string; city: string | null; leads: number; orders: number; totalSpent: number; lastActivity: string | null };
+    const by: Record<string, Row> = {};
+    const keyOf = (p: string | null, pn: string | null) => (pn || (p ? p.replace(/\D/g, "") : "")) || "";
+    const touch = (k: string, name: string | null, phone: string | null, city: string | null, at: any): Row | null => {
+      if (!k) return null;
+      const c = (by[k] ||= { key: k, name: name || "(unknown)", phone: phone || k, city: city || null, leads: 0, orders: 0, totalSpent: 0, lastActivity: null });
+      if ((!c.name || c.name === "(unknown)") && name) c.name = name;
+      if (!c.city && city) c.city = city;
+      if (at) { const t = new Date(at).getTime(); if (!c.lastActivity || t > new Date(c.lastActivity).getTime()) c.lastActivity = new Date(at).toISOString(); }
+      return c;
+    };
+    for (const l of leads as any[]) { const c = touch(keyOf(l.phone, l.phoneNormalized), l.customerName, l.phone, l.city, l.dateReceived || l.createdAt); if (c) c.leads++; }
+    for (const o of orders as any[]) { const c = touch(keyOf(o.phone, o.phoneNormalized), o.customerName, o.phone, o.city, o.createdAt || o.deliveredAt); if (c) { c.orders++; if (o.status === "DELIVERED") c.totalSpent += o.total || 0; } }
+    for (const r of returns as any[]) { touch(keyOf(r.phone, r.phoneNormalized), r.customerName, r.phone, null, r.reportedAt); }
+    let list = Object.values(by);
+    if (f.search) {
+      const s = String(f.search).trim().toLowerCase();
+      const sd = s.replace(/\D/g, "");
+      list = list.filter((c) => c.name.toLowerCase().includes(s) || (!!sd && c.key.includes(sd)));
+    }
+    list.sort((a, b) => (b.lastActivity ? new Date(b.lastActivity).getTime() : 0) - (a.lastActivity ? new Date(a.lastActivity).getTime() : 0));
+    return { scope, count: list.length, customers: list };
+  }
+
   /** 11. Margin (cost-gated in the controller). */
   async margin(userId: string, f: any = {}) {
     const { scope, rows: orders } = await this.orders(userId, f, { status: "DELIVERED" }, true);
