@@ -2,6 +2,20 @@
 
 Autonomous overnight run. Local only. Started 2026-10-13.
 
+---
+
+## Run 2 (2026-10-13, follow-up)
+
+Backup first: qa/backups/night2_20261013_132704.sql (gitignored).
+
+### Run 2, Task 1 - Phone matching via phoneNormalized (full national number)  [DONE]
+- Rewrote shared/phone.ts: normalizePhone now returns the full 10-digit national number (strips +92 / 0092 / leading 0), so 0300-1234567 -> "3001234567", +92 300 1234567 -> "3001234567", 0321-1234567 -> "3211234567". Removed all last-7 and last-10 digit tail matching (phoneNeedle is gone).
+- Phone lookups now EXACT-match phoneNormalized: the lead/order/return/quotation `phone` filter, and customer360. The free-text search box uses a looser searchPhoneDigits + contains so partial phone search still works, but that is not the exact lookup.
+- Importers set phoneNormalized: leadImport and returnImport both populate it, and returnImport's phone->lead linking now uses the full national number too.
+- Re-backfilled phoneNormalized on all existing rows to the canonical form (261 leads, 68 orders, 62 returns). Sample: "305 4053333" -> "3054053333".
+- Harness test added proving 0300-1234567 and 0321-1234567 do NOT match, the same number in +92 format still matches, and customer360 is exact. CRM harness 166/0, qa:rbac 306/1/3, tsc clean.
+- Commit: see hash below.
+
 Backup taken first: qa/backups/night_20261013_022255.sql (354 MB, full gatePassSystem dump, gitignored).
 DATABASE_URL confirmed localhost, DB gatePassSystem.
 

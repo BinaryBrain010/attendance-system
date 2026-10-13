@@ -5,6 +5,7 @@
  * (in one transaction) when dryRun=false.
  */
 import prisma from "../../../../core/models/base.model";
+import { normalizePhone } from "../../shared/phone";
 
 export interface SourceFile { name: string; csv: string; }
 
@@ -23,8 +24,8 @@ function parseCSV(t: string): string[][] {
 
 const clean = (s: string) => (s || "").trim().replace(/\s+/g, " ");
 const digits = (s: string) => (s || "").replace(/\D/g, "");
-// PK phones are stored inconsistently (0300…, +92 300…, 300…); compare on the last 10 digits.
-const phoneKey = (s: string | null) => { const d = digits(s || ""); return d.length >= 10 ? d.slice(-10) : ""; };
+// Match leads/orders by the full national number (phoneNormalized), not a digit tail.
+const phoneKey = (s: string | null) => normalizePhone(s) || "";
 const money = (s: string) => { const n = parseFloat(String(s || "").replace(/[^0-9.]/g, "")); return Number.isFinite(n) && n > 0 ? Math.round(n) : null; };
 
 // ---- reason clustering (free-text Detail -> canonical bucket) ----
@@ -199,7 +200,7 @@ class ReturnImportService {
         if (lead) ordersLinkedToLead++;
         const orderNo = await nextNo("order");
         const o = await tx.salesOrder.create({
-          data: { orderNo, externalOrderNo: ext, trackingNo: cn, customerName: r.customerName || "(historical)", phone: r.phone ?? null, city: r.city ?? null,
+          data: { orderNo, externalOrderNo: ext, trackingNo: cn, customerName: r.customerName || "(historical)", phone: r.phone ?? null, phoneNormalized: normalizePhone(r.phone), city: r.city ?? null,
             address: r.address ?? null, status: "RETURNED", channel: "ONLINE_STORE", courier: r.courier ?? null, dispatchedAt: r.orderDate ?? null,
             company: "OKASHASMART", sourceFile: "RETURNS_IMPORT", legacyId: ext || cn, createdBy: null,
             leadId: lead?.id ?? null, agentId: lead?.agentId ?? null,
@@ -215,7 +216,7 @@ class ReturnImportService {
         if (lead) returnsLinkedToLead++;
         const returnNo = await nextNo("return");
         await tx.salesReturn.create({
-          data: { returnNo, orderId, customerName: r.customerName, phone: r.phone, city: r.city, status: "REPORTED",
+          data: { returnNo, orderId, customerName: r.customerName, phone: r.phone, phoneNormalized: normalizePhone(r.phone), city: r.city, status: "REPORTED",
             reason: r.reason || r.reasonCluster, courier: r.courier, trackingNo: r.cn, reportedAt: r.returnDate ?? new Date(),
             company: "OKASHASMART", agentId: lead?.agentId ?? null, createdBy: null,
             items: r.itemName ? { create: [{ description: r.itemName, quantity: r.qty || 1 }] } : undefined },

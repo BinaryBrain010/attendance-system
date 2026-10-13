@@ -15,6 +15,7 @@
  *   8. Full addresses go to `address`; short localities to `area`.
  */
 import prisma from "../../../../core/models/base.model";
+import { normalizePhone } from "../../shared/phone";
 
 export interface SourceFile { name: string; csv: string; }
 
@@ -325,7 +326,7 @@ class LeadImportService {
       let created = 0, updated = 0;
       for (const r of unique) {
         const data = {
-          customerName: r.customerName, phone: r.phone, city: r.city, area: r.area, address: r.address, notes: r.notes, channel: r.channel as any,
+          customerName: r.customerName, phone: r.phone, phoneNormalized: normalizePhone(r.phone), city: r.city, area: r.area, address: r.address, notes: r.notes, channel: r.channel as any,
           stage: r.stage as any, priority: r.priority as any, estimatedValue: r.estimatedValue, requirement: r.requirement, agentId: r.agentId,
           dateReceived: r.dateReceived ?? new Date(), lastContactAt: r.lastContactAt, nextFollowUpAt: r.nextFollowUpAt,
           outcomeRaw: r.outcomeRaw, company: r.company as any, sourceFile: r.sourceFile, legacyId: r.legacyId,

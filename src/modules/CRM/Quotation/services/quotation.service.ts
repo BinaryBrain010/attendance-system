@@ -1,7 +1,7 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { priceLines } from "../../shared/pricing";
-import { normalizePhone, phoneNeedle } from "../../shared/phone";
+import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
 import { assertTransition } from "../../shared/stateMachine";
 import { syncLeadStage } from "../../shared/leadSync";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
@@ -14,12 +14,14 @@ function filterWhere(f: any = {}): Record<string, any> {
   if (f.tier) w.tier = f.tier;
   if (f.agentId) w.agentId = f.agentId;
   if (f.activeOnly) w.isActive = true;
-  if (f.phone) { const n = phoneNeedle(f.phone); if (n) w.phoneNormalized = { contains: n }; }
+  if (f.phone) { const n = normalizePhone(f.phone); if (n) w.phoneNormalized = n; } // exact national-number match
   if (f.search) {
     const s = String(f.search).trim();
+    const sd = searchPhoneDigits(s);
     w.OR = [
-      { customerName: { contains: s, mode: "insensitive" } }, { phone: { contains: s, mode: "insensitive" } },
+      { customerName: { contains: s, mode: "insensitive" } },
       { quotationNo: { contains: s, mode: "insensitive" } },
+      ...(sd ? [{ phoneNormalized: { contains: sd } }] : []),
     ];
   }
   if (f.from || f.to) { w.createdAt = {}; if (f.from) w.createdAt.gte = new Date(f.from); if (f.to) w.createdAt.lte = new Date(f.to); }

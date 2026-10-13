@@ -3,7 +3,7 @@ import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
-import { normalizePhone, phoneNeedle } from "../../shared/phone";
+import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
 
 export interface LeadFilters {
   company?: string; outlet?: string; city?: string; stage?: string;
@@ -20,13 +20,14 @@ function filterWhere(f: LeadFilters = {}): Record<string, any> {
   if (f.priority) w.priority = f.priority;
   if (f.channel) w.channel = f.channel;
   if (f.agentId) w.agentId = f.agentId;
-  if (f.phone) { const n = phoneNeedle(f.phone); if (n) w.phoneNormalized = { contains: n }; }
+  if (f.phone) { const n = normalizePhone(f.phone); if (n) w.phoneNormalized = n; } // exact national-number match
   if (f.search) {
     const s = String(f.search).trim();
+    const sd = searchPhoneDigits(s);
     w.OR = [
       { customerName: { contains: s, mode: "insensitive" } },
-      { phone: { contains: s, mode: "insensitive" } },
       { leadNo: { contains: s, mode: "insensitive" } },
+      ...(sd ? [{ phoneNormalized: { contains: sd } }] : []),
     ];
   }
   if (f.from || f.to) {

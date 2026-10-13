@@ -528,6 +528,17 @@ async function main() {
   check("lead search by phone finds it", ((await api("POST", "/lead/get", tAdmin, { search: c360Phone })).data?.data || []).some((l: any) => l.phone === c360Phone));
   check("order reattemptMin filter returns only reattempted", ((await api("POST", "/salesOrder/get", tAdmin, { reattemptMin: 1, pageSize: 100 })).data?.data || []).every((o: any) => (o.reattemptCount || 0) >= 1));
 
+  console.log("\n[crm] ===== Task: exact phoneNormalized matching (no digit-tail) =====");
+  await api("POST", "/lead/create", tAdmin, { customerName: `${QTAG}PhoneA`, phone: "0300-1234567", agentId: AG001.id });
+  await api("POST", "/lead/create", tAdmin, { customerName: `${QTAG}PhoneB`, phone: "0321-1234567", agentId: AG001.id });
+  const byA = (await api("POST", "/lead/get", tAdmin, { phone: "0300-1234567", pageSize: 200 })).data?.data || [];
+  check("phone filter matches the same number", byA.some((l: any) => l.customerName === `${QTAG}PhoneA`));
+  check("0300-1234567 does NOT match 0321-1234567", !byA.some((l: any) => l.customerName === `${QTAG}PhoneB`));
+  const byFmt = (await api("POST", "/lead/get", tAdmin, { phone: "+92 300 1234567", pageSize: 200 })).data?.data || [];
+  check("same number in +92 format still matches", byFmt.some((l: any) => l.customerName === `${QTAG}PhoneA`) && !byFmt.some((l: any) => l.customerName === `${QTAG}PhoneB`));
+  const c360A = (await api("POST", "/crmReport/customer360", tAdmin, { phone: "0300-1234567" })).data;
+  check("customer360 exact: finds A, not B", (c360A?.leads || []).some((l: any) => l.customerName === `${QTAG}PhoneA`) && !(c360A?.leads || []).some((l: any) => l.customerName === `${QTAG}PhoneB`));
+
   // ---- cleanup (drop the entire QA world; real users/agents untouched) ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });
