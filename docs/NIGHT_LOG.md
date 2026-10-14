@@ -4,6 +4,54 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 6 (2026-10-14, dark mode + circular reveal)
+
+Dark mode across the whole admin (CRM and the older modules) with one source of truth and a
+circular-reveal theme toggle. Same rules (local only, commit per step, no attribution).
+Gates: admin next build clean (exit 0). Real data untouched (261/68/62/0), throwaway admin removed.
+Commits (admin): fed0446 (theme infrastructure), d18b439 (token migration across pages).
+
+### What was wrong [DONE]
+- The app mixes MUI v6, shadcn/Tailwind and SCSS. A dark-mode scaffold existed (ThemeProvider,
+  no-flash inline script, a dark MUI theme) but was not a single source of truth: MUI carried its
+  own hard-coded palette, and most CRM and legacy pages used literal bg-white/bg-gray/text-gray
+  classes, so they stayed light or went unreadable when the dark class was set.
+
+### Single source of truth [DONE]
+- globals.scss CSS variables are now the one palette. :root is light, .dark overrides. The dark set
+  is a soft slate (no pure black): background 220 16% 10%, card 13%, muted 18%, border 24%, text
+  96% / muted 68%, ring = blue 217 91% 60%. Layered bg < card < muted; text meets WCAG AA.
+- theme.tsx (MUI) now reads hsl(var(--token)) for the palette and every component override
+  (DataGrid rows/header/hover/selection/pagination, TextField, Select, Menu, Popover, Paper, Table,
+  Tabs, OutlinedInput). So MUI follows the same variables as Tailwind and SCSS.
+- color-scheme is set per mode (native date pickers, selects, scrollbars follow the theme), and a
+  low-specificity :where(input,select,textarea) rule themes the raw native inputs the CRM forms use
+  while still letting shadcn/MUI override. This fixed the one breakage found (white CALL/Outcome and
+  report filter controls in dark).
+- Token migration: bg-white -> bg-card, bg-gray-50/100 -> bg-muted, border-gray -> border-border,
+  text-gray-400/500/600 -> text-muted-foreground, text-gray-700/800/900 -> text-foreground across
+  CRM pages/components and the legacy modules (AMS, analytics, access control, frontdesk, gate pass,
+  navbar, shared). Kanban stage columns and report bars got dark: variants. Light mode is byte-for-
+  byte unchanged because the tokens resolve to the former literal values in light.
+
+### Toggle + circular reveal [DONE]
+- Sun/moon button in the navbar and in the mobile hamburger menu. Default follows the OS; an explicit
+  choice is saved to localStorage (app-theme) and remembered. No flash of the wrong theme: an inline
+  script in layout.tsx applies the dark class before hydration, and ThemeProvider inits from the
+  already-applied class so MUI does not flash either.
+- On toggle, the new theme is revealed as a circle expanding from the click point using the View
+  Transitions API (clip-path circle, ~450ms, ease-out). Falls back to an instant switch where the API
+  is unsupported or prefers-reduced-motion is set; the default cross-fade is disabled so only the
+  circle plays.
+
+### Browser verification [DONE]
+- Headless Chrome via playwright-core, authenticated. Captured light and dark for: navbar + mega menu,
+  leads list, kanban board, lead detail, reports with charts, attendance (legacy module), the RBAC
+  permission editor, and the login page; plus a mid-animation frame of the circular reveal. All pages
+  render correctly in both themes; light mode visually unchanged. Screenshots sent to the user.
+
+---
+
 ## Run 5 (2026-10-14, follow-up)
 
 RBAC gaps for the CRM: permission-assignment UI, button-level gates, revoke propagation. All three
