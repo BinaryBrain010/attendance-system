@@ -4,6 +4,53 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 5 (2026-10-14, follow-up)
+
+RBAC gaps for the CRM: permission-assignment UI, button-level gates, revoke propagation. All three
+closed and browser-verified end to end. Same rules (local only, commit per step, no attribution).
+Gates: admin next build clean (exit 0); CRM harness + qa:rbac unaffected (admin-only code this run).
+Real data untouched (261/68/62/0), all test scaffolding cleaned up (zero residue).
+Commits (admin): adcb6bb (permission UI + appModules.crm explicit), 08cc6cb (button gates).
+
+### Gap 1 - CRM features in the permission editor + explicit appModules.crm  [DONE]
+- `permission.tsx` had NO CRM section, so crm.* features were not assignable anywhere. Added a grouped
+  "Sales CRM Features" card (Leads, Quotations, Orders, Returns, Catalogue incl. cost, Agents, Reports).
+  The feature hierarchy exposes one flat `crm.*` bucket (no `crm.lead.*` sub-keys), so the component now
+  reads `crm.*` and splits by prefix; every action AND the own/team/all read-scope leaves show as
+  checkboxes. appModules.crm.* is the "CRM (menu)" box under App Modules.
+- `access.service.ts`: added `appModules.crm.*` to the explicit list (was missing) so it needs an
+  explicit grant, like quickMark/quickPass/accessControl/frontdesk — not the `appModules.*` wildcard.
+- Verified via the UI (as a throwaway all-features admin): created role "QA_CRM Agent Test", checked
+  the CRM boxes, Submit -> persisted (own scope only, no read.all/team). Assigned the role to a qa user
+  via the UI (role page "Add user"); the user's only perms came from the role. Logged in as that user:
+  top nav showed ONLY the CRM menu (confirms appModules.crm gating), the CRM dropdown showed only the
+  permitted items (My Day/Leads/Customers from lead.read.own, Agents, Reports; Sales/After-sales/
+  Catalogue hidden, no quick actions), and /crm/leads showed "Scope: OWN" with ONLY that agent's one
+  lead (not the 261). OWN scope works from a UI-built role.
+
+### Gap 2 - Button-level gates  [DONE]
+- Audited every CRM page; the write buttons on the lead/quotation/order/return detail pages, My Day,
+  and the New-x buttons were ungated (backend enforced, but the UI showed buttons that would 403).
+  Gated each on its backend feature: New lead/quotation/order (create), lead Edit (update), all stage/
+  order/quotation/return transitions (transition), convert (quotation/order create), log activity
+  (lead create), re-attempt (order reattempt), create return (return create), quotation new-version +
+  duplicate (create), quotation PDF (export). Order/quotation margin is gated on crm.catalogue.cost.*
+  (and already stripped server-side). Invoice/delivery PDFs stay at read level (crm.order.read.own.*).
+  Catalogue/agents/reports were already gated (canWrite/canCost/canEdit/canExport).
+- Verified in the browser as a read-only CRM user (lead + order read, no create/update, no cost):
+  leads list no New-lead; lead detail no Edit/Change-stage/Convert/Log-activity; orders list no New-
+  order, Scope OWN, only the test order; order detail no transition/reattempt/create-return and NO
+  margin line (the order has a costed item, so a cost user would see 40%); catalogue no Add/Bulk, no
+  Cost column (only Retail Price). "No write buttons, no cost anywhere" confirmed.
+
+### Gap 3 - Revoke propagation  [DONE]
+- The provider polls /webhook/permissions every 2 min and reloads on change. With the qa user logged
+  in, removed crm.lead.read.own.* from the test role: /lead/get returned 403 immediately (backend), and
+  within the poll window the stored permissions dropped the feature and the CRM menu's Workspace group
+  (My Day/Leads/Customers) disappeared. Re-granted: /lead/get -> 200 and the Workspace items returned
+  after the next poll. (The revoke was applied at the role's FeaturePermission, the same state the UI
+  edit produces; the UI revoke mechanism itself was exercised when assigning the role above.)
+
 ## Run 4 (2026-10-13, follow-up)
 
 CRM navigation restructure, same rules (local only, gates, commit per step, no attribution). Eight
