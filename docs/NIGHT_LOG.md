@@ -4,6 +4,67 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 7 (2026-10-15, dark-mode regression sweep)
+
+Full regression sweep of the admin after the theme token migration. Same rules (local only,
+commit per step, no attribution). Gate: admin next build clean (exit 0). Real data untouched
+(261/68/62/0), throwaway admin removed, zero qa.* residue.
+Commits (admin): cf3244e (regression fixes).
+
+### Method [DONE]
+- Generated the route list from the app router (62 page.tsx; public URLs drop the /admin prefix
+  via the next.config rewrite). Visited every static route plus representative dynamic detail and
+  edit routes (employee, shift, unit, role, group, user, lead, order, return, customer) in light
+  AND dark, logged in as a throwaway all-access admin (qa.sweepadmin, granted all 257 AppFeatures
+  via a User FeaturePermission). 106 captures total.
+- Headless Chrome via playwright-core. Each page ran an in-page audit: text contrast below 4.5:1
+  (3:1 for large or bold), elements with a white background in dark, and console errors.
+  Important: the admin API has a CORS allow-list for http://localhost:3001, so the harness must use
+  the localhost origin, not 127.0.0.1, or every login is CORS-blocked and redirects to /login.
+
+### Findings and fixes [DONE]
+- Reports filter inputs stayed white in dark. Cause: a styled-jsx `.input` rule with a hard-coded
+  `background:#fff` (specificity beats the global :where() input rule). Fixed to read the theme
+  variables. This was the only true white-in-dark element found.
+- Analytics charts (chart.js). The bar chart used chart.js default axis tick, grid and legend
+  colours (grey on grey), unreadable in dark. Added a chartTheme computed from the CSS tokens
+  (--muted-foreground, --border, --foreground, --muted) and applied it to the bar scales ticks and
+  grid, the legend labels, and the in-office doughnut track (was a fixed light grey). Verified by
+  temporarily linking the throwaway admin to an employee with attendance so the charts render; the
+  employee row was not modified and the link was removed with the throwaway user.
+- Blue solid buttons (Add Holiday/Shift/Unit, New Request, Change Password, leave buttons,
+  permission submit, confirm dialog) showed near-black text on blue in dark. Cause: they override
+  the background to bg-blue-600 but keep the default text-primary-foreground, which is near-black in
+  the dark palette. Added text-white (15 buttons across 10 files).
+- Blue text links and active tabs (CRM back links, catalogue and system-config tabs, a few labels)
+  were blue-600 on dark cards (about 3.2 to 3.4 contrast). Added dark:text-blue-400 (about 71 tokens
+  across the double-quoted, template-literal and ternary className forms).
+
+### Classified as not-a-bug [DONE]
+- White buttons rgb(250,250,250) in dark are shadcn bg-primary (the dark palette primary is near
+  white) with dark text. Intentional high-contrast CTA, not a defect.
+- Green "Success" toasts measured at 1.4 contrast were a false positive: the toast success variant
+  already carries dark classes (dark:bg-green-900/20 dark:text-green-300); the audit mis-composited
+  the semi-transparent green over the dark body.
+- role/group/user detail pages log a 403 on "fetching permissions" in BOTH themes. This is a backend
+  RBAC response, not a theme issue, and is out of scope for the styling sweep.
+- crm_returns (48 errors, light) and frontdesk_visitor (nav timeout, light) were ERR_NETWORK_IO_
+  SUSPENDED and a one-off timeout during the long run, matching the backend crash below. Both render
+  fine otherwise.
+
+### Notes
+- The backend crashed three times during and just after the sweep with the known, pre-existing
+  unhandledRejection ("Transaction API error: Unable to start a transaction in the given time"),
+  triggered by the sweep load. Restarted each time per the standing rule; it is stable while idle.
+  Re-verification was then done at low concurrency.
+- There is no gate-pass route in this admin (gate pass is a separate codebase in the platform); the
+  only frontdesk module here is /frontdesk/visitor, which was swept.
+- Observation, not touched: the Holidays table holds about 79 QA_ test records (dates in 2099,
+  reasons "QA_<timestamp>", description "QA_updated") left over from an earlier QA run. Left in place
+  because deleting business records is out of scope for a styling sweep and should be confirmed.
+
+---
+
 ## Run 6 (2026-10-14, dark mode + circular reveal)
 
 Dark mode across the whole admin (CRM and the older modules) with one source of truth and a
