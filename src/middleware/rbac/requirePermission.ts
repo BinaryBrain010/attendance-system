@@ -109,7 +109,9 @@ export default async function requirePermission(req: Request, res: Response, nex
       // featurePermission.* : parentType from the EXISTING row for update/delete/restore, body for create
       const body: any = req.body || {};
       let parentType: string | undefined;
-      if (/\/create$/i.test(key)) parentType = body.parentType;
+      // create and the read-only allowedFeatures endpoint both carry parentType in the body;
+      // update/delete/restore only carry the row id, so the parentType is read from the row.
+      if (/(\/create|\/allowedFeatures)$/i.test(key)) parentType = body.parentType;
       else if (body.id) {
         const row = await prisma.featurePermission.findUnique({ where: { id: String(body.id) }, select: { parentType: true } });
         parentType = row ? (row as any).parentType : undefined;
