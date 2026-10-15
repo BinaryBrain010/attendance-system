@@ -103,6 +103,18 @@ async function main() {
     await run("visitor", () => prisma.visitor.deleteMany({ where: { name: QA_NAME } }));
     await run("appFeature", () => prisma.appFeature.deleteMany({ where: { name: { startsWith: "QA_feat." } } }));
 
+    // QA holidays and the HOLIDAYS attendance that marking a holiday generates for every employee.
+    // run.ts creates holidays with a "QA_" reason on a synthetic 2099 date (see run.ts getCreatePayload
+    // for "Holiday"); real holidays use real dates and reasons like "Sunday", so neither pattern can
+    // match real data. Delete the attendance first, then the holidays. Pattern-based so it clears
+    // EVERY past run, not only ids recorded in _created.json (the API /holiday/delete above only
+    // soft-deletes recorded ids and never touched the attendance side-effect, which is how QA
+    // holidays and ~7k HOLIDAYS attendance rows had been leaking).
+    await run("attendance(QA holidays)", () => prisma.attendance.deleteMany({
+      where: { status: "HOLIDAYS", date: { gte: new Date("2099-01-01T00:00:00.000Z"), lt: new Date("2100-01-01T00:00:00.000Z") } },
+    }));
+    await run("holiday", () => prisma.holiday.deleteMany({ where: { reason: { startsWith: "QA_" } } }));
+
     await prisma.$disconnect().catch(() => {});
   } catch (e: any) {
     console.warn("[QA cleanup] DB sweep error:", e?.message || e);
