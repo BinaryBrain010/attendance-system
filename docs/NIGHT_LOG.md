@@ -4,6 +4,67 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 8 (2026-10-15, backend crash + 403 + QA holiday purge)
+
+Three backend fixes. Same rules (local only, commit per step, no attribution).
+Gates: backend build (tsc exit 0), admin build (next build exit 0), CRM harness 176/176,
+qa:rbac 306 pass / 1 pre-existing gap (exit 0). Real data untouched (261/68/62/0), all QA
+residue removed.
+Commits (backend): af65025 (crash), c4520bc (403), <this log>; cleanup fix in the same series.
+
+### 1. Server crash under load [FIXED]
+- Reproduced with a load test (20 concurrent users hammering /lead/get, /lead/getById,
+  /crmReport/dashboard, /crmReport/leadAging, /salesOrder/get, /salesReturn/get for 2 min). The
+  server crashed with an unhandledRejection and exited(1).
+- Root cause: winston was configured with exceptionHandlers/rejectionHandlers but exitOnError
+  defaulted to true, so after logging an unhandled rejection it called process.exit(1). The
+  installProcessGuards handler in server.ts logged the same rejection but could not prevent the
+  exit. A single bad request took the whole server down. Two concrete triggers: a duplicate
+  loggedInUsers.token on two logins in the same second (identical JWT), and, under heavier load,
+  the absent-marking cron firing markAttendance via forEach(async ...) without awaiting, which
+  stampeded the pool and leaked "Unable to start a transaction in the given time" rejections.
+- Fixes: logger exitOnError:false; a random jti on every JWT so tokens never collide, plus a
+  try/catch around the session-record create; the cron now marks sequentially with a per-employee
+  catch; prisma query-logging off by default (PRISMA_QUERY_LOG=1 to re-enable) and interactive
+  transaction maxWait/timeout raised; connection_limit and pool_timeout documented in .env.example
+  and set live in .env; an inlined express-async-errors patch so async rejections reach the error
+  middleware; Prisma P2024/P2028 now map to 503.
+- Rerun: 20 concurrent x 2 min = 27,078 requests, 100% 200, zero crashes, p95 159ms (p50 75,
+  p99 171). 80 concurrent x 45s = 10,107 requests, zero errors/crashes, p95 622ms (requests queue
+  instead of failing). The .js are gitignore'd build artifacts; only index.js is tracked, so the
+  fixes live in the .ts and are compiled with tsc.
+
+### 2. 403 on role/group/user detail pages [FIXED]
+- The permission editor on those pages POSTs /featurePermission/allowedFeatures with
+  { parentType, parentId }. featureMap marks it a dynamic read, but requirePermission only took
+  parentType from the body on /create; every other route looked up a FeaturePermission row by
+  body.id. allowedFeatures sends no id, so parentType was undefined and the route was always
+  denied 403, even for an all-access admin (the PARENT_FEATURE case map was never reached).
+- Fix (backend only; the frontend already sends the correct capitalised parentType): source
+  parentType from the body for /allowedFeatures too.
+- Verified: all-access admin gets 200 reading (and 200 editing via /create) for Role, User and
+  Group; a user without role/user/group read gets a clean 403 ("missing role.read.*").
+
+### 3. QA holiday purge + harness cleanup [FIXED]
+- The holidays table held 20 active QA holidays (reason QA_<timestamp>, description QA_updated,
+  date 2099) plus 15 soft-deleted ones, and 7,473 HOLIDAYS attendance rows that marking those
+  holidays generated. Purged by strict pattern after confirming zero AttendanceRequest references:
+  79 -> 59 holidays (all 59 real preserved), 2099 HOLIDAYS attendance 7,473 -> 0.
+- qa/cleanup.ts only soft-deleted holiday ids recorded in _created.json via the API and never
+  removed the attendance side-effect, so QA holidays leaked across runs. Added a pattern-based hard
+  delete to the Prisma sweep: HOLIDAYS attendance in the 2099 range, then holidays whose reason
+  starts with QA_. Real holidays use real dates and reasons like "Sunday", so the pattern cannot
+  match real data. Verified end to end: qa:rbac created a QA holiday + 302 HOLIDAYS attendance,
+  qa:cleanup removed them, leaving 59 real holidays and 0 QA residue.
+
+### Note
+- qa:rbac shows 1 pre-existing fail, T0278 (employee list not filtered by unitIds in the JWT). This
+  is a documented unit-scoping enforcement gap, not a regression: the JWT still carries unitIds (the
+  jti was added alongside it, verified by decoding a token), and nothing in this run touches
+  employee-list or unit-scoping code.
+
+---
+
 ## Run 7 (2026-10-15, dark-mode regression sweep)
 
 Full regression sweep of the admin after the theme token migration. Same rules (local only,
