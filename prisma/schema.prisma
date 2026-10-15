@@ -246,7 +246,10 @@ model Employee {
   attendanceRequests AttendanceRequest[]
   leaveAllocation   LeaveAllocation[]
   shiftAssignments  ShiftAssignment[]
-  todos             Todo[]
+  teamsLed          Team[]         @relation("TeamLead")
+  teamMemberships   TeamMember[]   @relation("TeamMemberEmployee")
+  taskAssignments   TaskAssignee[] @relation("TaskAssignee")
+  dailyReports      DailyReport[]  @relation("DailyReportEmployee")
   managedUnits      Unit[]              @relation("UnitAttendanceManager")
   unitEmployees     UnitEmployee[]
   visitorsReferred  Visitor[]           @relation("VisitorReferredTo")
@@ -458,31 +461,174 @@ model ShiftAssignment {
   @@unique([employeeId, shiftId, startDate])
 }
 
-model Todo {
-  id          String    @id @default(uuid()) @db.VarChar(36)
-  employeeId  String
-  title       String
+// ---------------- Work module (Teams, Tasks, Daily reports) ----------------
+// Supersedes the old Todo stub (which had no code and no data): Task is the richer successor.
+
+model Team {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  name        String
   description String?
-  dueDate     DateTime?
-  status      TodoStatus @default(PENDING)
-  priority    TodoPriority @default(MEDIUM)
-  createdAt   DateTime?  @default(now())
-  updatedAt   DateTime?  @updatedAt
+  leadId      String?  @db.VarChar(36)
+  lead        Employee? @relation("TeamLead", fields: [leadId], references: [id])
+  unitId      String?  @db.VarChar(36)
+  unit        Unit?    @relation("TeamUnit", fields: [unitId], references: [id])
+  company     Company  @default(OKASHASMART)
+  // per-team configurable task statuses (first = initial, last = done)
+  statuses    String[] @default(["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE"])
+  members     TeamMember[]
+  tasks       Task[]
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
   isDeleted   DateTime?
-
-  employee Employee @relation(fields: [employeeId], references: [id])
+  createdBy   String?   @db.VarChar(36)
+  updatedBy   String?   @db.VarChar(36)
+  @@index([leadId])
+  @@index([unitId])
 }
 
-enum TodoStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
+model TeamMember {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  teamId     String   @db.VarChar(36)
+  team       Team     @relation(fields: [teamId], references: [id])
+  employeeId String   @db.VarChar(36)
+  employee   Employee @relation("TeamMemberEmployee", fields: [employeeId], references: [id])
+  createdAt  DateTime? @default(now())
+  isDeleted  DateTime?
+  @@unique([teamId, employeeId])
+  @@index([employeeId])
 }
 
-enum TodoPriority {
+model Task {
+  id             String   @id @default(uuid()) @db.VarChar(36)
+  code           String?  @unique
+  title          String
+  description    String?
+  teamId         String?  @db.VarChar(36)
+  team           Team?    @relation(fields: [teamId], references: [id])
+  status         String   @default("TODO")      // validated against the team's status list
+  priority       TaskPriority @default(MEDIUM)
+  dueDate        DateTime?
+  startDate      DateTime?
+  estimateHours  Float?
+  labels         String[] @default([])
+  attachments    String[] @default([])
+  linkType       String?  // LEAD | ORDER | CUSTOMER (loose link to a CRM record)
+  linkId         String?  @db.VarChar(36)
+  recurring      RecurringRule @default(NONE)
+  recurredFromId String?  @db.VarChar(36)
+  completedAt    DateTime?
+  createdById    String?  @db.VarChar(36)        // User who created it
+  company        Company  @default(OKASHASMART)
+  assignees      TaskAssignee[]
+  checklist      TaskChecklistItem[]
+  comments       TaskComment[]
+  watchers       TaskWatcher[]
+  createdAt      DateTime? @default(now())
+  updatedAt      DateTime? @updatedAt
+  isDeleted      DateTime?
+  createdBy      String?   @db.VarChar(36)
+  updatedBy      String?   @db.VarChar(36)
+  @@index([teamId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model TaskAssignee {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  taskId     String   @db.VarChar(36)
+  task       Task     @relation(fields: [taskId], references: [id])
+  employeeId String   @db.VarChar(36)
+  employee   Employee @relation("TaskAssignee", fields: [employeeId], references: [id])
+  @@unique([taskId, employeeId])
+  @@index([employeeId])
+}
+
+model TaskChecklistItem {
+  id        String  @id @default(uuid()) @db.VarChar(36)
+  taskId    String  @db.VarChar(36)
+  task      Task    @relation(fields: [taskId], references: [id])
+  text      String
+  done      Boolean @default(false)
+  sortOrder Int     @default(0)
+  isDeleted DateTime?
+}
+
+model TaskComment {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  taskId    String   @db.VarChar(36)
+  task      Task     @relation(fields: [taskId], references: [id])
+  userId    String?  @db.VarChar(36)
+  body      String
+  createdAt DateTime? @default(now())
+  isDeleted DateTime?
+  @@index([taskId])
+}
+
+model TaskWatcher {
+  id         String @id @default(uuid()) @db.VarChar(36)
+  taskId     String @db.VarChar(36)
+  task       Task   @relation(fields: [taskId], references: [id])
+  employeeId String @db.VarChar(36)
+  @@unique([taskId, employeeId])
+}
+
+model DailyReport {
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  employeeId   String   @db.VarChar(36)
+  employee     Employee @relation("DailyReportEmployee", fields: [employeeId], references: [id])
+  date         DateTime @db.Date
+  whatIDid     String?
+  taskIds      String[] @default([])
+  hours        Float?
+  blockers     String?
+  planTomorrow String?
+  attachments  String[] @default([])
+  late         Boolean  @default(false)
+  comments     DailyReportComment[]
+  createdAt    DateTime? @default(now())
+  updatedAt    DateTime? @updatedAt
+  isDeleted    DateTime?
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model DailyReportComment {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  reportId  String   @db.VarChar(36)
+  report    DailyReport @relation(fields: [reportId], references: [id])
+  userId    String?  @db.VarChar(36)
+  body      String
+  createdAt DateTime? @default(now())
+  isDeleted DateTime?
+  @@index([reportId])
+}
+
+model Notification {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  userId     String   @db.VarChar(36)              // recipient User id
+  type       String   // ASSIGNED | DUE_SOON | OVERDUE | COMMENT | REPORT_MISSING
+  title      String
+  body       String?
+  entityType String?  // Task | DailyReport
+  entityId   String?  @db.VarChar(36)
+  readAt     DateTime?
+  createdAt  DateTime? @default(now())
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+enum TaskPriority {
   LOW
   MEDIUM
   HIGH
+  URGENT
+}
+
+enum RecurringRule {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
 }
 
 model Holiday {
@@ -538,6 +684,7 @@ model Unit {
 
   attendanceManager   Employee?   @relation("UnitAttendanceManager", fields: [attendanceManagerId], references: [id])
   employees           UnitEmployee[]
+  teams               Team[]      @relation("TeamUnit")
 }
 
 model UnitEmployee {

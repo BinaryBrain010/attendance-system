@@ -67,6 +67,12 @@ import QuotationRoutes from "../../modules/CRM/Quotation/routes/quotation.routes
 import SalesOrderRoutes from "../../modules/CRM/SalesOrder/routes/salesOrder.routes";
 import SalesReturnRoutes from "../../modules/CRM/Return/routes/salesReturn.routes";
 import CrmReportRoutes from "../../modules/CRM/Report/routes/report.routes";
+import TeamRoutes from "../../modules/Work/Team/routes/team.routes";
+import TaskRoutes from "../../modules/Work/Task/routes/task.routes";
+import DailyReportRoutes from "../../modules/Work/DailyReport/routes/dailyReport.routes";
+import NotificationRoutes from "../../modules/Work/Notification/routes/notification.routes";
+import WorkReportRoutes from "../../modules/Work/Report/routes/workReport.routes";
+import WorkSchedulerHelper from "../../modules/Work/helper/workSchedule.helper";
 
 class App {
   private app: Express;
@@ -83,6 +89,7 @@ class App {
     this.startServer();
     TokenCleanHelper;
     AttendanceSchedulerHelper;
+    WorkSchedulerHelper;
   }
 
   /**
@@ -244,7 +251,12 @@ class App {
       QuotationRoutes,
       SalesOrderRoutes,
       SalesReturnRoutes,
-      CrmReportRoutes
+      CrmReportRoutes,
+      TeamRoutes,
+      TaskRoutes,
+      DailyReportRoutes,
+      NotificationRoutes,
+      WorkReportRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

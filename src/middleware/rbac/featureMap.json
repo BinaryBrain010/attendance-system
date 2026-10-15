@@ -549,11 +549,6 @@
     "feature": "crm.catalogue.read.*",
     "kind": "read"
   },
-  "POST /crmProduct/sales": {
-    "access": "feature",
-    "feature": "crm.catalogue.read.*",
-    "kind": "read"
-  },
   "POST /crmProduct/getDeleted": {
     "access": "feature",
     "feature": "crm.catalogue.read.*",
@@ -573,6 +568,11 @@
     "access": "feature",
     "feature": "crm.catalogue.restore.*",
     "kind": "restore"
+  },
+  "POST /crmProduct/sales": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
   },
   "POST /crmProduct/search": {
     "access": "feature",
@@ -718,6 +718,31 @@
     "access": "feature",
     "feature": "customer.update.*",
     "kind": "update"
+  },
+  "POST /dailyReport/comment": {
+    "access": "feature",
+    "feature": "work.report.comment.*",
+    "kind": "update"
+  },
+  "POST /dailyReport/compliance": {
+    "access": "feature",
+    "feature": "work.report.read.own.*",
+    "kind": "read"
+  },
+  "POST /dailyReport/get": {
+    "access": "feature",
+    "feature": "work.report.read.own.*",
+    "kind": "read"
+  },
+  "POST /dailyReport/myToday": {
+    "access": "feature",
+    "feature": "work.report.read.own.*",
+    "kind": "read"
+  },
+  "POST /dailyReport/submit": {
+    "access": "feature",
+    "feature": "work.report.submit.*",
+    "kind": "create"
   },
   "POST /employee/create": {
     "access": "feature",
@@ -1444,6 +1469,21 @@
     "feature": "leaveReq.approve.*",
     "kind": "approve"
   },
+  "POST /notification/get": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /notification/markRead": {
+    "access": "token",
+    "feature": "-",
+    "kind": "update"
+  },
+  "GET /notification/unreadCount": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
   "POST /quotation/create": {
     "access": "feature",
     "feature": "crm.quotation.create.*",
@@ -1589,11 +1629,6 @@
     "feature": "crm.agent.read.*",
     "kind": "read"
   },
-  "POST /salesAgent/stats": {
-    "access": "feature",
-    "feature": "crm.agent.read.*",
-    "kind": "read"
-  },
   "GET /salesAgent/me": {
     "access": "feature",
     "feature": "crm.agent.read.*",
@@ -1605,6 +1640,11 @@
     "kind": "restore"
   },
   "POST /salesAgent/search": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "POST /salesAgent/stats": {
     "access": "feature",
     "feature": "crm.agent.read.*",
     "kind": "read"
@@ -1897,6 +1937,96 @@
   "PUT /systemConfig/update": {
     "access": "feature",
     "feature": "systemConfig.update.*",
+    "kind": "update"
+  },
+  "POST /task/assign": {
+    "access": "feature",
+    "feature": "work.task.assign.*",
+    "kind": "update"
+  },
+  "POST /task/attachments": {
+    "access": "feature",
+    "feature": "work.task.update.*",
+    "kind": "update"
+  },
+  "POST /task/bulkAssign": {
+    "access": "feature",
+    "feature": "work.task.assign.*",
+    "kind": "update"
+  },
+  "POST /task/checklist": {
+    "access": "feature",
+    "feature": "work.task.update.*",
+    "kind": "update"
+  },
+  "POST /task/comment": {
+    "access": "feature",
+    "feature": "work.task.comment.*",
+    "kind": "update"
+  },
+  "POST /task/create": {
+    "access": "feature",
+    "feature": "work.task.create.*",
+    "kind": "create"
+  },
+  "POST /task/delete": {
+    "access": "feature",
+    "feature": "work.task.delete.*",
+    "kind": "delete"
+  },
+  "POST /task/get": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /task/getById": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /task/setStatus": {
+    "access": "feature",
+    "feature": "work.task.transition.*",
+    "kind": "update"
+  },
+  "PUT /task/update": {
+    "access": "feature",
+    "feature": "work.task.update.*",
+    "kind": "update"
+  },
+  "POST /task/watchers": {
+    "access": "feature",
+    "feature": "work.task.update.*",
+    "kind": "update"
+  },
+  "POST /team/create": {
+    "access": "feature",
+    "feature": "work.team.create.*",
+    "kind": "create"
+  },
+  "POST /team/delete": {
+    "access": "feature",
+    "feature": "work.team.delete.*",
+    "kind": "delete"
+  },
+  "POST /team/get": {
+    "access": "feature",
+    "feature": "work.team.read.*",
+    "kind": "read"
+  },
+  "POST /team/getById": {
+    "access": "feature",
+    "feature": "work.team.read.*",
+    "kind": "read"
+  },
+  "POST /team/members": {
+    "access": "feature",
+    "feature": "work.team.update.*",
+    "kind": "update"
+  },
+  "PUT /team/update": {
+    "access": "feature",
+    "feature": "work.team.update.*",
     "kind": "update"
   },
   "POST /unit/create": {
@@ -2248,5 +2378,40 @@
     "access": "open",
     "feature": "-",
     "kind": "open"
+  },
+  "POST /workReport/completion": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /workReport/compliance": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /workReport/export": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /workReport/hours": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /workReport/overdue": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /workReport/timeToComplete": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
+  },
+  "POST /workReport/workload": {
+    "access": "feature",
+    "feature": "work.task.read.own.*",
+    "kind": "read"
   }
 }

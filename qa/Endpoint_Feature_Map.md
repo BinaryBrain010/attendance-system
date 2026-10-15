@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-448 routes walked from the live routers. Real DB users counted: 175.
+483 routes walked from the live routers. Real DB users counted: 175.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,7 +11,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 11. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 14. Open: 6.
 
 | Method | Path | Kind | Access | Feature | Registered | Held by (of 175) | Note |
 |---|---|---|---|---|---|---|---|
@@ -129,6 +129,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /crmProduct/image | create | feature | `crm.catalogue.create.*` | yes | 2 |  |
 | POST | /crmProduct/import | import | feature | `crm.catalogue.import.*` | yes | 1 | Shopify CSV import (dry-run default) |
 | POST | /crmProduct/restore | restore | feature | `crm.catalogue.restore.*` | yes | 1 |  |
+| POST | /crmProduct/sales | read | feature | `crm.catalogue.read.*` | yes | 3 | per-product sales stats (cost/margin stripped unless crm.catalogue.cost.*) |
 | POST | /crmProduct/search | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | GET | /crmProduct/total | read | feature | `crm.catalogue.read.*` | yes | 3 |  |
 | PUT | /crmProduct/update | update | feature | `crm.catalogue.update.*` | yes | 2 |  |
@@ -158,6 +159,11 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /customer/search | read | feature | `customer.read.*` | yes | 3 |  |
 | GET | /customer/total | read | feature | `customer.read.*` | yes | 3 |  |
 | PUT | /customer/update | update | feature | `customer.update.*` | yes | 3 |  |
+| POST | /dailyReport/comment | update | feature | `work.report.comment.*` | yes | 1 |  |
+| POST | /dailyReport/compliance | read | feature | `work.report.read.own.*` | yes | 1 | manager view; scope widens the row filter |
+| POST | /dailyReport/get | read | feature | `work.report.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /dailyReport/myToday | read | feature | `work.report.read.own.*` | yes | 1 |  |
+| POST | /dailyReport/submit | create | feature | `work.report.submit.*` | yes | 1 | own daily report |
 | POST | /employee/create | create | feature | `employee.create.*` | yes | 22 |  |
 | POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 22 |  |
 | POST | /employee/files | read | feature | `employee.read.*` | yes | 22 |  |
@@ -303,6 +309,9 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /leave/leave-requests/total | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | PUT | /leave/leave-requests/update | update | feature | `leaveReq.update.*` | yes | 4 |  |
 | POST | /leave/leave-requests/updateStatus | approve | feature | `leaveReq.approve.*` | yes | 4 | covers approve and reject |
+| POST | /notification/get | read | token | `-` | - | - | own notifications |
+| POST | /notification/markRead | update | token | `-` | - | - | own notifications |
+| GET | /notification/unreadCount | read | token | `-` | - | - | own notifications |
 | POST | /quotation/create | create | feature | `crm.quotation.create.*` | yes | 3 |  |
 | POST | /quotation/delete | delete | feature | `crm.quotation.delete.*` | yes | 1 |  |
 | POST | /quotation/filtered | read | feature | `crm.quotation.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
@@ -335,6 +344,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /salesAgent/me | read | feature | `crm.agent.read.*` | yes | 3 |  |
 | POST | /salesAgent/restore | restore | feature | `crm.agent.restore.*` | yes | 1 |  |
 | POST | /salesAgent/search | read | feature | `crm.agent.read.*` | yes | 3 |  |
+| POST | /salesAgent/stats | read | feature | `crm.agent.read.*` | yes | 3 |  |
 | GET | /salesAgent/total | read | feature | `crm.agent.read.*` | yes | 3 |  |
 | PUT | /salesAgent/update | update | feature | `crm.agent.update.*` | yes | 2 |  |
 | POST | /salesOrder/create | create | feature | `crm.order.create.*` | yes | 3 |  |
@@ -393,6 +403,24 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /systemConfig/get | read | feature | `systemConfig.read.*` | yes | 1 |  |
 | GET | /systemConfig/schedulerLogs | read | feature | `systemConfig.read.*` | yes | 1 |  |
 | PUT | /systemConfig/update | update | feature | `systemConfig.update.*` | yes | 1 |  |
+| POST | /task/assign | update | feature | `work.task.assign.*` | yes | 1 |  |
+| POST | /task/attachments | update | feature | `work.task.update.*` | yes | 1 | attachment upload |
+| POST | /task/bulkAssign | update | feature | `work.task.assign.*` | yes | 1 |  |
+| POST | /task/checklist | update | feature | `work.task.update.*` | yes | 1 |  |
+| POST | /task/comment | update | feature | `work.task.comment.*` | yes | 1 |  |
+| POST | /task/create | create | feature | `work.task.create.*` | yes | 1 |  |
+| POST | /task/delete | delete | feature | `work.task.delete.*` | yes | 1 |  |
+| POST | /task/get | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /task/getById | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /task/setStatus | update | feature | `work.task.transition.*` | yes | 1 | task status change |
+| PUT | /task/update | update | feature | `work.task.update.*` | yes | 1 |  |
+| POST | /task/watchers | update | feature | `work.task.update.*` | yes | 1 |  |
+| POST | /team/create | create | feature | `work.team.create.*` | yes | 1 |  |
+| POST | /team/delete | delete | feature | `work.team.delete.*` | yes | 1 |  |
+| POST | /team/get | read | feature | `work.team.read.*` | yes | 1 |  |
+| POST | /team/getById | read | feature | `work.team.read.*` | yes | 1 |  |
+| POST | /team/members | update | feature | `work.team.update.*` | yes | 1 |  |
+| PUT | /team/update | update | feature | `work.team.update.*` | yes | 1 |  |
 | POST | /unit/create | create | feature | `unit.create.*` | yes | 3 |  |
 | POST | /unit/delete | delete | feature | `unit.delete.*` | yes | 3 |  |
 | GET | /unit/deleted | read | feature | `unit.read.*` | yes | 3 |  |
@@ -463,3 +491,10 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | PUT | /visitor/update | update | feature | `visitor.update.*` | yes | 1 |  |
 | GET | /webhook/permissions | open | open | `-` | - | - |  |
 | POST | /webhook/permissions | open | open | `-` | - | - |  |
+| POST | /workReport/completion | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /workReport/compliance | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /workReport/export | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /workReport/hours | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /workReport/overdue | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /workReport/timeToComplete | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /workReport/workload | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |

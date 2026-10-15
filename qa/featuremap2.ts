@@ -124,6 +124,30 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
 };
 const CRM_SCOPED = new Set(["crm.lead", "crm.quotation", "crm.order", "crm.return"]);
 
+// ---- Work module mounts -> feature roots ----
+const WORK_ROOT: Record<string, string> = {
+  "/team": "work.team", "/task": "work.task", "/dailyReport": "work.report", "/workReport": "work.task",
+  "/notification": "work.task", // placeholder root; every /notification route is a token-access override below
+};
+const WORK_SCOPED = new Set(["work.task", "work.report"]); // read.own/team/all scoped
+const WORK_OVERRIDE: Record<string, { feature: string; kind: string; access: string; note?: string }> = {
+  "POST /task/setStatus": { feature: "work.task.transition.*", kind: "update", access: "feature", note: "task status change" },
+  "POST /task/assign": { feature: "work.task.assign.*", kind: "update", access: "feature" },
+  "POST /task/bulkAssign": { feature: "work.task.assign.*", kind: "update", access: "feature" },
+  "POST /task/comment": { feature: "work.task.comment.*", kind: "update", access: "feature" },
+  "POST /task/checklist": { feature: "work.task.update.*", kind: "update", access: "feature" },
+  "POST /task/watchers": { feature: "work.task.update.*", kind: "update", access: "feature" },
+  "POST /task/attachments": { feature: "work.task.update.*", kind: "update", access: "feature", note: "attachment upload" },
+  "POST /team/members": { feature: "work.team.update.*", kind: "update", access: "feature" },
+  "POST /dailyReport/submit": { feature: "work.report.submit.*", kind: "create", access: "feature", note: "own daily report" },
+  "POST /dailyReport/myToday": { feature: "work.report.read.own.*", kind: "read", access: "feature" },
+  "POST /dailyReport/compliance": { feature: "work.report.read.own.*", kind: "read", access: "feature", note: "manager view; scope widens the row filter" },
+  "POST /dailyReport/comment": { feature: "work.report.comment.*", kind: "update", access: "feature" },
+  "POST /notification/get": { feature: "-", kind: "read", access: "token", note: "own notifications" },
+  "GET /notification/unreadCount": { feature: "-", kind: "read", access: "token", note: "own notifications" },
+  "POST /notification/markRead": { feature: "-", kind: "update", access: "token", note: "own notifications" },
+};
+
 function resolveFeature(method: string, p: string): { feature: string; kind: string; access: string; note?: string } {
   const key = `${method} ${p}`;
   if (OVERRIDE[key]) return OVERRIDE[key];
@@ -154,6 +178,18 @@ function resolveFeature(method: string, p: string): { feature: string; kind: str
     }
     const suffix = k === "import" ? "create" : k;
     return { feature: `${crmRoot}.${suffix}.*`, kind: k, access: "feature" };
+  }
+
+  // ---- Work ----
+  if (WORK_ROOT["/" + seg[1]]) {
+    if (WORK_OVERRIDE[key]) return WORK_OVERRIDE[key];
+    const root = WORK_ROOT["/" + seg[1]];
+    const k = kindFromName(p);
+    if (WORK_SCOPED.has(root) && k === "read") {
+      return { feature: `${root}.read.own.*`, kind: "read", access: "feature", note: "scope from read.{own,team,all}.* leaf (cumulative)" };
+    }
+    const suffix = k === "import" ? "create" : k;
+    return { feature: `${root}.${suffix}.*`, kind: k, access: "feature" };
   }
 
   // self-service
