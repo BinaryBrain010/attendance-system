@@ -2,7 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
 import { priceLines } from "../../shared/pricing";
-import { assertTransition } from "../../shared/stateMachine";
+import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { syncLeadStage } from "../../shared/leadSync";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 
@@ -57,7 +57,9 @@ class SalesOrderService {
       prisma.salesOrder.findMany({ where, skip, take: pageSize, orderBy: { createdAt: "desc" } }),
       prisma.salesOrder.count({ where }),
     ]);
-    return { data, totalSize, scope: scope.mode };
+    // Decorate with allowed next states so the kanban board's "Move to..." select mirrors Leads.
+    const decorated = data.map((r: any) => ({ ...r, allowedNextStages: allowedNext("order", r.status) }));
+    return { data: decorated, totalSize, scope: scope.mode };
   }
   async total(userId: string, filters: any = {}) {
     const scope = await resolveScope(userId, "order");

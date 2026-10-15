@@ -47,6 +47,11 @@ class ProductController extends BaseController<ProductService> {
     const { categoryId } = req.body;
     await this.readGated(req, res, () => this.service.byCategory(categoryId), "Products retrieved successfully!");
   }
+  async sales(req: Request, res: Response) {
+    const { id } = req.body;
+    // cost/margin stripped by readGated unless the caller holds crm.catalogue.cost.*
+    await this.readGated(req, res, () => this.service.sales(id), "Product sales retrieved successfully!");
+  }
   async total(_req: Request, res: Response) {
     await this.handleRequest(() => this.service.total(), res, { successMessage: "Total products retrieved successfully!" });
   }

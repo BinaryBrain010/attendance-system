@@ -30,6 +30,34 @@ class ProductService {
   byCategory(categoryId: string) {
     return prisma.product.findMany({ where: { isDeleted: null, categoryId }, include, orderBy: { name: "asc" } });
   }
+  /**
+   * Sales of a product: sold qty + revenue from DELIVERED order lines, quoted qty, returned qty, and
+   * recent orders/quotations containing it. cost/margin fields are emitted here and stripped by the
+   * controller (stripCost) unless the caller holds crm.catalogue.cost.*. Line items carry a loose
+   * productId (no relation), so we query the item tables directly.
+   */
+  async sales(productId: string) {
+    const [orderItems, quoteItems, returnItems, recentOrders, recentQuotes] = await Promise.all([
+      prisma.salesOrderItem.findMany({ where: { productId, isDeleted: null, order: { isDeleted: null, status: "DELIVERED" } }, select: { quantity: true, lineTotal: true, unitCost: true } }),
+      prisma.quotationItem.findMany({ where: { productId, isDeleted: null }, select: { quantity: true } }),
+      prisma.returnItem.findMany({ where: { productId, isDeleted: null }, select: { quantity: true } }),
+      prisma.salesOrderItem.findMany({ where: { productId, isDeleted: null }, select: { quantity: true, unitPrice: true, lineTotal: true, order: { select: { id: true, orderNo: true, customerName: true, status: true, createdAt: true } } }, orderBy: { id: "desc" }, take: 10 }),
+      prisma.quotationItem.findMany({ where: { productId, isDeleted: null }, select: { quantity: true, unitPrice: true, quotation: { select: { id: true, quotationNo: true, version: true, customerName: true, status: true, createdAt: true } } }, orderBy: { id: "desc" }, take: 10 }),
+    ]);
+    const soldQty = orderItems.reduce((t, i) => t + (i.quantity || 0), 0);
+    const revenue = orderItems.reduce((t, i) => t + (i.lineTotal || 0), 0);
+    let cost = 0, costedLines = 0, pendingLines = 0;
+    for (const i of orderItems) { if (i.unitCost != null) { cost += i.unitCost * (i.quantity || 0); costedLines++; } else pendingLines++; }
+    const margin = costedLines ? revenue - cost : null;
+    return {
+      soldQty, revenue,
+      cost, margin, marginPct: margin != null && revenue ? Math.round((margin / revenue) * 100) : null, costedLines, pendingLines,
+      quotedQty: quoteItems.reduce((t, i) => t + (i.quantity || 0), 0),
+      returnedQty: returnItems.reduce((t, i) => t + (i.quantity || 0), 0),
+      recentOrders: recentOrders.map((i) => ({ ...(i.order as any), quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal })),
+      recentQuotations: recentQuotes.map((i) => ({ ...(i.quotation as any), quantity: i.quantity, unitPrice: i.unitPrice })),
+    };
+  }
   total() {
     return prisma.product.gpCount();
   }

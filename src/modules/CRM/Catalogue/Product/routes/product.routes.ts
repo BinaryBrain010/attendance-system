@@ -22,6 +22,7 @@ class CrmProductRoutes {
     this.router.post("/get", validate(schemas.readList), this.controller.get.bind(this.controller));
     this.router.post("/getDeleted", validate(schemas.readList), this.controller.getDeleted.bind(this.controller));
     this.router.post("/getById", validate(schemas.idOnly), this.controller.getById.bind(this.controller));
+    this.router.post("/sales", validate(schemas.idOnly), this.controller.sales.bind(this.controller));
     this.router.post("/byCategory", validate(schemas.byCategory), this.controller.byCategory.bind(this.controller));
     this.router.get("/total", this.controller.total.bind(this.controller));
     this.router.post("/create", validate(schemas.product.create), this.controller.create.bind(this.controller));

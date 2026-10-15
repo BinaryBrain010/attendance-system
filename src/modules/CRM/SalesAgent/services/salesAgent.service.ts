@@ -18,7 +18,42 @@ class SalesAgentService {
     return { data, totalSize };
   }
   getById(id: string) {
-    return prisma.salesAgent.findUnique({ where: { id }, include: { ...include, members: { where: { isDeleted: null }, select: { id: true, agentCode: true } } } });
+    return prisma.salesAgent.findUnique({ where: { id }, include: { ...include, members: { where: { isDeleted: null }, select: { id: true, agentCode: true, employee: { select: { name: true, surname: true } } } } } });
+  }
+  /**
+   * Aggregate stats for the agent detail page. Sales rows carry a loose `agentId` column (no Prisma
+   * relation), so each metric is a direct count/sum filtered by agentId. "This month" uses updatedAt
+   * as the won-at proxy (leads have no wonAt timestamp). Pipeline = sum of open-stage estimatedValue.
+   */
+  async stats(id: string) {
+    const agent: any = await this.getById(id);
+    if (!agent) return null;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const OPEN_STAGES: any[] = ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION", "NEGOTIATION", "ON_HOLD"];
+    const base = { agentId: id, isDeleted: null };
+    const [leads, quotations, orders, returns, wonLeads, openLeads, wonThisMonth, recentActivity, recentLeads] = await Promise.all([
+      prisma.lead.count({ where: base }),
+      prisma.quotation.count({ where: base }),
+      prisma.salesOrder.count({ where: base }),
+      prisma.salesReturn.count({ where: base }),
+      prisma.lead.findMany({ where: { ...base, stage: "WON" }, select: { estimatedValue: true } }),
+      prisma.lead.findMany({ where: { ...base, stage: { in: OPEN_STAGES } }, select: { estimatedValue: true } }),
+      prisma.lead.findMany({ where: { ...base, stage: "WON", updatedAt: { gte: monthStart } }, select: { estimatedValue: true } }),
+      prisma.leadActivity.findMany({ where: { agentId: id, isDeleted: null }, orderBy: { occurredAt: "desc" }, take: 10, select: { id: true, type: true, outcome: true, notes: true, occurredAt: true, leadId: true } }),
+      prisma.lead.findMany({ where: base, orderBy: { updatedAt: "desc" }, take: 10, select: { id: true, customerName: true, stage: true, estimatedValue: true, city: true, nextFollowUpAt: true } }),
+    ]);
+    const sum = (arr: any[]) => arr.reduce((t, x) => t + (x.estimatedValue || 0), 0);
+    const wonValueThisMonth = sum(wonThisMonth);
+    const target = agent.monthlyTarget ?? null;
+    const achievedPct = target && target > 0 ? Math.round((wonValueThisMonth / target) * 100) : null;
+    return {
+      agent,
+      counts: { leads, quotations, orders, returns, wonLeads: wonLeads.length },
+      target, wonValueThisMonth, achievedPct,
+      wonValue: sum(wonLeads), pipelineValue: sum(openLeads),
+      recentActivity, recentLeads,
+    };
   }
   me(userId: string) {
     return prisma.salesAgent.findFirst({ where: { userId, isDeleted: null }, include });

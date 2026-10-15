@@ -549,6 +549,11 @@
     "feature": "crm.catalogue.read.*",
     "kind": "read"
   },
+  "POST /crmProduct/sales": {
+    "access": "feature",
+    "feature": "crm.catalogue.read.*",
+    "kind": "read"
+  },
   "POST /crmProduct/getDeleted": {
     "access": "feature",
     "feature": "crm.catalogue.read.*",
@@ -1580,6 +1585,11 @@
     "kind": "read"
   },
   "POST /salesAgent/getById": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
+  "POST /salesAgent/stats": {
     "access": "feature",
     "feature": "crm.agent.read.*",
     "kind": "read"

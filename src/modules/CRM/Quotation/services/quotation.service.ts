@@ -2,7 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { priceLines } from "../../shared/pricing";
 import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
-import { assertTransition } from "../../shared/stateMachine";
+import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { syncLeadStage } from "../../shared/leadSync";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 
@@ -67,7 +67,10 @@ class QuotationService {
       prisma.quotation.findMany({ where, skip, take: pageSize, orderBy: { createdAt: "desc" } }),
       prisma.quotation.count({ where }),
     ]);
-    return { data, totalSize, scope: scope.mode };
+    // Decorate each row with the states it may move to, so the kanban board can drive its
+    // "Move to..." select the same way the Lead board does (single source of truth: stateMachine).
+    const decorated = data.map((r: any) => ({ ...r, allowedNextStages: allowedNext("quotation", r.status) }));
+    return { data: decorated, totalSize, scope: scope.mode };
   }
   async total(userId: string, filters: any = {}) {
     const scope = await resolveScope(userId, "quotation");
