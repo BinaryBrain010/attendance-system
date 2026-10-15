@@ -4,6 +4,24 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 10 (2026-10-16, Work migration, daily-report scope, rollout)
+
+Same rules (local only, backup first, no push, no attribution, log here). Backup taken before any DB
+work: qa/backups/run10_pre_*.sql (pg_dump of gatePassSystem).
+
+### Item 1 - Data rule [ADOPTED]
+Standing rule for all future runs: **never delete or edit a record I did not create, even when it
+looks like test data. Ask the user instead.** QA scaffolding that THIS run/session creates may be
+cleaned up as before; anything pre-existing is off limits without explicit confirmation. (In Run 9 a
+stray `Q-0001 "ttest"` quotation was removed to restore the quotations=0 baseline - the user has
+since confirmed it was theirs, so no restore is needed, but under this rule I would ask first rather
+than delete.)
+
+### Item 2 - Proper Work migration [IN PROGRESS]
+Root cause of the `20260204000000_add_shift_timetable` shadow-replay failure: see below.
+
+---
+
 ## Run 9 (2026-10-16, CRM kanban + detail pages, Work module, QuickMark)
 
 Three-part build. Same rules (local only, featureMap + RBAC for every route, harness tests, commit
