@@ -59,7 +59,10 @@ async function main() {
       await run("leaveAllocation", () => prisma.leaveAllocation.deleteMany({ where: eIn }));
       await run("shiftAssignment(emp)", () => prisma.shiftAssignment.deleteMany({ where: eIn }));
       await run("unitEmployee", () => prisma.unitEmployee.deleteMany({ where: eIn }));
-      await run("todo", () => prisma.todo.deleteMany({ where: eIn }));
+      await run("dailyReportComment(emp)", () => prisma.dailyReportComment.deleteMany({ where: { report: { employeeId: { in: qaEmpIds } } } }));
+      await run("dailyReport(emp)", () => prisma.dailyReport.deleteMany({ where: eIn }));
+      await run("taskAssignee(emp)", () => prisma.taskAssignee.deleteMany({ where: eIn }));
+      await run("teamMember(emp)", () => prisma.teamMember.deleteMany({ where: eIn }));
     }
     // dependents of QA users
     if (qaUserIds.length) {
@@ -114,6 +117,23 @@ async function main() {
       where: { status: "HOLIDAYS", date: { gte: new Date("2099-01-01T00:00:00.000Z"), lt: new Date("2100-01-01T00:00:00.000Z") } },
     }));
     await run("holiday", () => prisma.holiday.deleteMany({ where: { reason: { startsWith: "QA_" } } }));
+
+    // QA Work data: teams ("QA..."/"QA_...") and their tasks, plus any tasks titled "QA..." or created
+    // by a QA user. The harness names start with "QA"; real Work data uses real names.
+    const qaTeamIds = await ids("team", { name: { startsWith: "QA" } });
+    const qaTaskIds = await ids("task", { OR: [{ title: { startsWith: "QA" } }, ...(qaTeamIds.length ? [{ teamId: { in: qaTeamIds } }] : []), ...(qaUserIds.length ? [{ createdById: { in: qaUserIds } }] : [])] });
+    if (qaTaskIds.length) {
+      await run("taskAssignee", () => prisma.taskAssignee.deleteMany({ where: { taskId: { in: qaTaskIds } } }));
+      await run("taskChecklistItem", () => prisma.taskChecklistItem.deleteMany({ where: { taskId: { in: qaTaskIds } } }));
+      await run("taskComment", () => prisma.taskComment.deleteMany({ where: { taskId: { in: qaTaskIds } } }));
+      await run("taskWatcher", () => prisma.taskWatcher.deleteMany({ where: { taskId: { in: qaTaskIds } } }));
+      await run("task", () => prisma.task.deleteMany({ where: { id: { in: qaTaskIds } } }));
+    }
+    if (qaTeamIds.length) {
+      await run("teamMember", () => prisma.teamMember.deleteMany({ where: { teamId: { in: qaTeamIds } } }));
+      await run("team", () => prisma.team.deleteMany({ where: { id: { in: qaTeamIds } } }));
+    }
+    if (qaUserIds.length) await run("notification", () => prisma.notification.deleteMany({ where: { userId: { in: qaUserIds } } }));
 
     await prisma.$disconnect().catch(() => {});
   } catch (e: any) {

@@ -24,7 +24,8 @@
     "qa:routes": "ts-node qa/routewalk.ts",
     "qa:featuremap": "ts-node qa/featuremap2.ts",
     "qa:impact": "ts-node qa/impact.ts",
-    "tsc": "tsc -w"
+    "tsc": "tsc -w",
+    "qa:work": "ts-node qa/work.ts"
   },
   "author": "ahad",
   "license": "ISC",
