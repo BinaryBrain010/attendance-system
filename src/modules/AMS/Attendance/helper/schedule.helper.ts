@@ -87,18 +87,25 @@ class AttendanceSchedulerHelper {
               : "Absents marked successfully!";
             const parentType = isTodaySunday ? ScheduleParent.LEAVE : ScheduleParent.ABSENT;
 
-            data.forEach(async (employeeId: string) => {
-              if (employeeId) {
-                const attendance: Attendance = {
-                  employeeId,
-                  status: statusToMark,
-                  date: todayDate, // Use today's start of the day
-                  createdAt: now, // Keep creation time as now
-                };
-
+            // Mark sequentially and catch per employee. The previous forEach(async ...) fired every
+            // markAttendance concurrently and did NOT await them, so a burst of interactive
+            // transactions stampeded the connection pool and any rejection escaped this try/catch as
+            // an unhandledRejection (which took the process down). Sequential + per-item catch keeps
+            // the pool calm and contains failures.
+            for (const employeeId of data) {
+              if (!employeeId) continue;
+              const attendance: Attendance = {
+                employeeId,
+                status: statusToMark,
+                date: todayDate, // Use today's start of the day
+                createdAt: now, // Keep creation time as now
+              };
+              try {
                 await this.attendanceService.markAttendance(attendance);
+              } catch (markErr) {
+                console.error(`Absent marking failed for employee ${employeeId}:`, markErr);
               }
-            });
+            }
 
             const scheduleReport: AttendanceScheduler = {
               log: logMessage,

@@ -1,3 +1,6 @@
+// Patch Express to forward async-handler rejections to the error middleware. Must be imported
+// before any routers/layers are created, so it comes first.
+import "./asyncErrors";
 import express, { Express, Request, Response, NextFunction } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -393,6 +396,16 @@ class App {
           success: false,
           message: 'Record not found',
           statusCode: 404
+        });
+      }
+      // Connection pool exhausted (P2024) or interactive transaction could not start/commit in
+      // time (P2028). These are transient overload conditions: tell the client to retry rather
+      // than returning a 500 or, worse, letting the rejection crash the process.
+      if (prismaError.code === 'P2024' || prismaError.code === 'P2028') {
+        return res.status(503).json({
+          success: false,
+          message: 'Server is busy, please retry in a moment',
+          statusCode: 503
         });
       }
     }

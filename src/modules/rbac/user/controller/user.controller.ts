@@ -6,6 +6,7 @@ import UserService from "../service/user.service";
 import BlackListedTokenService from "../../Token/service/token.service";
 import bcrypt, { compareSync } from "bcrypt";
 import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
 import AuthHelper from "../../../../Auth/helper/auth.helper";
 import prisma from "../../../../core/models/base.model";
 import { LoggedInTokens } from "../../Token/types/token";
@@ -358,10 +359,13 @@ class UserController extends BaseController<UserService> {
         }
       }
 
-      // Include unitIds in token payload
-      let token: string | null = jwt.sign({ userId: user.id, unitIds }, secretKey, {
-        expiresIn,
-      });
+      // Include unitIds in token payload. A random jti makes every issued token unique so two
+      // logins in the same second cannot collide on the loggedInUsers.token unique constraint.
+      let token: string | null = jwt.sign(
+        { userId: user.id, unitIds, jti: randomUUID() },
+        secretKey,
+        { expiresIn }
+      );
 
       // if (user.defaultCompanyId) {
       //   token = jwt.sign(
@@ -390,7 +394,16 @@ class UserController extends BaseController<UserService> {
       };
 
       if (token != null) {
-        await prisma.loggedInUsers.gpCreate(data);
+        // Never let a failure to record the session crash the login. The JWT is already valid;
+        // the loggedInUsers row is only for logout/blacklist tracking.
+        try {
+          await prisma.loggedInUsers.gpCreate(data);
+        } catch (sessionErr: any) {
+          console.error(
+            "loggedInUsers.gpCreate failed during login (continuing):",
+            sessionErr?.code || sessionErr?.message || sessionErr
+          );
+        }
       }
 
       // Get allowed permissions for the user

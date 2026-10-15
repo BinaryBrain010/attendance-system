@@ -59,6 +59,12 @@ export const logger = winston.createLogger({
   levels,
   format,
   transports,
+  // Never let winston terminate the process when it logs an uncaught exception or
+  // unhandled rejection. With exceptionHandlers/rejectionHandlers configured, winston
+  // defaults exitOnError to true and calls process.exit(1) after logging, which is what
+  // was taking the server down on a single bad request. We log and keep serving instead
+  // (the process guards in server.ts do the same).
+  exitOnError: false,
   // Handle exceptions
   exceptionHandlers: [
     new winston.transports.File({
