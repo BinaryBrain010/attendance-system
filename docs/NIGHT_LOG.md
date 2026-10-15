@@ -4,6 +4,62 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 9 (2026-10-16, CRM kanban + detail pages, Work module, QuickMark)
+
+Three-part build. Same rules (local only, featureMap + RBAC for every route, harness tests, commit
+per part, no attribution). Real data untouched (261/68/62/0), 59 holidays, zero QA residue.
+Gates all green: CRM harness 176/176, work harness (qa:work) 20/20, qa:rbac 306 pass / 1
+pre-existing gap (T0278 unit-scoping), qa:cleanup zero residue, backend tsc clean, admin next build
+clean (51 pages).
+Commits: admin 77617bf (Part 1 UI), 0687baa (Part 2 UI); backend <this series> Part 1 CRM endpoints,
+Work module, work harness + cleanup, QuickMark note.
+
+### Part 1 — CRM kanban + detail pages [DONE]
+- Extracted the inline Leads board into a reusable CrmBoard component (columns, Move-to select from
+  the backend state machine, reason dialog, permission gate). Leads now uses it; Quotations, Orders
+  and Returns get the same List|Board toggle. Backend: quotation/order/return get() now decorate each
+  row with allowedNextStages from the shared stateMachine (single source of truth). Reason-required:
+  quotation REJECTED, order CANCELLED/RETURNED, return DAMAGED. Orders keeps its data-view tabs
+  (all/reattempts/returned) alongside a separate List|Board display toggle.
+- Agent detail /crm/agents/[id]: new POST /salesAgent/stats (crm.agent.read.*) returns counts,
+  target vs achieved this month, pipeline value, won value, recent activity and recent leads;
+  profile, team, edit for managers.
+- Product detail /crm/catalogue/[id]: new POST /crmProduct/sales (crm.catalogue.read.*) returns sold
+  qty/revenue (delivered orders), quoted/returned qty, recent orders/quotations; cost/margin stripped
+  unless crm.catalogue.cost.*. Info, variants, price tiers, stock placeholder, add price/variant +
+  edit gated. Agents and catalogue lists open these detail pages on row click.
+
+### Part 2 — Work module (Teams, Tasks, Daily reports) [DONE]
+- Checked the existing Todo model first: a dead stub with no code and no data. Migrated it away
+  (dropped Todo + its enums + Employee.todos) and built the richer successor models: Team, TeamMember,
+  Task (+assignees, checklist, comments, watchers), DailyReport (+comments), Notification, with
+  TaskPriority and RecurringRule enums. Applied via `prisma db push` because a PRE-EXISTING broken
+  migration (20260204000000_add_shift_timetable references a Shift table absent in the shadow replay)
+  blocks `prisma migrate dev`. schema.prisma is the committed source of truth; a proper incremental
+  migration should be created once that old migration is repaired.
+- Scope: workScope.ts mirrors CRM scope.ts (narrower of work.<e>.read.{own|team|all}.* and the
+  team-lead relation). Task/DailyReport reads and writes resolve through it.
+- Features: Task list/board/calendar (My Tasks), per-team Team Board, task detail modal (status,
+  assignees, checklist, comments, watchers), quick add, assign + bulk assign, recurring tasks that
+  spawn the next occurrence on completion, attachments (disk storage). Daily report one-per-day,
+  same-day editable, late flag, manager compliance view, comments. In-app Notification bell in the
+  navbar (assigned/due-soon/overdue/comment/report-missing); a work scheduler cron sends the
+  time-based reminders (sequential + caught, per Run 8). Reports: completion, overdue by person/team,
+  time-to-complete, workload, daily-report compliance, hours logged, with Excel/PDF export.
+- RBAC: work.* feature tree seeded (workSeed.ts), appModules.work.* gates the menu + bell. Routes
+  registered; featureMap regenerated via qa:routes + qa:featuremap (483 routes, 0 unmapped); the
+  generator was taught the Work mounts. Grouped "Work" menu added to navModel; "Work Features"
+  section added to permission.tsx (Teams, Tasks, Daily Reports, own/team/all scopes).
+
+### Part 3 — QuickMark integration [DONE, API-only]
+- Simple: the existing API already supports it. Verified an employee logging in with
+  platform "Attendance App" (login.quickmark.*) + work.task.read.own.* + work.report.submit.* can
+  GET their tasks (200), read/submit the daily report (ok), and is denied task create (403). No new
+  backend and no new APK. docs/QUICKMARK_WORK_INTEGRATION.md documents the two app screens and the
+  RBAC features to grant employees.
+
+---
+
 ## Run 8 (2026-10-15, backend crash + 403 + QA holiday purge)
 
 Three backend fixes. Same rules (local only, commit per step, no attribution).
