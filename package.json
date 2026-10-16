@@ -26,7 +26,8 @@
     "qa:impact": "ts-node qa/impact.ts",
     "tsc": "tsc -w",
     "qa:work": "ts-node qa/work.ts",
-    "qa:audit": "ts-node qa/audit.ts"
+    "qa:audit": "ts-node qa/audit.ts",
+    "qa:load": "ts-node qa/load.ts"
   },
   "author": "ahad",
   "license": "ISC",

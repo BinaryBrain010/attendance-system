@@ -80,7 +80,23 @@ every table against dev. Findings:
 - All entities used are in the audit read-scope map, so the scoped /auditLog/entity endpoint serves
   each History tab for users who can read that record.
 - Gates: backend tsc clean, admin next build clean (52 pages), CRM 176/0, qa:work 27/0, qa:audit 23/0.
-- Commit (backend): see hash below. Commit (admin): see hash below.
+- Commit (backend): 7a903db. Commit (admin): b4ad7ca.
+
+### Item 5 - Commit the load test script (qa/load.ts, cascade-free)  [DONE]
+- qa/load.ts (npm `qa:load`): write workload using the cascade-free lead create (one row per
+  request, no attendance side-effect), concurrency pool, latency percentiles, self-cleaning (deletes
+  its QA_LOAD leads + audit, with the cleanup itself running AUDIT_LOG=0). Local-only guard. Rerun
+  with a label arg; set AUDIT_LOG=0 on the server for the baseline run. Verified rerun: 2000 writes,
+  20 concurrent, 0 errors, self-cleaned. The phone numbers are unique and never collide with real
+  leads (verified: AuditLog JOIN Lead was empty after the run — no real record was touched).
+- Commit (backend): see hash below.
+
+### Run 12 final gates  [ALL GREEN]
+- backend tsc clean; prisma migrate status clean; CRM 176/0; qa:work 27/0; qa:audit 23/0 (incl. the
+  new item-2/4 tests); qa:rbac Pass 306 / Fail 1 (pre-existing T0278 unit-scoping gap) / Blocked 3;
+  qa:cleanup zero residue (AuditLog 0, QA users/shifts/units/leaveconfigs 0 — the hardened sweep
+  catches them); admin next build clean (52 pages incl /admin/settings/audit-log). Real counts intact
+  leads 261, orders 68, returns 62, quotations 0, holidays 59.
 
 ## Run 11 (2026-10-16, audit fields + central AuditLog)
 
