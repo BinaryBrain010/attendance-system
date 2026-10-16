@@ -21,6 +21,9 @@ import ShiftService from "../src/modules/AMS/Shift/services/shift.service";
 import { auditBootCheck } from "../src/core/audit/auditBoot";
 import { randomUUID } from "crypto";
 
+// Captured before any audit is written; the final cleanup removes this run's whole AuditLog footprint.
+const HARNESS_T0 = new Date();
+
 const BASE = process.env.QA_BASE_URL || "http://localhost:3002";
 
 if (!IS_LOCAL) { console.error("[audit] refuse: non-local DB"); process.exit(2); }
@@ -184,6 +187,9 @@ async function main() {
   await prisma.user.deleteMany({ where: { id: uNoCrm } });
   // sweep any stray audit rows named with our QA markers
   await prisma.$executeRawUnsafe(`DELETE FROM "AuditLog" WHERE changes::text LIKE '%QA_AUDIT_%'`);
+  // Remove this run's entire server-side AuditLog footprint (everything written since HARNESS_T0).
+  process.env.AUDIT_LOG = "0";
+  await prisma.auditLog.deleteMany({ where: { createdAt: { gte: HARNESS_T0 } } }).catch(() => {});
 
   console.log(`\n[audit] ===== RESULT: ${pass} pass / ${fail} fail =====`);
   await prisma.$disconnect();

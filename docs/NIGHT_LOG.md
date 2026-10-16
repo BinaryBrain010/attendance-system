@@ -4,6 +4,46 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 13 (2026-10-16, restore real logs + QA-scope the cleanup sweeps)
+
+Same rules. Backup first: qa/backups/run13_pre_20261016_194430.dump.
+
+Problem fixed: Run 12 item 1 added a BLANKET orphan sweep to qa:cleanup (delete any ActivityLog/
+AuditLog row whose referenced entity no longer exists). That is wrong — a REAL entity hard-deleted
+at some point leaves a real log that must survive. It also matched too loosely in one place.
+
+### Item 1 - Restore the real ActivityLog rows Run 12 deleted  [DONE]
+- Restored run12_pre into scratch gatepass_shadow. scratch ActivityLog 72319 vs dev 55017 -> 17302
+  rows were deleted in Run 12. Classified each with a PRECISE QA-name marker (literal 'QA_' via
+  ESCAPE, '@test.local', 'QAWF', 'QASelf', 'QAUT-SELF-' in description/metadata) — NB run12_pre already
+  had 0 QA users, and a loose '%QA%' wrongly matched real names like "Zulfiqar", so precision matters.
+  scratch split: 64342 non-QA + 7977 QA-marked.
+- Exported the 64342 non-QA rows and re-inserted into dev with ON CONFLICT (id) DO NOTHING:
+  **9581 real ActivityLog rows restored** (the ones my blanket sweep had wrongly removed; the rest of
+  the 17302 were QA-marked and correctly stayed gone). dev ActivityLog 55017 -> 64598. Scratch dropped.
+
+### Item 2 - qa:cleanup sweeps delete ONLY QA-tied rows, never general orphans  [DONE]
+- Removed the general ActivityLog orphan loop and the general AuditLog orphan sweep (+ the unconditional
+  bulk-child and the general bulk-orphan). Replaced with QA-scoped deletion: QA users; a QA NAME MARKER
+  in the row text (description/metadata for ActivityLog, changes for AuditLog — every harness names its
+  data QA_.../QA_CRM_/QA_AG_/QA_EMP_/QAWF/*@test.local, so this is specific and never hits a real name);
+  entityId in the QA entity ids this cleanup collects; QA-named referents still present; and child bulk
+  rows whose PARENT business entity was HARD-deleted (real parents are soft-deleted = still present, so
+  a missing parent means a QA parent — keyed on the parent id in the row's filter, not a blanket orphan).
+- Comprehensive zero-residue without any general orphan sweep: each harness now removes its OWN
+  server-side AuditLog footprint by deleting everything written since a HARNESS_T0 captured before its
+  first API call (crm.ts, work.ts, audit.ts, run.ts; each runs isolated on a local DB). qa:cleanup
+  likewise deletes the audit its own API /delete cascades create (CLEANUP_T0 window) — deleting a QA
+  holiday server-side cascades an attendance-unmark that is audited.
+
+### Item 3 - Rerun, confirm, commit  [DONE]
+- Full cycle (crm 176/0, work 27/0, audit 23/0, rbac 306/1/3) then qa:cleanup: AuditLog residue 0; QA
+  users 0; QA-marked ActivityLog 0; the 9581 restored rows SURVIVE (ActivityLog ~64577, far above the
+  55017 pre-restore). migrate status clean. Real counts intact 261/68/62/0, 59 holidays, attendance
+  69883. Non-QA-tied logs (e.g. a real employee's attendance-mark log triggered by a test holiday) are
+  kept, per the rule.
+- Commit (backend): see hash below.
+
 ## Run 12 (2026-10-16, close Run 11 gaps)
 
 Same rules. Backup first: qa/backups/run12_pre_20261016_182517.dump (pg_dump of gatePassSystem, 222 MB).

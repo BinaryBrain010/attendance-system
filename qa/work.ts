@@ -1,6 +1,8 @@
-// Functional/RBAC harness: its own prisma-direct data churn must not pollute the audit trail
-// (server-side API writes still audit; those rows are orphan-cleaned by qa:cleanup). Read lazily.
+// Functional/RBAC harness: its own prisma-direct data churn must not pollute the audit trail (read
+// lazily). Its server-side AuditLog footprint is removed at the end by deleting everything written
+// since HARNESS_T0 (isolated local run, so that audit is entirely this harness's).
 process.env.AUDIT_LOG = "0";
+const HARNESS_T0 = new Date();
 
 /**
  * Work module harness: functional + RBAC coverage for Teams, Tasks, Daily reports, Notifications and
@@ -144,6 +146,8 @@ async function main() {
     await prisma.user.delete({ where: { id: uid } });
   }
   await prisma.employee.deleteMany({ where: { id: { in: emps3 } } });
+  // Remove this run's server-side AuditLog footprint (everything written since HARNESS_T0).
+  await prisma.auditLog.deleteMany({ where: { createdAt: { gte: HARNESS_T0 } } }).catch(() => {});
 
   console.log(`\n[work] ===== RESULT: ${pass} pass / ${fail} fail =====`);
   await prisma.$disconnect();

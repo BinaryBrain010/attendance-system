@@ -7,6 +7,9 @@
  * SAFE: local-only (lib.ts refuses non-localhost). All created entities are QA-tagged and
  * tracked in _created.json for qa/cleanup.ts.
  */
+// This harness runs isolated on a local DB; its server-side AuditLog footprint is removed at the end
+// by deleting everything written since HARNESS_T0 (see main()), so it leaves no audit residue.
+process.env.AUDIT_LOG = "0";
 import fs from "fs";
 import path from "path";
 import {
@@ -20,6 +23,7 @@ import {
 
 const inv = JSON.parse(fs.readFileSync(path.join(__dirname, "_inventory.json"), "utf8"));
 const prisma = require("../src/core/models/base.model").default;
+const HARNESS_T0 = new Date(); // captured before any API call; see the AuditLog cleanup in main()
 const ENFORCE = (process.env.RBAC_ENFORCE || "off").toLowerCase(); // backend's enforcement mode (set the same for both)
 
 const created = {
@@ -778,6 +782,9 @@ async function main() {
   results.meta.counts = counts;
   results.meta.liveFeatures = LIVE.length;
   saveResults();
+  // Remove this run's server-side AuditLog footprint (everything written since HARNESS_T0). The QA
+  // entities themselves are left for qa:cleanup; their audit is gone, so nothing is orphaned.
+  await prisma.auditLog.deleteMany({ where: { createdAt: { gte: HARNESS_T0 } } }).catch(() => {});
   console.log("[QA] DONE", counts);
 }
 

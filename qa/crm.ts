@@ -1,6 +1,9 @@
-// Functional/RBAC harness: its own prisma-direct data churn must not pollute the audit trail
-// (server-side API writes still audit; those rows are orphan-cleaned by qa:cleanup). Read lazily.
+// Functional/RBAC harness: its own prisma-direct data churn must not pollute the audit trail (read
+// lazily). The server-side AuditLog rows its API calls create are cleaned at the end by deleting
+// everything written since HARNESS_T0 (captured below, before any API call) — this harness runs
+// isolated on a local DB, so audit written during its run is entirely its own footprint.
 process.env.AUDIT_LOG = "0";
+const HARNESS_T0 = new Date();
 
 /**
  * CRM Phase 1 harness (LOCAL ONLY). Runs against the live API with RBAC_ENFORCE=on.
@@ -601,6 +604,8 @@ async function main() {
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });
   await dropQaWorld();
+  // Remove this run's server-side AuditLog footprint (everything written since HARNESS_T0).
+  await prisma.auditLog.deleteMany({ where: { createdAt: { gte: HARNESS_T0 } } }).catch(() => {});
 
   console.log(`\n[crm] ===== RESULT: ${pass} pass / ${fail} fail =====`);
   if (fail) { console.log("FAILURES:\n - " + fails.join("\n - ")); }
