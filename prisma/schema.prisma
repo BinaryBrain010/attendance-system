@@ -487,13 +487,14 @@ model Team {
 }
 
 model TeamMember {
-  id         String   @id @default(uuid()) @db.VarChar(36)
-  teamId     String   @db.VarChar(36)
-  team       Team     @relation(fields: [teamId], references: [id])
-  employeeId String   @db.VarChar(36)
-  employee   Employee @relation("TeamMemberEmployee", fields: [employeeId], references: [id])
-  createdAt  DateTime? @default(now())
-  isDeleted  DateTime?
+  id                 String   @id @default(uuid()) @db.VarChar(36)
+  teamId             String   @db.VarChar(36)
+  team               Team     @relation(fields: [teamId], references: [id])
+  employeeId         String   @db.VarChar(36)
+  employee           Employee @relation("TeamMemberEmployee", fields: [employeeId], references: [id])
+  requiresDailyReport Boolean @default(true)   // only required members are "expected" to submit
+  createdAt          DateTime? @default(now())
+  isDeleted          DateTime?
   @@unique([teamId, employeeId])
   @@index([employeeId])
 }

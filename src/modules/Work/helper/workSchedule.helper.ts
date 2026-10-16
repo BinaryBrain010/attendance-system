@@ -5,7 +5,7 @@
  */
 import schedule from "node-schedule";
 import prisma from "../../../core/models/base.model";
-import { notify, userIdsForEmployees } from "../shared/workHelpers";
+import { notify, userIdsForEmployees, expectedReporters } from "../shared/workHelpers";
 
 const REPORT_REMINDER_HOUR = 18; // configurable: when to remind employees who have not submitted
 
@@ -35,14 +35,17 @@ class WorkSchedulerHelper {
   private async reportMissing() {
     const today = new Date();
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    // employees with a linked user who have not submitted today
-    const users = await prisma.user.findMany({ where: { isDeleted: null, employeeId: { not: null } }, select: { id: true, employeeId: true } });
-    const empIds = users.map((u) => u.employeeId!).filter(Boolean);
+    // Only REQUIRED team members are expected. A weekly off / holiday makes it non-working (skip);
+    // members on approved leave or who already submitted are not reminded.
+    const exp = await expectedReporters({ mode: "ALL", ledTeamIds: [], employeeId: null }, date);
+    if (exp.nonWorkingDay) return;
+    const empIds = exp.employees.filter((e) => !e.onLeave).map((e) => e.id);
+    if (!empIds.length) return;
     const submitted = new Set((await prisma.dailyReport.findMany({ where: { date, isDeleted: null, employeeId: { in: empIds } }, select: { employeeId: true } })).map((r) => r.employeeId));
+    const missingEmpIds = empIds.filter((id) => !submitted.has(id));
+    const users = await prisma.user.findMany({ where: { isDeleted: null, employeeId: { in: missingEmpIds } }, select: { id: true } });
     for (const u of users) {
-      if (u.employeeId && !submitted.has(u.employeeId)) {
-        try { await notify([u.id], "REPORT_MISSING", "Daily report missing", "Please submit your daily report for today.", "DailyReport"); } catch (e: any) { console.error("[work] report-missing notify failed:", e?.message || e); }
-      }
+      try { await notify([u.id], "REPORT_MISSING", "Daily report missing", "Please submit your daily report for today.", "DailyReport"); } catch (e: any) { console.error("[work] report-missing notify failed:", e?.message || e); }
     }
   }
 }

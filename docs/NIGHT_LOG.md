@@ -38,7 +38,22 @@ than delete.)
   (db push, or baseline-resolve + deploy) and the optional future squash in PROD_DEPLOY_PLAN §2.3.
   Dropped both scratch DBs; dev data untouched (261/68/62/0, 59 holidays).
 
-### Item 3 - Daily report scope [IN PROGRESS]
+### Item 3 - Daily report scope [DONE]
+- Added `requiresDailyReport Boolean @default(true)` to TeamMember (schema + db push + a committed
+  migration 20261016130000_team_member_requires_report, resolved locally). Only required members are
+  "expected" to submit; non-members and not-required members appear nowhere in the missing list.
+- New shared helper `expectedReporters(scope, date)`: returns the required members within scope for a
+  day, or nonWorkingDay=true for a weekly off (Sunday) or an active Holiday; members on APPROVED leave
+  that day are flagged onLeave. Reuses the Holiday and LeaveRequest tables.
+- Wired into daily-report compliance (manager view), the work-report compliance report (per day over a
+  range), and the report-missing cron + notification - all now use expected required people only, skip
+  non-working days, and do not count holidays/weekly-offs/approved-leave as missing. Admin: Teams edit
+  has a per-member "report" toggle; the manager compliance view shows Expected / Submitted / On leave /
+  Missing and a non-working-day message.
+- qa:work extended with item-3 tests (expected excludes not-required member; on-leave not missing;
+  holiday -> non-working day). 27/27 pass.
+
+### Item 4 - Rollout notes [DONE below in PROD_DEPLOY_PLAN]
 
 ---
 

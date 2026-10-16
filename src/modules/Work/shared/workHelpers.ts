@@ -27,6 +27,45 @@ export async function userIdsForEmployees(employeeIds: string[]): Promise<string
   return users.map((u) => u.id);
 }
 
+function startOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function endOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999); }
+
+export interface ExpectedResult {
+  nonWorkingDay: boolean;
+  reason?: string;
+  employees: { id: string; name: string; surname: string | null; onLeave: boolean }[];
+}
+
+/**
+ * Who is EXPECTED to file a daily report on `date`, within the caller's scope. Only team members
+ * with requiresDailyReport = true are expected; non-members appear nowhere. A weekly off (Sunday) or
+ * an active Holiday makes the whole day non-working (nobody expected). Members on APPROVED leave that
+ * day are returned with onLeave=true so callers can exclude them from "missing".
+ */
+export async function expectedReporters(
+  scope: { mode: string; ledTeamIds: string[]; employeeId: string | null },
+  date: Date
+): Promise<ExpectedResult> {
+  if (date.getDay() === 0) return { nonWorkingDay: true, reason: "Weekly off (Sunday)", employees: [] };
+  const hol = await prisma.holiday.findFirst({ where: { isActive: true, isDeleted: null, date: { gte: startOfDay(date), lte: endOfDay(date) } }, select: { reason: true } });
+  if (hol) return { nonWorkingDay: true, reason: hol.reason ? `Holiday: ${hol.reason}` : "Holiday", employees: [] };
+
+  const where: any = { requiresDailyReport: true, isDeleted: null, team: { isDeleted: null } };
+  if (scope.mode === "TEAM") where.teamId = { in: scope.ledTeamIds };
+  else if (scope.mode === "OWN") where.employeeId = scope.employeeId ?? "__none__";
+  else if (scope.mode === "NONE") return { nonWorkingDay: false, employees: [] };
+  // ALL -> no extra filter
+
+  const members = await prisma.teamMember.findMany({ where, select: { employeeId: true } });
+  const empIds = Array.from(new Set(members.map((m) => m.employeeId)));
+  if (!empIds.length) return { nonWorkingDay: false, employees: [] };
+  const emps = await prisma.employee.findMany({ where: { id: { in: empIds }, isDeleted: null }, select: { id: true, name: true, surname: true } });
+  const onLeave = new Set(
+    (await prisma.leaveRequest.findMany({ where: { employeeId: { in: empIds }, status: "APPROVED", isDeleted: null, startDate: { lte: endOfDay(date) }, endDate: { gte: startOfDay(date) } }, select: { employeeId: true } })).map((l) => l.employeeId)
+  );
+  return { nonWorkingDay: false, employees: emps.map((e) => ({ id: e.id, name: e.name, surname: e.surname, onLeave: onLeave.has(e.id) })) };
+}
+
 /** Next occurrence date for a recurring task, or null for NONE. */
 export function nextRecurrenceDate(rule: string, from: Date): Date | null {
   const d = new Date(from);

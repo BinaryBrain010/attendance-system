@@ -9,6 +9,11 @@ const include = {
   _count: { select: { tasks: true } },
 };
 
+/** Accept members as employeeId strings (all required) or { employeeId, requiresDailyReport } objects. */
+function normMembers(arr: any[]): { employeeId: string; requiresDailyReport: boolean }[] {
+  return (arr || []).map((m) => typeof m === "string" ? { employeeId: m, requiresDailyReport: true } : { employeeId: m.employeeId, requiresDailyReport: m.requiresDailyReport !== false });
+}
+
 /** Team ids visible to the caller: all (work.team.read.all / god) or teams they lead or belong to. */
 async function visibleTeamWhere(userId: string): Promise<Record<string, any>> {
   if (userId === GOD_ID) return { isDeleted: null };
@@ -35,7 +40,7 @@ class TeamService {
       data: {
         name: h.name, description: h.description ?? null, leadId: h.leadId ?? null, unitId: h.unitId ?? null,
         ...(Array.isArray(h.statuses) && h.statuses.length ? { statuses: h.statuses } : {}),
-        createdBy: userId, members: { create: (members || []).map((e: string) => ({ employeeId: e })) },
+        createdBy: userId, members: { create: normMembers(members) },
       },
       include,
     });
@@ -48,11 +53,12 @@ class TeamService {
     for (const k of HEADER) if (k in data) d[k] = data[k];
     return prisma.team.update({ where: { id }, data: d, include });
   }
-  async setMembers(userId: string, id: string, employeeIds: string[]) {
+  async setMembers(userId: string, id: string, members: any[]) {
     const existing = await prisma.team.findUnique({ where: { id } });
     if (!existing || existing.isDeleted) throw new NotFoundError("Team not found");
+    const norm = normMembers(members);
     await prisma.teamMember.deleteMany({ where: { teamId: id } });
-    if (employeeIds.length) await prisma.teamMember.createMany({ data: employeeIds.map((e) => ({ teamId: id, employeeId: e })) });
+    if (norm.length) await prisma.teamMember.createMany({ data: norm.map((m) => ({ teamId: id, employeeId: m.employeeId, requiresDailyReport: m.requiresDailyReport })) });
     return prisma.team.update({ where: { id }, data: { updatedBy: userId }, include });
   }
   async remove(userId: string, id: string) {

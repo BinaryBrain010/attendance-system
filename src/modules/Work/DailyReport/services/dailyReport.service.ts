@@ -1,6 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveWorkScope } from "../../shared/workScope";
-import { notify, userIdsForEmployees } from "../../shared/workHelpers";
+import { notify, userIdsForEmployees, expectedReporters } from "../../shared/workHelpers";
 import { AppError, NotFoundError, ForbiddenError } from "../../../../core/errors/app.error";
 
 const LATE_HOUR = 18; // a report submitted after 18:00 local on its day is flagged late
@@ -68,22 +68,33 @@ class DailyReportService {
     return { data, totalSize, scope: scope.mode };
   }
 
-  /** Manager view: who submitted vs who is missing for a given day, within the caller's scope. */
+  /**
+   * Manager view: who submitted vs who is missing for a given day, within the caller's scope.
+   * Only required team members are expected; non-members are shown nowhere. Weekly offs and holidays
+   * make the day non-working; members on approved leave are not counted as missing.
+   */
   async compliance(userId: string, dateStr?: string) {
     const scope = await resolveWorkScope(userId, "report");
     const date = dayOf(dateStr);
-    let expected: { id: string; name: string; surname: string | null }[];
-    if (scope.mode === "ALL") {
-      expected = await prisma.employee.findMany({ where: { isDeleted: null, status: "ACTIVE" }, select: { id: true, name: true, surname: true } });
-    } else if (scope.mode === "TEAM") {
-      expected = await prisma.employee.findMany({ where: { id: { in: scope.teamEmployeeIds }, isDeleted: null }, select: { id: true, name: true, surname: true } });
-    } else {
-      expected = scope.employeeId ? await prisma.employee.findMany({ where: { id: scope.employeeId }, select: { id: true, name: true, surname: true } }) : [];
-    }
-    const reports = await prisma.dailyReport.findMany({ where: { date, isDeleted: null, employeeId: { in: expected.map((e) => e.id) } }, select: { employeeId: true, hours: true, late: true } });
+    const exp = await expectedReporters({ mode: scope.mode, ledTeamIds: scope.ledTeamIds, employeeId: scope.employeeId }, date);
+    if (exp.nonWorkingDay) return { date, nonWorkingDay: true, reason: exp.reason, total: 0, submitted: 0, onLeave: 0, missing: 0, rows: [] };
+    const empIds = exp.employees.map((e) => e.id);
+    const reports = empIds.length ? await prisma.dailyReport.findMany({ where: { date, isDeleted: null, employeeId: { in: empIds } }, select: { employeeId: true, hours: true, late: true } }) : [];
     const byEmp = new Map(reports.map((r) => [r.employeeId, r]));
-    const rows = expected.map((e) => ({ employeeId: e.id, name: `${e.name} ${e.surname || ""}`.trim(), submitted: byEmp.has(e.id), late: byEmp.get(e.id)?.late || false, hours: byEmp.get(e.id)?.hours ?? null }));
-    return { date, total: rows.length, submitted: rows.filter((r) => r.submitted).length, missing: rows.filter((r) => !r.submitted).length, rows };
+    const rows = exp.employees.map((e) => {
+      const r = byEmp.get(e.id);
+      const submitted = !!r;
+      const status = submitted ? (r!.late ? "late" : "submitted") : e.onLeave ? "leave" : "missing";
+      return { employeeId: e.id, name: `${e.name} ${e.surname || ""}`.trim(), submitted, onLeave: e.onLeave, late: r?.late || false, hours: r?.hours ?? null, status };
+    });
+    return {
+      date, nonWorkingDay: false,
+      total: rows.length,
+      submitted: rows.filter((r) => r.submitted).length,
+      onLeave: rows.filter((r) => !r.submitted && r.onLeave).length,
+      missing: rows.filter((r) => !r.submitted && !r.onLeave).length,
+      rows,
+    };
   }
 
   async addComment(userId: string, id: string, body: string) {

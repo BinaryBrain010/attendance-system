@@ -1,5 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveWorkScope } from "../../shared/workScope";
+import { expectedReporters } from "../../shared/workHelpers";
 
 const empName = (e: any) => (e ? `${e.name} ${e.surname || ""}`.trim() : "Unassigned");
 
@@ -67,24 +68,31 @@ class WorkReportService {
     return { byPerson: Array.from(byPerson.values()).sort((a, b) => b.open - a.open) };
   }
 
-  /** Daily-report compliance over a date range: submitted vs missing per day. */
+  /**
+   * Daily-report compliance over a date range. Per day: only required team members (within scope)
+   * are expected; weekly offs and holidays are non-working (not counted); members on approved leave
+   * are not counted as missing.
+   */
   async compliance(userId: string, f: any = {}) {
     const scope = await resolveWorkScope(userId, "report");
     const to = f.to ? new Date(f.to) : new Date();
     const from = f.from ? new Date(f.from) : new Date(to.getTime() - 6 * 86400000);
-    let expectedIds: string[];
-    if (scope.mode === "ALL") expectedIds = (await prisma.employee.findMany({ where: { isDeleted: null, status: "ACTIVE" }, select: { id: true } })).map((e) => e.id);
-    else if (scope.mode === "TEAM") expectedIds = scope.teamEmployeeIds;
-    else expectedIds = scope.employeeId ? [scope.employeeId] : [];
-    const n = expectedIds.length;
     const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
     const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-    const reports = await prisma.dailyReport.findMany({ where: { isDeleted: null, employeeId: { in: expectedIds }, date: { gte: start, lte: end } }, select: { date: true, employeeId: true } });
-    const byDay = new Map<string, number>();
-    for (const r of reports) { const k = new Date(r.date).toISOString().slice(0, 10); byDay.set(k, (byDay.get(k) || 0) + 1); }
     const rows: any[] = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) { const k = d.toISOString().slice(0, 10); const sub = byDay.get(k) || 0; rows.push({ date: k, expected: n, submitted: sub, missing: Math.max(0, n - sub), compliancePct: n ? Math.round((sub / n) * 100) : 0 }); }
-    return { expectedPerDay: n, rows };
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const day = new Date(d);
+      const exp = await expectedReporters({ mode: scope.mode, ledTeamIds: scope.ledTeamIds, employeeId: scope.employeeId }, day);
+      const k = day.toISOString().slice(0, 10);
+      if (exp.nonWorkingDay) { rows.push({ date: k, nonWorking: true, reason: exp.reason, expected: 0, submitted: 0, missing: 0, compliancePct: 100 }); continue; }
+      const empIds = exp.employees.map((e) => e.id);
+      const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      const submittedIds = new Set(empIds.length ? (await prisma.dailyReport.findMany({ where: { isDeleted: null, employeeId: { in: empIds }, date: dayStart }, select: { employeeId: true } })).map((r) => r.employeeId) : []);
+      const expected = exp.employees.filter((e) => !e.onLeave).length; // on-leave not expected to submit
+      const submitted = exp.employees.filter((e) => submittedIds.has(e.id)).length;
+      rows.push({ date: k, expected, submitted, onLeave: exp.employees.filter((e) => e.onLeave).length, missing: Math.max(0, expected - submitted), compliancePct: expected ? Math.round((submitted / expected) * 100) : 100 });
+    }
+    return { rows };
   }
 
   /** Hours logged per person and per team over a date range. */

@@ -26,8 +26,8 @@ class TeamController extends BaseController<TeamService> {
     });
   }
   async setMembers(req: Request, res: Response) {
-    const { id, employeeIds } = req.body;
-    await this.handleRequest(() => this.service.setMembers(uid(req), id, employeeIds || []), res, {
+    const { id, members, employeeIds } = req.body;
+    await this.handleRequest(() => this.service.setMembers(uid(req), id, members ?? employeeIds ?? []), res, {
       successMessage: "Team members updated!", logActivity: { action: "UPDATE", entityType: "Team", entityId: id, description: "Members changed" }, req,
     });
   }
