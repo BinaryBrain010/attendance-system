@@ -4,6 +4,33 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 11 (2026-10-16, audit fields + central AuditLog)
+
+Same rules (local only, backup first, no push, no attribution, never edit records I did not
+create, commit per part, log here).
+
+### Part 1 - Inventory (no code)  [DONE]
+Surveyed all 57 Prisma models and every non-request write path. Wrote docs/AUDIT_INVENTORY.md
+with the full per-model audit-field table plus raw-SQL writes, bulk ops, crons and import/seed
+scripts. Key findings that shape Parts 2-5:
+- Existing convention is `isDeleted DateTime?` (soft-delete marker, doubles as deletedAt),
+  `createdBy`/`updatedBy` as plain String user-ids (not relations), and `previousUpdates Json?`
+  on only 5 models (Employee, Attendance, Holiday, Unit, Visitor). No deletedById anywhere.
+  Task already has createdById (next to createdBy).
+- createdBy/updatedBy are written ad hoc in ~12 places, skipped everywhere else. Motivates the
+  central request-context + Prisma-client-extension approach.
+- Single hook point: every model import resolves to src/core/models/base.model.ts (one
+  $extends). Auth sets req.userId; token payload is {userId, unitIds, jti} (no platform/ip/ua).
+  routes.helper.ts mounts auth then requirePermission -> natural place to seed the context.
+- Decisions carried forward: keep isDeleted as the delete marker and add deletedById beside it
+  (no disruptive rename); standardise on createdById/updatedById/deletedById VarChar(36) FK to
+  User, keep legacy createdBy/updatedBy for one transition and backfill createdById from them;
+  exclude session/token/log/noise tables (BlacklistToken, LoggedInUsers, AttendanceScheduler,
+  Notification, ActivityLog); line-item children + pure-join tables audited via their parent.
+- Known gap flagged: raw-SQL Shift-timetable INSERT/UPDATE (shift.service.ts) and reset.helper
+  bypass the client extension; listed for a per-call-site decision in Part 3.
+- Commit (backend): see hash below.
+
 ## Run 10 (2026-10-16, Work migration, daily-report scope, rollout)
 
 Same rules (local only, backup first, no push, no attribution, log here). Backup taken before any DB
