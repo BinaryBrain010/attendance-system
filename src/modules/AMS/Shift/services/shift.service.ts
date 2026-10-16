@@ -2,6 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import shiftModel from "../models/shift.model";
+import { logEvent } from "../../../../core/audit/event";
 import { paginatedData } from "../../../../types/paginatedData";
 import { Shift, ShiftAssignmentPayload, ShiftTimetableBlockPayload, ShiftTimetablePayload } from "../types/shift";
 
@@ -57,6 +58,8 @@ class ShiftService {
         ON CONFLICT ("shiftId", "dayOfWeek") DO NOTHING;
       `
     );
+    // Raw-SQL fallback bypasses the Prisma audit extension, so log it explicitly (Run 12 item 2).
+    await logEvent({ module: "AMS", entity: "ShiftTimetable", entityId: shiftId, action: "CREATE", changes: { shiftId, days: days.length, startTime, endTime } });
   }
   async getAllShifts(): Promise<any[]> {
     return await shiftModel.shift.gpFindMany();
@@ -465,7 +468,10 @@ class ShiftService {
         RETURNING "id", "shiftId", "dayOfWeek", "startTime", "endTime", "type", "customType", "label", "createdAt", "updatedAt", "isDeleted";
       `
     );
-    return rows?.[0];
+    const created = rows?.[0];
+    // Raw-SQL fallback bypasses the Prisma audit extension, so log it explicitly (Run 12 item 2).
+    await logEvent({ module: "AMS", entity: "ShiftTimetableBlock", entityId: created?.id ?? null, action: "CREATE", changes: { shiftId: payload.shiftId, dayOfWeek: payload.dayOfWeek, startTime, endTime, type, customType, label } });
+    return created;
   }
 
   async updateTimetableBlock(id: string, payload: Partial<ShiftTimetableBlockPayload>) {
@@ -491,6 +497,8 @@ class ShiftService {
       });
     }
 
+    // Pre-image for the audit log (raw-SQL fallback bypasses the Prisma audit extension).
+    const before: any = await (prisma as any).shiftTimetableBlock.findUnique({ where: { id } }).catch(() => null);
     const rows: any[] = await prisma.$queryRaw(
       Prisma.sql`
         UPDATE "ShiftTimetableBlock"
@@ -508,7 +516,14 @@ class ShiftService {
         RETURNING "id", "shiftId", "dayOfWeek", "startTime", "endTime", "type", "customType", "label", "createdAt", "updatedAt", "isDeleted";
       `
     );
-    return rows?.[0];
+    const after = rows?.[0];
+    // Only changed fields, with before/after (Run 12 item 2).
+    const changes: Record<string, any> = {};
+    for (const k of ["shiftId", "dayOfWeek", "startTime", "endTime", "type", "customType", "label"]) {
+      if (after && before && JSON.stringify((before as any)[k]) !== JSON.stringify((after as any)[k])) changes[k] = { before: (before as any)[k], after: (after as any)[k] };
+    }
+    await logEvent({ module: "AMS", entity: "ShiftTimetableBlock", entityId: id, action: "UPDATE", changes });
+    return after;
   }
 
   async deleteTimetableBlock(id: string): Promise<void> {
@@ -528,6 +543,8 @@ class ShiftService {
         WHERE "id" = ${id};
       `
     );
+    // Raw-SQL fallback bypasses the Prisma audit extension, so log the soft delete explicitly.
+    await logEvent({ module: "AMS", entity: "ShiftTimetableBlock", entityId: id, action: "DELETE", changes: { isDeleted: { before: null, after: new Date().toISOString() } } });
   }
 }
 
