@@ -26,6 +26,7 @@ import prisma from "./src/core/models/base.model";
 import roleModel from "./src/modules/rbac/role/models/role.model";
 import groupModel from "./src/modules/rbac/group/models/group.model";
 import userModel from "./src/modules/rbac/user/models/user.model";
+import { runAsSystem } from "./src/core/context/requestContext";
 
 const ROLE_NAME = "Office Employees";
 const GROUP_NAME = "Office Employees";
@@ -152,6 +153,6 @@ async function main() {
   }
 }
 
-main()
+runAsSystem(() => main())
   .then(() => process.exit(0))
   .catch(() => process.exit(1));

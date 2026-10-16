@@ -27,15 +27,18 @@ enum EmployeeStatus {
 }
 
 model Customer {
-  id         String     @id @default(uuid())
-  name       String
-  email      String?
-  phone      String?
-  address    String?
-  gatePasses GatePass[]
-  createdAt  DateTime?
-  updatedAt  DateTime?
-  isDeleted  DateTime?
+  id          String     @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  gatePasses  GatePass[]
+  createdAt   DateTime?
+  updatedAt   DateTime?
+  isDeleted   DateTime?
+  createdById String?    @db.VarChar(36)
+  updatedById String?    @db.VarChar(36)
+  deletedById String?    @db.VarChar(36)
 }
 
 model Item {
@@ -48,6 +51,9 @@ model Item {
   createdAt   DateTime?
   updatedAt   DateTime?
   isDeleted   DateTime?
+  createdById String?        @db.VarChar(36)
+  updatedById String?        @db.VarChar(36)
+  deletedById String?        @db.VarChar(36)
 }
 
 model GatePass {
@@ -66,6 +72,9 @@ model GatePass {
   validUntil    DateTime?
   items         GatePassItem[]
   customer      Customer       @relation(fields: [customerId], references: [id])
+  createdById   String?        @db.VarChar(36)
+  updatedById   String?        @db.VarChar(36)
+  deletedById   String?        @db.VarChar(36)
 }
 
 model GatePassItem {
@@ -97,6 +106,9 @@ model User {
   employeeId      String?          @unique
   activityLogs    ActivityLog[]
   salesAgent      SalesAgent?
+  createdById     String?          @db.VarChar(36)
+  updatedById     String?          @db.VarChar(36)
+  deletedById     String?          @db.VarChar(36)
 }
 
 model Group {
@@ -108,8 +120,11 @@ model Group {
   updatedAt   DateTime?
   isDeleted   DateTime?
 
-  userGroups UserGroup[]
-  groupRoles GroupRole[]
+  userGroups  UserGroup[]
+  groupRoles  GroupRole[]
+  createdById String?     @db.VarChar(36)
+  updatedById String?     @db.VarChar(36)
+  deletedById String?     @db.VarChar(36)
 }
 
 model UserGroup {
@@ -136,8 +151,11 @@ model Role {
   updatedAt   DateTime?
   isDeleted   DateTime?
 
-  userRoles  UserRole[]
-  groupRoles GroupRole[]
+  userRoles   UserRole[]
+  groupRoles  GroupRole[]
+  createdById String?     @db.VarChar(36)
+  updatedById String?     @db.VarChar(36)
+  deletedById String?     @db.VarChar(36)
 }
 
 model UserRole {
@@ -189,6 +207,9 @@ model FeaturePermission {
   createdAt   DateTime?
   updatedAt   DateTime?
   isDeleted   DateTime?
+  createdById String?    @db.VarChar(36)
+  updatedById String?    @db.VarChar(36)
+  deletedById String?    @db.VarChar(36)
 }
 
 model BlacklistToken {
@@ -230,30 +251,33 @@ model Employee {
   status             EmployeeStatus @default(ACTIVE)
   resignationDate    DateTime?
 
-  company   Company
-  image     String?
-  code      String    @unique
-  createdAt DateTime?
-  updatedAt DateTime?
-  isDeleted DateTime?
-  createdBy String?   @db.VarChar(36)
-  updatedBy String?   @db.VarChar(36)
-  previousUpdates Json? @db.JsonB
+  company         Company
+  image           String?
+  code            String    @unique
+  createdAt       DateTime?
+  updatedAt       DateTime?
+  isDeleted       DateTime?
+  createdBy       String?   @db.VarChar(36)
+  updatedBy       String?   @db.VarChar(36)
+  previousUpdates Json?     @db.JsonB
 
-  user              User?
-  attendances       Attendance[]
-  leaveRequests     LeaveRequest[]
+  user               User?
+  attendances        Attendance[]
+  leaveRequests      LeaveRequest[]
   attendanceRequests AttendanceRequest[]
-  leaveAllocation   LeaveAllocation[]
-  shiftAssignments  ShiftAssignment[]
-  teamsLed          Team[]         @relation("TeamLead")
-  teamMemberships   TeamMember[]   @relation("TeamMemberEmployee")
-  taskAssignments   TaskAssignee[] @relation("TaskAssignee")
-  dailyReports      DailyReport[]  @relation("DailyReportEmployee")
-  managedUnits      Unit[]              @relation("UnitAttendanceManager")
-  unitEmployees     UnitEmployee[]
-  visitorsReferred  Visitor[]           @relation("VisitorReferredTo")
-  salesAgent        SalesAgent?
+  leaveAllocation    LeaveAllocation[]
+  shiftAssignments   ShiftAssignment[]
+  teamsLed           Team[]              @relation("TeamLead")
+  teamMemberships    TeamMember[]        @relation("TeamMemberEmployee")
+  taskAssignments    TaskAssignee[]      @relation("TaskAssignee")
+  dailyReports       DailyReport[]       @relation("DailyReportEmployee")
+  managedUnits       Unit[]              @relation("UnitAttendanceManager")
+  unitEmployees      UnitEmployee[]
+  visitorsReferred   Visitor[]           @relation("VisitorReferredTo")
+  salesAgent         SalesAgent?
+  createdById        String?             @db.VarChar(36)
+  updatedById        String?             @db.VarChar(36)
+  deletedById        String?             @db.VarChar(36)
 }
 
 enum Company {
@@ -263,21 +287,24 @@ enum Company {
 }
 
 model Attendance {
-  id         String           @id @default(uuid()) @db.VarChar(36)
-  employee   Employee         @relation(fields: [employeeId], references: [id])
-  employeeId String
-  date       DateTime
-  status     AttendanceStatus
-  comment    String?
-  checkIn    DateTime?
-  checkOut   DateTime?
-  location   String?
-  createdAt  DateTime?
-  updatedAt  DateTime?
-  isDeleted  DateTime?
-  createdBy  String?          @db.VarChar(36)
-  updatedBy  String?          @db.VarChar(36)
-  previousUpdates Json?       @db.JsonB
+  id              String           @id @default(uuid()) @db.VarChar(36)
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+  employeeId      String
+  date            DateTime
+  status          AttendanceStatus
+  comment         String?
+  checkIn         DateTime?
+  checkOut        DateTime?
+  location        String?
+  createdAt       DateTime?
+  updatedAt       DateTime?
+  isDeleted       DateTime?
+  createdBy       String?          @db.VarChar(36)
+  updatedBy       String?          @db.VarChar(36)
+  previousUpdates Json?            @db.JsonB
+  createdById     String?          @db.VarChar(36)
+  updatedById     String?          @db.VarChar(36)
+  deletedById     String?          @db.VarChar(36)
 }
 
 enum AttendanceStatus {
@@ -290,44 +317,50 @@ enum AttendanceStatus {
 }
 
 model LeaveRequest {
-  id                  String           @id @default(uuid()) @db.VarChar(36)
-  employee            Employee         @relation(fields: [employeeId], references: [id])
-  employeeId          String
-  leaveAllocation     LeaveAllocation? @relation(fields: [leaveAllocationId], references: [id])
-  leaveAllocationId   String?
-  reason              String?
-  startDate           DateTime
-  endDate             DateTime
-  status              LeaveStatus      @default(PENDING)
-  leaveType           String?          @default("CASUAL") @db.VarChar(50)
-  image               String?
-  location            String?
-  createdAt           DateTime?        @default(now())
-  updatedAt           DateTime?        @updatedAt
-  isDeleted           DateTime?
+  id                String           @id @default(uuid()) @db.VarChar(36)
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  employeeId        String
+  leaveAllocation   LeaveAllocation? @relation(fields: [leaveAllocationId], references: [id])
+  leaveAllocationId String?
+  reason            String?
+  startDate         DateTime
+  endDate           DateTime
+  status            LeaveStatus      @default(PENDING)
+  leaveType         String?          @default("CASUAL") @db.VarChar(50)
+  image             String?
+  location          String?
+  createdAt         DateTime?        @default(now())
+  updatedAt         DateTime?        @updatedAt
+  isDeleted         DateTime?
+  createdById       String?          @db.VarChar(36)
+  updatedById       String?          @db.VarChar(36)
+  deletedById       String?          @db.VarChar(36)
 }
 
 model AttendanceRequest {
-  id            String      @id @default(uuid()) @db.VarChar(36)
-  employee      Employee    @relation(fields: [employeeId], references: [id])
-  employeeId    String
-  attendanceId  String?     @db.VarChar(36)
-  reason        String?
-  status        LeaveStatus @default(PENDING)
-  image         String? 
-  location      String? 
+  id               String      @id @default(uuid()) @db.VarChar(36)
+  employee         Employee    @relation(fields: [employeeId], references: [id])
+  employeeId       String
+  attendanceId     String?     @db.VarChar(36)
+  reason           String?
+  status           LeaveStatus @default(PENDING)
+  image            String?
+  location         String?
   // Proposed attendance changes
-  proposedStatus    String?
-  proposedCheckIn   DateTime?
-  proposedCheckOut  DateTime?
-  proposedComment   String?
-  proposedLocation  String?
-  proposedDate      DateTime?
-  requestedBy       String?   @db.VarChar(36)
-  approvedBy        String?   @db.VarChar(36)
-  createdAt         DateTime? @default(now())
-  updatedAt         DateTime? @updatedAt
-  isDeleted         DateTime?
+  proposedStatus   String?
+  proposedCheckIn  DateTime?
+  proposedCheckOut DateTime?
+  proposedComment  String?
+  proposedLocation String?
+  proposedDate     DateTime?
+  requestedBy      String?     @db.VarChar(36)
+  approvedBy       String?     @db.VarChar(36)
+  createdAt        DateTime?   @default(now())
+  updatedAt        DateTime?   @updatedAt
+  isDeleted        DateTime?
+  createdById      String?     @db.VarChar(36)
+  updatedById      String?     @db.VarChar(36)
+  deletedById      String?     @db.VarChar(36)
 }
 
 enum LeaveStatus {
@@ -345,7 +378,10 @@ model LeaveConfiguration {
   updatedAt   DateTime? @updatedAt
   isDeleted   DateTime?
 
-  employees LeaveAllocation[]
+  employees   LeaveAllocation[]
+  createdById String?           @db.VarChar(36)
+  updatedById String?           @db.VarChar(36)
+  deletedById String?           @db.VarChar(36)
 }
 
 model LeaveAllocation {
@@ -364,7 +400,10 @@ model LeaveAllocation {
   updatedAt           DateTime?           @updatedAt
   isDeleted           DateTime?
 
-  leaveRequests       LeaveRequest[]
+  leaveRequests LeaveRequest[]
+  createdById   String?        @db.VarChar(36)
+  updatedById   String?        @db.VarChar(36)
+  deletedById   String?        @db.VarChar(36)
 }
 
 enum ScheduleParent {
@@ -401,14 +440,17 @@ model Shift {
   updatedAt   DateTime? @updatedAt
   isDeleted   DateTime?
 
-  assignments ShiftAssignment[]
-  timetables  ShiftTimetable[]
+  assignments     ShiftAssignment[]
+  timetables      ShiftTimetable[]
   timetableBlocks ShiftTimetableBlock[]
+  createdById     String?               @db.VarChar(36)
+  updatedById     String?               @db.VarChar(36)
+  deletedById     String?               @db.VarChar(36)
 }
 
 model ShiftTimetable {
-  id        String   @id @default(uuid()) @db.VarChar(36)
-  shiftId   String   @db.VarChar(36)
+  id        String    @id @default(uuid()) @db.VarChar(36)
+  shiftId   String    @db.VarChar(36)
   dayOfWeek Int
   startTime DateTime
   endTime   DateTime
@@ -428,17 +470,17 @@ enum ShiftTimetableBlockType {
 }
 
 model ShiftTimetableBlock {
-  id        String   @id @default(uuid()) @db.VarChar(36)
-  shiftId   String   @db.VarChar(36)
-  dayOfWeek Int
-  startTime DateTime
-  endTime   DateTime
-  type      ShiftTimetableBlockType @default(WORK)
+  id         String                  @id @default(uuid()) @db.VarChar(36)
+  shiftId    String                  @db.VarChar(36)
+  dayOfWeek  Int
+  startTime  DateTime
+  endTime    DateTime
+  type       ShiftTimetableBlockType @default(WORK)
   customType String?
-  label     String?
-  createdAt DateTime? @default(now())
-  updatedAt DateTime? @updatedAt
-  isDeleted DateTime?
+  label      String?
+  createdAt  DateTime?               @default(now())
+  updatedAt  DateTime?               @updatedAt
+  isDeleted  DateTime?
 
   shift Shift @relation(fields: [shiftId], references: [id])
 
@@ -458,6 +500,10 @@ model ShiftAssignment {
   employee Employee @relation(fields: [employeeId], references: [id])
   shift    Shift    @relation(fields: [shiftId], references: [id])
 
+  createdById String? @db.VarChar(36)
+  updatedById String? @db.VarChar(36)
+  deletedById String? @db.VarChar(36)
+
   @@unique([employeeId, shiftId, startDate])
 }
 
@@ -465,70 +511,78 @@ model ShiftAssignment {
 // Supersedes the old Todo stub (which had no code and no data): Task is the richer successor.
 
 model Team {
-  id          String   @id @default(uuid()) @db.VarChar(36)
+  id          String       @id @default(uuid()) @db.VarChar(36)
   name        String
   description String?
-  leadId      String?  @db.VarChar(36)
-  lead        Employee? @relation("TeamLead", fields: [leadId], references: [id])
-  unitId      String?  @db.VarChar(36)
-  unit        Unit?    @relation("TeamUnit", fields: [unitId], references: [id])
-  company     Company  @default(OKASHASMART)
+  leadId      String?      @db.VarChar(36)
+  lead        Employee?    @relation("TeamLead", fields: [leadId], references: [id])
+  unitId      String?      @db.VarChar(36)
+  unit        Unit?        @relation("TeamUnit", fields: [unitId], references: [id])
+  company     Company      @default(OKASHASMART)
   // per-team configurable task statuses (first = initial, last = done)
-  statuses    String[] @default(["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE"])
+  statuses    String[]     @default(["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE"])
   members     TeamMember[]
   tasks       Task[]
-  createdAt   DateTime? @default(now())
-  updatedAt   DateTime? @updatedAt
+  createdAt   DateTime?    @default(now())
+  updatedAt   DateTime?    @updatedAt
   isDeleted   DateTime?
-  createdBy   String?   @db.VarChar(36)
-  updatedBy   String?   @db.VarChar(36)
+  createdBy   String?      @db.VarChar(36)
+  updatedBy   String?      @db.VarChar(36)
+  createdById String?      @db.VarChar(36)
+  updatedById String?      @db.VarChar(36)
+  deletedById String?      @db.VarChar(36)
+
   @@index([leadId])
   @@index([unitId])
 }
 
 model TeamMember {
-  id                 String   @id @default(uuid()) @db.VarChar(36)
-  teamId             String   @db.VarChar(36)
-  team               Team     @relation(fields: [teamId], references: [id])
-  employeeId         String   @db.VarChar(36)
-  employee           Employee @relation("TeamMemberEmployee", fields: [employeeId], references: [id])
-  requiresDailyReport Boolean @default(true)   // only required members are "expected" to submit
-  createdAt          DateTime? @default(now())
-  isDeleted          DateTime?
+  id                  String    @id @default(uuid()) @db.VarChar(36)
+  teamId              String    @db.VarChar(36)
+  team                Team      @relation(fields: [teamId], references: [id])
+  employeeId          String    @db.VarChar(36)
+  employee            Employee  @relation("TeamMemberEmployee", fields: [employeeId], references: [id])
+  requiresDailyReport Boolean   @default(true) // only required members are "expected" to submit
+  createdAt           DateTime? @default(now())
+  isDeleted           DateTime?
+
   @@unique([teamId, employeeId])
   @@index([employeeId])
 }
 
 model Task {
-  id             String   @id @default(uuid()) @db.VarChar(36)
-  code           String?  @unique
+  id             String              @id @default(uuid()) @db.VarChar(36)
+  code           String?             @unique
   title          String
   description    String?
-  teamId         String?  @db.VarChar(36)
-  team           Team?    @relation(fields: [teamId], references: [id])
-  status         String   @default("TODO")      // validated against the team's status list
-  priority       TaskPriority @default(MEDIUM)
+  teamId         String?             @db.VarChar(36)
+  team           Team?               @relation(fields: [teamId], references: [id])
+  status         String              @default("TODO") // validated against the team's status list
+  priority       TaskPriority        @default(MEDIUM)
   dueDate        DateTime?
   startDate      DateTime?
   estimateHours  Float?
-  labels         String[] @default([])
-  attachments    String[] @default([])
-  linkType       String?  // LEAD | ORDER | CUSTOMER (loose link to a CRM record)
-  linkId         String?  @db.VarChar(36)
-  recurring      RecurringRule @default(NONE)
-  recurredFromId String?  @db.VarChar(36)
+  labels         String[]            @default([])
+  attachments    String[]            @default([])
+  linkType       String? // LEAD | ORDER | CUSTOMER (loose link to a CRM record)
+  linkId         String?             @db.VarChar(36)
+  recurring      RecurringRule       @default(NONE)
+  recurredFromId String?             @db.VarChar(36)
   completedAt    DateTime?
-  createdById    String?  @db.VarChar(36)        // User who created it
-  company        Company  @default(OKASHASMART)
+  createdById    String?             @db.VarChar(36) // User who created it
+  company        Company             @default(OKASHASMART)
   assignees      TaskAssignee[]
   checklist      TaskChecklistItem[]
   comments       TaskComment[]
   watchers       TaskWatcher[]
-  createdAt      DateTime? @default(now())
-  updatedAt      DateTime? @updatedAt
+  createdAt      DateTime?           @default(now())
+  updatedAt      DateTime?           @updatedAt
   isDeleted      DateTime?
-  createdBy      String?   @db.VarChar(36)
-  updatedBy      String?   @db.VarChar(36)
+  createdBy      String?             @db.VarChar(36)
+  updatedBy      String?             @db.VarChar(36)
+  updatedById    String?             @db.VarChar(36)
+  deletedById    String?             @db.VarChar(36)
+
   @@index([teamId])
   @@index([status])
   @@index([dueDate])
@@ -540,28 +594,31 @@ model TaskAssignee {
   task       Task     @relation(fields: [taskId], references: [id])
   employeeId String   @db.VarChar(36)
   employee   Employee @relation("TaskAssignee", fields: [employeeId], references: [id])
+
   @@unique([taskId, employeeId])
   @@index([employeeId])
 }
 
 model TaskChecklistItem {
-  id        String  @id @default(uuid()) @db.VarChar(36)
-  taskId    String  @db.VarChar(36)
-  task      Task    @relation(fields: [taskId], references: [id])
+  id        String    @id @default(uuid()) @db.VarChar(36)
+  taskId    String    @db.VarChar(36)
+  task      Task      @relation(fields: [taskId], references: [id])
   text      String
-  done      Boolean @default(false)
-  sortOrder Int     @default(0)
+  done      Boolean   @default(false)
+  sortOrder Int       @default(0)
   isDeleted DateTime?
 }
 
 model TaskComment {
-  id        String   @id @default(uuid()) @db.VarChar(36)
-  taskId    String   @db.VarChar(36)
-  task      Task     @relation(fields: [taskId], references: [id])
-  userId    String?  @db.VarChar(36)
-  body      String
-  createdAt DateTime? @default(now())
-  isDeleted DateTime?
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  taskId      String    @db.VarChar(36)
+  task        Task      @relation(fields: [taskId], references: [id])
+  userId      String?   @db.VarChar(36)
+  body        String
+  createdAt   DateTime? @default(now())
+  isDeleted   DateTime?
+  createdById String?   @db.VarChar(36)
+
   @@index([taskId])
 }
 
@@ -570,50 +627,58 @@ model TaskWatcher {
   taskId     String @db.VarChar(36)
   task       Task   @relation(fields: [taskId], references: [id])
   employeeId String @db.VarChar(36)
+
   @@unique([taskId, employeeId])
 }
 
 model DailyReport {
-  id           String   @id @default(uuid()) @db.VarChar(36)
-  employeeId   String   @db.VarChar(36)
-  employee     Employee @relation("DailyReportEmployee", fields: [employeeId], references: [id])
-  date         DateTime @db.Date
+  id           String               @id @default(uuid()) @db.VarChar(36)
+  employeeId   String               @db.VarChar(36)
+  employee     Employee             @relation("DailyReportEmployee", fields: [employeeId], references: [id])
+  date         DateTime             @db.Date
   whatIDid     String?
-  taskIds      String[] @default([])
+  taskIds      String[]             @default([])
   hours        Float?
   blockers     String?
   planTomorrow String?
-  attachments  String[] @default([])
-  late         Boolean  @default(false)
+  attachments  String[]             @default([])
+  late         Boolean              @default(false)
   comments     DailyReportComment[]
-  createdAt    DateTime? @default(now())
-  updatedAt    DateTime? @updatedAt
+  createdAt    DateTime?            @default(now())
+  updatedAt    DateTime?            @updatedAt
   isDeleted    DateTime?
+  createdById  String?              @db.VarChar(36)
+  updatedById  String?              @db.VarChar(36)
+  deletedById  String?              @db.VarChar(36)
+
   @@unique([employeeId, date])
   @@index([date])
 }
 
 model DailyReportComment {
-  id        String   @id @default(uuid()) @db.VarChar(36)
-  reportId  String   @db.VarChar(36)
-  report    DailyReport @relation(fields: [reportId], references: [id])
-  userId    String?  @db.VarChar(36)
-  body      String
-  createdAt DateTime? @default(now())
-  isDeleted DateTime?
+  id          String      @id @default(uuid()) @db.VarChar(36)
+  reportId    String      @db.VarChar(36)
+  report      DailyReport @relation(fields: [reportId], references: [id])
+  userId      String?     @db.VarChar(36)
+  body        String
+  createdAt   DateTime?   @default(now())
+  isDeleted   DateTime?
+  createdById String?     @db.VarChar(36)
+
   @@index([reportId])
 }
 
 model Notification {
-  id         String   @id @default(uuid()) @db.VarChar(36)
-  userId     String   @db.VarChar(36)              // recipient User id
-  type       String   // ASSIGNED | DUE_SOON | OVERDUE | COMMENT | REPORT_MISSING
+  id         String    @id @default(uuid()) @db.VarChar(36)
+  userId     String    @db.VarChar(36) // recipient User id
+  type       String // ASSIGNED | DUE_SOON | OVERDUE | COMMENT | REPORT_MISSING
   title      String
   body       String?
-  entityType String?  // Task | DailyReport
-  entityId   String?  @db.VarChar(36)
+  entityType String? // Task | DailyReport
+  entityId   String?   @db.VarChar(36)
   readAt     DateTime?
   createdAt  DateTime? @default(now())
+
   @@index([userId, readAt])
   @@index([createdAt])
 }
@@ -633,24 +698,28 @@ enum RecurringRule {
 }
 
 model Holiday {
-  id          String    @id @default(uuid()) @db.VarChar(36)
-  date        DateTime
-  reason      String?
-  description String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime? @default(now())
-  updatedAt   DateTime? @updatedAt
-  isDeleted   DateTime?
-  createdBy   String?   @db.VarChar(36)
-  updatedBy   String?   @db.VarChar(36)
-  previousUpdates Json? @db.JsonB
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  date            DateTime
+  reason          String?
+  description     String?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime? @default(now())
+  updatedAt       DateTime? @updatedAt
+  isDeleted       DateTime?
+  createdBy       String?   @db.VarChar(36)
+  updatedBy       String?   @db.VarChar(36)
+  previousUpdates Json?     @db.JsonB
+  createdById     String?   @db.VarChar(36)
+  updatedById     String?   @db.VarChar(36)
+  deletedById     String?   @db.VarChar(36)
 }
 
 // Singleton system-wide configuration (single row, id = 'default')
 model SystemConfig {
-  id        String   @id @db.VarChar(36)
-  config    Json?    @db.JsonB
-  updatedAt DateTime? @updatedAt
+  id          String    @id @db.VarChar(36)
+  config      Json?     @db.JsonB
+  updatedAt   DateTime? @updatedAt
+  updatedById String?   @db.VarChar(36)
 }
 
 enum UnitType {
@@ -666,26 +735,29 @@ enum UnitType {
 }
 
 model Unit {
-  id                  String      @id @default(uuid()) @db.VarChar(36)
+  id                  String    @id @default(uuid()) @db.VarChar(36)
   name                String
   type                UnitType
   description         String?
   address             String?
   contactNo           String?
   email               String?
-  attendanceManagerId String?     @db.VarChar(36)
-  lateGraceMinutes    Int?        // per-unit override; null = use global SystemConfig
-  halfDayLateMinutes  Int?        // per-unit override; null = use global SystemConfig
-  createdAt           DateTime?   @default(now())
-  updatedAt           DateTime?   @updatedAt
+  attendanceManagerId String?   @db.VarChar(36)
+  lateGraceMinutes    Int? // per-unit override; null = use global SystemConfig
+  halfDayLateMinutes  Int? // per-unit override; null = use global SystemConfig
+  createdAt           DateTime? @default(now())
+  updatedAt           DateTime? @updatedAt
   isDeleted           DateTime?
-  createdBy           String?     @db.VarChar(36)
-  updatedBy           String?     @db.VarChar(36)
-  previousUpdates     Json?       @db.JsonB
+  createdBy           String?   @db.VarChar(36)
+  updatedBy           String?   @db.VarChar(36)
+  previousUpdates     Json?     @db.JsonB
 
-  attendanceManager   Employee?   @relation("UnitAttendanceManager", fields: [attendanceManagerId], references: [id])
-  employees           UnitEmployee[]
-  teams               Team[]      @relation("TeamUnit")
+  attendanceManager Employee?      @relation("UnitAttendanceManager", fields: [attendanceManagerId], references: [id])
+  employees         UnitEmployee[]
+  teams             Team[]         @relation("TeamUnit")
+  createdById       String?        @db.VarChar(36)
+  updatedById       String?        @db.VarChar(36)
+  deletedById       String?        @db.VarChar(36)
 }
 
 model UnitEmployee {
@@ -696,8 +768,8 @@ model UnitEmployee {
   updatedAt  DateTime? @updatedAt
   isDeleted  DateTime?
 
-  unit      Unit      @relation(fields: [unitId], references: [id])
-  employee  Employee  @relation(fields: [employeeId], references: [id])
+  unit     Unit     @relation(fields: [unitId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
 
   @@unique([unitId, employeeId])
 }
@@ -705,8 +777,8 @@ model UnitEmployee {
 model ActivityLog {
   id          String    @id @default(uuid()) @db.VarChar(36)
   userId      String?   @db.VarChar(36)
-  action      String    // CREATE, UPDATE, DELETE, READ, APPROVE, REJECT, LOGIN, LOGOUT, etc.
-  entityType  String    // Employee, Attendance, AttendanceRequest, Unit, etc.
+  action      String // CREATE, UPDATE, DELETE, READ, APPROVE, REJECT, LOGIN, LOGOUT, etc.
+  entityType  String // Employee, Attendance, AttendanceRequest, Unit, etc.
   entityId    String?   @db.VarChar(36)
   description String?
   metadata    Json?     @db.JsonB // Additional data about the action
@@ -757,6 +829,10 @@ model Visitor {
   createdBy            String?        @db.VarChar(36)
   updatedBy            String?        @db.VarChar(36)
   previousUpdates      Json?          @db.JsonB
+
+  createdById String? @db.VarChar(36)
+  updatedById String? @db.VarChar(36)
+  deletedById String? @db.VarChar(36)
 
   @@index([visitDate])
   @@index([referredToEmployeeId])
@@ -877,20 +953,26 @@ model Category {
   isDeleted   DateTime?
   createdBy   String?
   updatedBy   String?
+  createdById String?   @db.VarChar(36)
+  updatedById String?   @db.VarChar(36)
+  deletedById String?   @db.VarChar(36)
 }
 
 model Brand {
-  id         String    @id @default(uuid())
-  name       String    @unique
-  categoryId String?
-  isActive   Boolean   @default(true)
-  products   Product[]
-  legacyId   String?   @unique
-  createdAt  DateTime? @default(now())
-  updatedAt  DateTime? @updatedAt
-  isDeleted  DateTime?
-  createdBy  String?
-  updatedBy  String?
+  id          String    @id @default(uuid())
+  name        String    @unique
+  categoryId  String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+  legacyId    String?   @unique
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+  isDeleted   DateTime?
+  createdBy   String?
+  updatedBy   String?
+  createdById String?   @db.VarChar(36)
+  updatedById String?   @db.VarChar(36)
+  deletedById String?   @db.VarChar(36)
 }
 
 model Product {
@@ -905,7 +987,7 @@ model Product {
   description String?
   specs       Json?            @db.JsonB
   status      ProductStatus    @default(ACTIVE)
-  stockItemId String?          // loose link to gate-pass Item (deferred, see design §4.3)
+  stockItemId String? // loose link to gate-pass Item (deferred, see design §4.3)
   variants    ProductVariant[]
   images      ProductImage[]
   prices      PriceList[]
@@ -915,29 +997,34 @@ model Product {
   isDeleted   DateTime?
   createdBy   String?
   updatedBy   String?
+  createdById String?          @db.VarChar(36)
+  updatedById String?          @db.VarChar(36)
+  deletedById String?          @db.VarChar(36)
+
   @@index([categoryId])
   @@index([status])
 }
 
 model ProductVariant {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   productId  String
-  product    Product  @relation(fields: [productId], references: [id])
+  product    Product   @relation(fields: [productId], references: [id])
   name       String
-  attributes Json?    @db.JsonB
+  attributes Json?     @db.JsonB
   skuSuffix  String?
-  isActive   Boolean  @default(true)
+  isActive   Boolean   @default(true)
   isDeleted  DateTime?
+
   @@unique([productId, name])
 }
 
 model ProductImage {
-  id        String  @id @default(uuid())
+  id        String    @id @default(uuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
   url       String
-  isPrimary Boolean @default(false)
-  sortOrder Int     @default(0)
+  isPrimary Boolean   @default(false)
+  sortOrder Int       @default(0)
   isDeleted DateTime?
 }
 
@@ -947,16 +1034,20 @@ model PriceList {
   product      Product   @relation(fields: [productId], references: [id])
   variantId    String?
   tier         PriceTier
-  price        Int?      // null until a real price is set (see pricePending)
-  cost         Int?      // cost-gated by crm.catalogue.cost.*; null = cost not yet known
+  price        Int? // null until a real price is set (see pricePending)
+  cost         Int? // cost-gated by crm.catalogue.cost.*; null = cost not yet known
   pricePending Boolean   @default(false) // true = placeholder, no usable price/cost yet
-  validFrom DateTime  @default(now())
-  validTo   DateTime?
-  isDeleted DateTime?
-  createdAt DateTime? @default(now())
-  updatedAt DateTime? @updatedAt
-  createdBy String?
-  updatedBy String?
+  validFrom    DateTime  @default(now())
+  validTo      DateTime?
+  isDeleted    DateTime?
+  createdAt    DateTime? @default(now())
+  updatedAt    DateTime? @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  createdById  String?   @db.VarChar(36)
+  updatedById  String?   @db.VarChar(36)
+  deletedById  String?   @db.VarChar(36)
+
   @@index([productId, tier, validTo])
 }
 
@@ -973,15 +1064,18 @@ model Bundle {
   isDeleted   DateTime?
   createdBy   String?
   updatedBy   String?
+  createdById String?      @db.VarChar(36)
+  updatedById String?      @db.VarChar(36)
+  deletedById String?      @db.VarChar(36)
 }
 
 model BundleItem {
-  id        String  @id @default(uuid())
+  id        String    @id @default(uuid())
   bundleId  String
-  bundle    Bundle  @relation(fields: [bundleId], references: [id])
+  bundle    Bundle    @relation(fields: [bundleId], references: [id])
   productId String
   variantId String?
-  quantity  Int     @default(1)
+  quantity  Int       @default(1)
   isDeleted DateTime?
 }
 
@@ -1007,41 +1101,48 @@ model SalesAgent {
   isDeleted     DateTime?
   createdBy     String?
   updatedBy     String?
+  createdById   String?      @db.VarChar(36)
+  updatedById   String?      @db.VarChar(36)
+  deletedById   String?      @db.VarChar(36)
 }
 
 model Lead {
-  id             String        @id @default(uuid())
-  leadNo         String?
-  customerName   String
-  phone          String?
-  city           String?
-  area           String?       // short sub-locality within the city (e.g. "Johar Town" under Lahore)
-  address        String?       // full street address when the source gave one
-  notes          String?       // free-text that is clearly a note, not a location
-  outlet         String?
-  channel        SalesChannel?
-  stage          LeadStage     @default(NEW)
-  priority       LeadPriority  @default(MEDIUM)
-  estimatedValue Int?
-  productId      String?
-  requirement    String?
-  agentId        String?
-  dateReceived   DateTime      @default(now())
-  lastContactAt  DateTime?
-  nextFollowUpAt DateTime?
-  stageReason    String?
-  lostReason     String?
-  outcomeRaw     String?       // raw Outcome column value for ambiguous-stage review
-  visitorId      String?       @unique
-  company        Company       @default(OKASHASMART)
-  sourceFile     String?
-  legacyId       String?
-  createdAt      DateTime?     @default(now())
-  updatedAt      DateTime?     @updatedAt
-  isDeleted      DateTime?
-  createdBy      String?
-  updatedBy      String?
+  id              String        @id @default(uuid())
+  leadNo          String?
+  customerName    String
+  phone           String?
+  city            String?
+  area            String? // short sub-locality within the city (e.g. "Johar Town" under Lahore)
+  address         String? // full street address when the source gave one
+  notes           String? // free-text that is clearly a note, not a location
+  outlet          String?
+  channel         SalesChannel?
+  stage           LeadStage     @default(NEW)
+  priority        LeadPriority  @default(MEDIUM)
+  estimatedValue  Int?
+  productId       String?
+  requirement     String?
+  agentId         String?
+  dateReceived    DateTime      @default(now())
+  lastContactAt   DateTime?
+  nextFollowUpAt  DateTime?
+  stageReason     String?
+  lostReason      String?
+  outcomeRaw      String? // raw Outcome column value for ambiguous-stage review
+  visitorId       String?       @unique
+  company         Company       @default(OKASHASMART)
+  sourceFile      String?
+  legacyId        String?
+  createdAt       DateTime?     @default(now())
+  updatedAt       DateTime?     @updatedAt
+  isDeleted       DateTime?
+  createdBy       String?
+  updatedBy       String?
   phoneNormalized String?
+  createdById     String?       @db.VarChar(36)
+  updatedById     String?       @db.VarChar(36)
+  deletedById     String?       @db.VarChar(36)
+
   @@unique([sourceFile, legacyId])
   @@index([agentId])
   @@index([stage])
@@ -1064,36 +1165,42 @@ model LeadActivity {
   isDeleted      DateTime?
   createdAt      DateTime?    @default(now())
   createdBy      String?
+  createdById    String?      @db.VarChar(36)
+
   @@index([leadId])
 }
 
 model Quotation {
-  id           String          @id @default(uuid())
-  quotationNo  String
-  version      Int             @default(1)
-  isActive     Boolean         @default(true)
-  parentId     String?
-  leadId       String?
-  customerName String
-  phone        String?
-  status       QuotationStatus @default(DRAFT)
-  tier         PriceTier       @default(RETAIL)
-  items        QuotationItem[]
-  subtotal     Int             @default(0)
-  discount     Int             @default(0)
-  total        Int             @default(0)
-  validUntil   DateTime?
-  statusReason String?
-  agentId      String?
-  outlet       String?
-  company      Company         @default(OKASHASMART)
-  legacyId     String?         @unique
-  createdAt    DateTime?       @default(now())
-  updatedAt    DateTime?       @updatedAt
-  isDeleted    DateTime?
-  createdBy    String?
-  updatedBy    String?
+  id              String          @id @default(uuid())
+  quotationNo     String
+  version         Int             @default(1)
+  isActive        Boolean         @default(true)
+  parentId        String?
+  leadId          String?
+  customerName    String
+  phone           String?
+  status          QuotationStatus @default(DRAFT)
+  tier            PriceTier       @default(RETAIL)
+  items           QuotationItem[]
+  subtotal        Int             @default(0)
+  discount        Int             @default(0)
+  total           Int             @default(0)
+  validUntil      DateTime?
+  statusReason    String?
+  agentId         String?
+  outlet          String?
+  company         Company         @default(OKASHASMART)
+  legacyId        String?         @unique
+  createdAt       DateTime?       @default(now())
+  updatedAt       DateTime?       @updatedAt
+  isDeleted       DateTime?
+  createdBy       String?
+  updatedBy       String?
   phoneNormalized String?
+  createdById     String?         @db.VarChar(36)
+  updatedById     String?         @db.VarChar(36)
+  deletedById     String?         @db.VarChar(36)
+
   @@unique([quotationNo, version])
   @@index([agentId])
   @@index([status])
@@ -1118,41 +1225,45 @@ model QuotationItem {
 }
 
 model SalesOrder {
-  id            String           @id @default(uuid())
-  orderNo       String           @unique
-  leadId        String?
-  quotationId   String?
-  customerName  String
-  phone         String?
-  city          String?
-  outlet        String?
-  address       String?
-  status        SalesOrderStatus @default(DRAFT)
-  items         SalesOrderItem[]
-  subtotal      Int              @default(0)
-  discount      Int              @default(0)
-  total         Int              @default(0)
-  channel       SalesChannel?
-  externalOrderNo String?        // e.g. Shopify order number (27125)
-  courier       String?          // PostEx / TCS / Leopards / self / outlet pickup
-  trackingNo    String?          // CN / tracking number
-  paymentType   PaymentType?     // COD / ADVANCE / PARTIAL
-  amountReceived Int?            // amount received so far (PKR)
-  area          String?          // delivery sub-locality
-  dispatchedAt  DateTime?
-  deliveredAt   DateTime?
-  reattemptCount Int             @default(0)
-  statusReason  String?
-  agentId       String?
-  company       Company          @default(OKASHASMART)
-  sourceFile    String?
-  legacyId      String?
-  createdAt     DateTime?        @default(now())
-  updatedAt     DateTime?        @updatedAt
-  isDeleted     DateTime?
-  createdBy     String?
-  updatedBy     String?
+  id              String           @id @default(uuid())
+  orderNo         String           @unique
+  leadId          String?
+  quotationId     String?
+  customerName    String
+  phone           String?
+  city            String?
+  outlet          String?
+  address         String?
+  status          SalesOrderStatus @default(DRAFT)
+  items           SalesOrderItem[]
+  subtotal        Int              @default(0)
+  discount        Int              @default(0)
+  total           Int              @default(0)
+  channel         SalesChannel?
+  externalOrderNo String? // e.g. Shopify order number (27125)
+  courier         String? // PostEx / TCS / Leopards / self / outlet pickup
+  trackingNo      String? // CN / tracking number
+  paymentType     PaymentType? // COD / ADVANCE / PARTIAL
+  amountReceived  Int? // amount received so far (PKR)
+  area            String? // delivery sub-locality
+  dispatchedAt    DateTime?
+  deliveredAt     DateTime?
+  reattemptCount  Int              @default(0)
+  statusReason    String?
+  agentId         String?
+  company         Company          @default(OKASHASMART)
+  sourceFile      String?
+  legacyId        String?
+  createdAt       DateTime?        @default(now())
+  updatedAt       DateTime?        @updatedAt
+  isDeleted       DateTime?
+  createdBy       String?
+  updatedBy       String?
   phoneNormalized String?
+  createdById     String?          @db.VarChar(36)
+  updatedById     String?          @db.VarChar(36)
+  deletedById     String?          @db.VarChar(36)
+
   @@unique([sourceFile, legacyId])
   @@index([agentId])
   @@index([status])
@@ -1179,27 +1290,31 @@ model SalesOrderItem {
 }
 
 model SalesReturn {
-  id           String       @id @default(uuid())
-  returnNo     String       @unique
-  orderId      String?
-  customerName String
-  phone        String?
-  city         String?
-  status       ReturnStatus @default(REPORTED)
-  reason       String
-  courier      String?
-  trackingNo   String?
-  items        ReturnItem[]
-  reportedAt   DateTime     @default(now())
-  agentId      String?
-  company      Company      @default(OKASHASMART)
-  legacyId     String?      @unique
-  createdAt    DateTime?    @default(now())
-  updatedAt    DateTime?    @updatedAt
-  isDeleted    DateTime?
-  createdBy    String?
-  updatedBy    String?
+  id              String       @id @default(uuid())
+  returnNo        String       @unique
+  orderId         String?
+  customerName    String
+  phone           String?
+  city            String?
+  status          ReturnStatus @default(REPORTED)
+  reason          String
+  courier         String?
+  trackingNo      String?
+  items           ReturnItem[]
+  reportedAt      DateTime     @default(now())
+  agentId         String?
+  company         Company      @default(OKASHASMART)
+  legacyId        String?      @unique
+  createdAt       DateTime?    @default(now())
+  updatedAt       DateTime?    @updatedAt
+  isDeleted       DateTime?
+  createdBy       String?
+  updatedBy       String?
   phoneNormalized String?
+  createdById     String?      @db.VarChar(36)
+  updatedById     String?      @db.VarChar(36)
+  deletedById     String?      @db.VarChar(36)
+
   @@index([status])
   @@index([city])
   @@index([agentId])

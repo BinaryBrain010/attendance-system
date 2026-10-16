@@ -1,9 +1,31 @@
 import { Prisma } from "@prisma/client";
 import { getCurrentTimeInPST } from "../../helper/date.helper";
 import { prisma as basePrisma } from "../database/prisma.client";
+import { getActorId } from "../context/requestContext";
+import { stampArgs } from "../audit/stamp";
+import { WRITE_OPS } from "../audit/auditModels";
 // import { tableNames } from "../static/staticData";
 
-const prisma = basePrisma.$extends({
+// Run 11 Part 2: apply the audit query extension FIRST so that the model-extension helpers below
+// (gpCreate/gpUpdate/gpSoftDelete, whose internal this.create/this.update must be stamped) run on a
+// client that already has the query hook. Direct prisma.x.create/update calls go through it too.
+const audited = basePrisma.$extends({
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }: any) {
+        if (WRITE_OPS.has(operation)) {
+          const actor = getActorId();
+          if (actor) {
+            try { stampArgs(model, operation, args, actor); } catch { /* never block a write on stamping */ }
+          }
+        }
+        return query(args);
+      },
+    },
+  },
+});
+
+const prisma = audited.$extends({
   model: {
     $allModels: {
       async gpSoftDelete(this: any, id: string) {

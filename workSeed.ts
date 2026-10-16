@@ -6,6 +6,7 @@
 import fs from "fs";
 import path from "path";
 import prisma from "./src/core/models/base.model";
+import { runAsSystem } from "./src/core/context/requestContext";
 
 const DB = process.env.DATABASE_URL || "";
 const host = (() => { try { return DB.split("://")[1].split("@").pop()!.split("/")[0].split(":")[0]; } catch { return ""; } })();
@@ -59,4 +60,4 @@ async function main() {
   console.log(`[workSeed] qa/_livefeatures.json rewritten (${names.length} features)`);
   await prisma.$disconnect();
 }
-main().catch((e) => { console.error("[workSeed] error", e); process.exit(1); });
+runAsSystem(() => main()).catch((e) => { console.error("[workSeed] error", e); process.exit(1); });

@@ -1,6 +1,7 @@
 import { Express } from 'express';
 import authentication from '../middleware/authentication';
 import requirePermission from '../middleware/rbac/requirePermission';
+import requestContext from '../core/context/contextMiddleware';
 
 class RoutesHelper {
 
@@ -14,7 +15,7 @@ class RoutesHelper {
             routes.forEach((route) => {
                     const routePath = this.generateRoutePath(route);
                     const router = new route().getRouter();
-                    app.use(routePath, authentication.authenticateToken, requirePermission, router);
+                    app.use(routePath, authentication.authenticateToken, requestContext, requirePermission, router);
             })
         } else {
             routes.forEach((route) => {

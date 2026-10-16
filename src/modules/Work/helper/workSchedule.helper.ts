@@ -6,15 +6,16 @@
 import schedule from "node-schedule";
 import prisma from "../../../core/models/base.model";
 import { notify, userIdsForEmployees, expectedReporters } from "../shared/workHelpers";
+import { runAsSystem } from "../../../core/context/requestContext";
 
 const REPORT_REMINDER_HOUR = 18; // configurable: when to remind employees who have not submitted
 
 class WorkSchedulerHelper {
   constructor() {
     // 08:00 daily: due-soon + overdue task reminders
-    schedule.scheduleJob("0 8 * * *", () => { this.taskReminders().catch((e) => console.error("[work] taskReminders error:", e?.message || e)); });
+    schedule.scheduleJob("0 8 * * *", () => { runAsSystem(() => this.taskReminders()).catch((e) => console.error("[work] taskReminders error:", e?.message || e)); });
     // configured hour: daily-report missing reminder
-    schedule.scheduleJob(`0 ${REPORT_REMINDER_HOUR} * * *`, () => { this.reportMissing().catch((e) => console.error("[work] reportMissing error:", e?.message || e)); });
+    schedule.scheduleJob(`0 ${REPORT_REMINDER_HOUR} * * *`, () => { runAsSystem(() => this.reportMissing()).catch((e) => console.error("[work] reportMissing error:", e?.message || e)); });
   }
 
   private async taskReminders() {

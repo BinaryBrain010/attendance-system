@@ -73,6 +73,7 @@ import DailyReportRoutes from "../../modules/Work/DailyReport/routes/dailyReport
 import NotificationRoutes from "../../modules/Work/Notification/routes/notification.routes";
 import WorkReportRoutes from "../../modules/Work/Report/routes/workReport.routes";
 import WorkSchedulerHelper from "../../modules/Work/helper/workSchedule.helper";
+import { ensureSystemUser } from "../audit/systemUser";
 
 class App {
   private app: Express;
@@ -90,6 +91,7 @@ class App {
     TokenCleanHelper;
     AttendanceSchedulerHelper;
     WorkSchedulerHelper;
+    ensureSystemUser();
   }
 
   /**

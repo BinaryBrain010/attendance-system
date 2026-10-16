@@ -7,6 +7,7 @@ import * as path from "path";
 import prisma from "./src/core/models/base.model";
 import visitorModel from "./src/modules/Frontdesk/Visitor/models/visitor.model";
 import { VisitorExcelUtility } from "./src/excel/visitor";
+import { runAsSystem } from "./src/core/context/requestContext";
 
 /**
  * One-off backfill script: imports the historical "Reception Visitors List" workbook
@@ -76,7 +77,7 @@ async function main() {
   await (prisma as any).$disconnect?.();
 }
 
-main().catch(async (err) => {
+runAsSystem(() => main()).catch(async (err) => {
   console.error("❌ Import failed:", err);
   try {
     await (prisma as any).$disconnect?.();

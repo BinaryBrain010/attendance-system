@@ -12,6 +12,7 @@
  * remove the placeholder. Run with --allow-remote only as part of PROD_DEPLOY_PLAN.
  */
 import prisma from "./src/core/models/base.model";
+import { runAsSystem } from "./src/core/context/requestContext";
 
 const DB = process.env.DATABASE_URL || "";
 const host = (() => { try { return DB.split("://")[1].split("@").pop()!.split("/")[0].split(":")[0]; } catch { return ""; } })();
@@ -74,4 +75,4 @@ async function main() {
   console.log("owned returns before/after:", ownedBefore.returns, "->", ownedAfter.returns);
   await prisma.$disconnect();
 }
-main().catch((e) => { console.error(e); process.exit(1); });
+runAsSystem(() => main()).catch((e) => { console.error(e); process.exit(1); });

@@ -11,6 +11,7 @@ import {
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import AttendanceService from "../services/attendnace.service";
 import { getCurrentTimeInPST } from "../../../../helper/date.helper";
+import { runAsSystem } from "../../../../core/context/requestContext";
 
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
@@ -41,7 +42,7 @@ class AttendanceSchedulerHelper {
   constructor() {
     this.attendanceSchedule = schedule.scheduleJob(
       "*/1 * * * *", // Runs every minute
-      this.cleanup.bind(this)
+      () => { runAsSystem(() => this.cleanup()).catch((e) => console.error("Attendance cron error:", e?.message || e)); }
     );
   }
 

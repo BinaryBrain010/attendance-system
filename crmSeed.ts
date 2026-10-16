@@ -12,6 +12,7 @@
 import fs from "fs";
 import path from "path";
 import prisma from "./src/core/models/base.model";
+import { runAsSystem } from "./src/core/context/requestContext";
 
 // ---- hard local guard (prod run is an explicit opt-in: --allow-remote, per PROD_DEPLOY_PLAN) ----
 const DB = process.env.DATABASE_URL || "";
@@ -288,4 +289,4 @@ async function main() {
   await prisma.$disconnect();
   console.log("\n[crmSeed] done.");
 }
-main().catch((e) => { console.error(e); process.exit(1); });
+runAsSystem(() => main()).catch((e) => { console.error(e); process.exit(1); });

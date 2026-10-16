@@ -29,6 +29,46 @@ scripts. Key findings that shape Parts 2-5:
   Notification, ActivityLog); line-item children + pure-join tables audited via their parent.
 - Known gap flagged: raw-SQL Shift-timetable INSERT/UPDATE (shift.service.ts) and reset.helper
   bypass the client extension; listed for a per-call-site decision in Part 3.
+- Commit (backend): 83bf45f.
+
+### Part 2 - Audit fields on every business model + central stamping  [DONE]
+Backup first: qa/backups/run11_pre_20261016_165211.dump (pg_dump -Fc of gatePassSystem, 211 MB).
+- Schema: added createdById/updatedById/deletedById (VarChar(36), nullable) to 31 business models,
+  createdById-only to the 3 append-only feeds (LeadActivity, TaskComment, DailyReportComment),
+  updatedById-only to SystemConfig. Skipped pure-join and line-item/children and
+  session/log/noise tables. Applied via `prisma db push` (project's workflow); the formal
+  migration is generated the Run-10 way in Part 5.
+- Design decision (documented in AUDIT_INVENTORY): kept isDeleted DateTime? as the delete marker
+  (it is the deletedAt), added deletedById beside it (no rename). createdById/updatedById/
+  deletedById are plain scalar columns with NO Prisma relation and NO hard FK, exactly matching
+  the codebase's existing createdBy/updatedBy convention. This avoids ~90 back-relation fields on
+  User and db-push/migrate drift from constraints absent in schema.prisma. "Relation to User" is
+  satisfied logically: ids resolve to User/Employee via a lookup helper (Part 4). If true FKs or
+  navigable relations are wanted, that is a follow-up.
+- Request context: src/core/context/requestContext.ts (AsyncLocalStorage carrying
+  userId/ip/userAgent/platform/requestId, plus runAsSystem / runWithContext and the fixed
+  SYSTEM_USER_ID). contextMiddleware.ts seeds it per request; wired in routes.helper.ts right
+  after authenticateToken and before requirePermission.
+- Central stamping: src/core/audit/{auditModels,stamp}.ts + a Prisma `query` $allOperations
+  extension on base.model.ts. Ordering matters: the query extension is applied BEFORE the model
+  extension so the gp* helpers' internal this.create/this.update are stamped too (verified: a
+  first attempt with query-after-model left gpUpdate's updatedById null). The actor from context
+  always WINS (overwrites any createdById/updatedById/deletedById in the body), closing the
+  mass-assignment hole on non-whitelisted endpoints. Null actor (no context) leaves columns null.
+- System user: src/core/audit/systemUser.ts ensureSystemUser() upserts the fixed-id "system" User
+  at boot (server.ts). Crons wrapped in runAsSystem (Work + Attendance schedulers); standalone
+  seed/import scripts (crmSeed, workSeed, seedRoles, importReceptionVisitors, setupOfficeEmployees,
+  seedOnlineOrdersAgent) wrap main() in runAsSystem. Service-level importers run from controllers
+  (already in a request context), so they attribute to the acting admin.
+- Backfill: qa/backfillAuditIds.ts (idempotent, --dry supported) populates ONLY the new id
+  columns from existing legacy values that are real User ids. Applied: createdById 20099
+  (Employee 40, Attendance 16351, Visitor 3704, PriceList 2, LeadActivity 2), updatedById 10975
+  (Employee 90, Attendance 10881, SalesAgent 1, Lead 2, SalesReturn 1). No business field touched;
+  rows with no legacy actor stay null -> "System (legacy)". deletedById has no legacy source.
+- Verified: stamping works for API create (createdById=caller), gp* update (updatedById=caller),
+  gp* soft delete (deletedById=caller, isDeleted set), runAsSystem (createdById=System),
+  no-context (null). Gates: tsc clean, CRM harness 176/0, qa:work 27/0. Real counts intact
+  261/68/62/0, 59 holidays; System user present.
 - Commit (backend): see hash below.
 
 ## Run 10 (2026-10-16, Work migration, daily-report scope, rollout)
