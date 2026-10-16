@@ -140,6 +140,43 @@ partial history into one baseline migration generated from the current schema
 (`prisma migrate diff --from-empty --to-schema-datamodel schema.prisma --script`), archive the old
 folders, and re-baseline. Until then, path (A) or (B) above is how Work reaches prod.
 
+### 2.4 Audit fields + AuditLog (Run 11) — fully additive, no drops
+
+Run 11 adds the audit actor columns (`createdById`/`updatedById`/`deletedById`, VARCHAR(36), nullable)
+to 31 business models + `createdById` to the 3 append-only feeds + `updatedById` to `SystemConfig`,
+and the new `AuditLog` table (+ 4 indexes). There are **no drops and no column type changes** — the
+§2.2 additive-only gate passes cleanly (unlike §2.3). The columns are plain scalars with NO FK and NO
+Prisma relation, matching the codebase's existing `createdBy`/`updatedBy` convention (see
+docs/AUDIT_INVENTORY.md for why: avoids ~90 back-relations on User and db-push/migrate drift).
+
+A reviewed migration is committed at
+`prisma/migrations/20261017090000_add_audit_fields_and_log/migration.sql`. It was generated the Run-10
+way — diffing a restored **pre-Run-11** dump against the schema:
+```bash
+# restore the pre-Run-11 dump into a scratch DB (gatepass_shadow), then:
+npx prisma migrate diff --from-url "postgresql://.../gatepass_shadow" \
+  --to-schema-datamodel prisma/schema.prisma --script > run11.sql
+```
+Counts in the file: 33 `createdById`, 32 `updatedById`, 31 `deletedById` additions + `CREATE TABLE
+"AuditLog"` + 4 indexes. Validated by applying it to the pre-Run-11 scratch DB (exit 0; Lead gained
+the 3 columns, AuditLog + indexes created). Scratch DB dropped afterward.
+
+**Apply on prod:** same two paths as §2.3. Under **(A) db push**, the §2.1 diff equals this migration
+(all additive) — just `db push`. Under **(B) Prisma Migrate**, this migration applies on top of the
+Run-10 baseline; after baselining the existing migrations it is pending and `migrate deploy` adds it.
+Locally: baselined with `migrate resolve --applied 20261017090000_add_audit_fields_and_log` and
+`migrate status` prints "Database schema is up to date!" (34 migrations). The §2.3 from-scratch
+limitation is unchanged (pre-existing Shift drift); this migration does not add to it.
+
+**No backfill required on prod for correctness** — existing rows keep NULL actor columns and render as
+"System (legacy)". Optionally run `qa/backfillAuditIds.ts` (idempotent, `--dry` supported) to populate
+the new id columns from the legacy `createdBy`/`updatedBy` strings where those are real User ids; it
+only fills the new columns and never changes a business field.
+
+**Audit runtime flags:** `AUDIT_LOG=0` disables audit logging entirely; `AUDIT_ENFORCE=0` makes a
+failed audit insert non-fatal (the business write still commits). Default (both on): the AuditLog row
+is written in the same transaction as the business write, so a write never commits without its log.
+
 ---
 
 ## 3. Deploy the backend (RBAC_ENFORCE=off)
@@ -236,6 +273,30 @@ holds after a regenerate.
 4. §5 — seed/refresh roles so the right people get `work.*` (see the table and the work tiers below).
 5. §9 — flip `RBAC_ENFORCE=on` as usual.
 
+### 4.4 🖥️ Audit module features (`seedAuditFeatures.ts`) — Run 11
+
+Run 11 adds the `audit.*` feature tree (admin-only read of the central Audit Log). Seed it the same
+idempotent way:
+```bash
+npx ts-node seedAuditFeatures.ts --allow-remote   # upserts audit.* / audit.read.* / audit.export.*
+```
+It `upsert`s each feature and, locally, rewrites `qa/_livefeatures.json`. The committed
+`featureMap.json` maps the `/auditLog` routes: `/auditLog/get` + `/auditLog/export` → `audit.read.*`
+(admin only); `/auditLog/entity` + `/auditLog/actors` → token (any logged-in user; the service
+enforces that the caller can read the specific record), so §4.2's `not-registered: 0` gate still holds.
+
+**Order for the Audit module on prod** (fits inside the plan above):
+1. §2.4 — apply the audit schema (additive; `db push` or `migrate deploy` the
+   `20261017090000_add_audit_fields_and_log` migration).
+2. §4.4 — `seedAuditFeatures.ts --allow-remote` to register `audit.*`.
+3. §4.2 — regenerate/verify featureMap (`not-registered: 0`).
+4. §5 — the **Admin** role recipe already includes `audit.*`; re-run `seedRoles.ts` so admins get it.
+   No other role gets audit read (it is admin-only). Per-record History tabs and the created/updated-by
+   footers need no feature (token-gated + record-read-scoped), so every user already sees history for
+   records they can read.
+5. §9 — enforcement rollout as usual. Audit logging itself is independent of `RBAC_ENFORCE` and is on
+   by default (`AUDIT_LOG`/`AUDIT_ENFORCE` flags in §2.4).
+
 ---
 
 ## 5. Roles on prod
@@ -252,7 +313,7 @@ upserts the `Role` row and its `FeaturePermission`). Eight roles ship:
 | **Order Ops** | `crm.order.*` + `crm.return.*`, **no lead access** | ALL | — | not required |
 | **Frontdesk** | visitor management (`visitor.*`) + `employee.read.*` | — | — | — |
 | **HR** | employee / attendance / leave / shift / holiday / unit | — | — | — |
-| **Admin** | all modules incl. `work.*` (short of the hardcoded god account) | ALL | ALL | — |
+| **Admin** | all modules incl. `work.*` + `audit.*` (short of the hardcoded god account) | ALL | ALL | — |
 
 Exact feature lists live in `roleRecipes.ts` (single source of truth). The app-module umbrellas
 (`appModules.crm.*`, `appModules.work.*`, `appModules.frontdesk.*`, …) are included in each recipe

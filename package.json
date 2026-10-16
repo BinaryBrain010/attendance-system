@@ -25,7 +25,8 @@
     "qa:featuremap": "ts-node qa/featuremap2.ts",
     "qa:impact": "ts-node qa/impact.ts",
     "tsc": "tsc -w",
-    "qa:work": "ts-node qa/work.ts"
+    "qa:work": "ts-node qa/work.ts",
+    "qa:audit": "ts-node qa/audit.ts"
   },
   "author": "ahad",
   "license": "ISC",

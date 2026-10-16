@@ -143,7 +143,35 @@ Admin UI (src/modules/audit):
 - Note: tasks/teams/daily-reports/visitors/leave are list-style (no per-record detail route) and gate
   passes have no admin UI, so the drop-in AuditHistory/AuditFooter components are ready but not placed
   there; user/attendance-request details can take the same two-line wiring if wanted.
-- Commit (backend): see hash below. Commit (admin): see hash below.
+- Commit (backend): d3bb49e. Commit (admin): bed5c33.
+
+### Part 5 - Proof  [DONE]
+- Audit harness qa/audit.ts (qa:audit, 19/0): create/update/delete/restore each stamp the actor
+  columns AND write exactly one AuditLog row with the right user/module/action; secrets masked
+  (password never stored); runAsSystem (cron/import path) attributed to the System user; History-tab
+  API scoped (god sees a lead's history, a user without crm.lead.read gets 403, non-admin denied the
+  admin list). Runs with harness-process audit off (so its own scaffolding/cleanup don't pollute) and
+  toggles it on only for the one direct System write it verifies.
+- Migration (Run-10 way): restored the pre-Run-11 dump into scratch gatepass_shadow, generated
+  prisma/migrations/20261017090000_add_audit_fields_and_log via migrate diff --from-url ... --script.
+  Fully additive (33 createdById + 32 updatedById + 31 deletedById + CREATE AuditLog + 4 indexes, 0
+  drops). Validated by applying to the pre-Run-11 scratch (exit 0, columns + table created). Baselined
+  on dev (migrate resolve --applied); migrate status "Database schema is up to date!" (34 migrations).
+  Scratch DB dropped. PROD_DEPLOY_PLAN §2.4 (migration + flags + optional backfill) and §4.4
+  (seedAuditFeatures + rollout order) added; Admin role row notes audit.*.
+- Load test (same style as Run 8, write workload since audit only affects writes; cascade-free lead
+  creates, 20 concurrent, 2000 writes). Audit OFF: mean 28.0ms p50 27 p95 37.8 p99 47.4, 711 req/s.
+  Audit ON: mean 40.7ms p50 38.5 p95 50.6 p99 87.6, 490 req/s. So the same-transaction audit insert
+  costs ~+13ms p95 on a pure-write workload; reads are unaffected so real mixed-traffic impact is far
+  smaller. 0 errors both runs. (First attempt used /holiday/create, which cascades ~220 attendance
+  rows per call and blew up the measurement + left 449,850 attendance rows; found and purged that
+  residue, then switched to the cascade-free lead write.)
+- Final gates (all green): backend tsc clean; prisma migrate status clean; CRM 176/0; qa:work 27/0;
+  qa:audit 19/0; qa:rbac Pass 306 / Fail 1 (pre-existing T0278 unit-scoping gap) / Blocked 3;
+  qa:cleanup zero residue (AuditLog 0, QA users/employees/teams 0); admin next build clean (52 pages
+  incl /admin/settings/audit-log). Real counts intact: leads 261, orders 68, returns 62, quotations
+  0, holidays 59.
+- Commit (backend): see hash below.
 
 ## Run 10 (2026-10-16, Work migration, daily-report scope, rollout)
 
