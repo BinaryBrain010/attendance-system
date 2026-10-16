@@ -1,3 +1,7 @@
+// Functional/RBAC harness: its own prisma-direct data churn must not pollute the audit trail
+// (server-side API writes still audit; those rows are orphan-cleaned by qa:cleanup). Read lazily.
+process.env.AUDIT_LOG = "0";
+
 /**
  * Work module harness: functional + RBAC coverage for Teams, Tasks, Daily reports, Notifications and
  * Reports. Self-cleaning. Local only.

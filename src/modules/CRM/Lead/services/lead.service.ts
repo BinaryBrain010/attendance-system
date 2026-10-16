@@ -163,13 +163,16 @@ class LeadService {
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
     assertRowInScope(scope, lead.agentId, "Lead");
-    const [acts, audit] = await Promise.all([
+    const [acts, legacy, audit] = await Promise.all([
       prisma.leadActivity.findMany({ where: { leadId: id, isDeleted: null } }),
       prisma.activityLog.findMany({ where: { entityType: "Lead", entityId: id }, orderBy: { createdAt: "desc" } }),
+      // Run 11: central audit field-change entries for this lead, shown alongside the activity feed.
+      prisma.auditLog.findMany({ where: { entity: "Lead", entityId: id }, orderBy: { createdAt: "desc" }, take: 200 }),
     ]);
     const merged = [
       ...acts.map((a) => ({ source: "activity", at: a.occurredAt, type: a.type, outcome: a.outcome, notes: a.notes, nextFollowUpAt: a.nextFollowUpAt })),
-      ...audit.map((x) => ({ source: "audit", at: x.createdAt, action: x.action, description: x.description, metadata: x.metadata })),
+      ...legacy.map((x) => ({ source: "activity-log", at: x.createdAt, action: x.action, description: x.description, metadata: x.metadata })),
+      ...audit.map((x) => ({ source: "audit", at: x.createdAt, action: x.action, changes: x.changes, userId: x.userId })),
     ].sort((a, b) => new Date(b.at as any).getTime() - new Date(a.at as any).getTime());
     return merged;
   }

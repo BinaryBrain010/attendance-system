@@ -10,6 +10,7 @@
  * cleaning report is returned; pass dryRun=false to persist.
  */
 import prisma from "../../../../../core/models/base.model";
+import { logEvent } from "../../../../../core/audit/event";
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = []; let i = 0, f = "", row: string[] = [], q = false;
@@ -145,6 +146,7 @@ class ShopifyImportService {
       }
     }
     result.persisted = { products: P, variants: V, prices: PR, images: IM };
+    await logEvent({ module: "CRM", entity: "Product", action: "IMPORT", changes: { source: "shopify", products: P, variants: V, prices: PR, images: IM } });
     return result;
   }
 }

@@ -62,7 +62,7 @@ class SalesReturnService {
     if (!h.reason || !String(h.reason).trim()) throw new AppError(400, "A reason is required to report a return");
     h.agentId = resolveAssignment(scope, h.agentId);
     const returnNo = h.returnNo || (await nextReturnNo());
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const r = await tx.salesReturn.create({
         data: { returnNo, orderId: h.orderId ?? null, customerName: h.customerName, phone: h.phone ?? null, phoneNormalized: normalizePhone(h.phone), city: h.city ?? null,
           status: "REPORTED", reason: h.reason, courier: h.courier ?? null, trackingNo: h.trackingNo ?? null, agentId: h.agentId ?? null,
@@ -82,7 +82,7 @@ class SalesReturnService {
     if (!["DISPATCHED", "DELIVERED"].includes(order.status)) throw new AppError(409, `Only a DISPATCHED/DELIVERED order can be returned (it is ${order.status})`);
     const agentId = resolveAssignment(scope, order.agentId ?? null);
     const returnNo = await nextReturnNo();
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const r = await tx.salesReturn.create({
         data: { returnNo, orderId: order.id, customerName: order.customerName, phone: order.phone, phoneNormalized: normalizePhone(order.phone), city: order.city, status: "REPORTED",
           reason, courier: order.courier, trackingNo: order.trackingNo, agentId, company: order.company, createdBy: userId },

@@ -69,6 +69,48 @@ Backup first: qa/backups/run11_pre_20261016_165211.dump (pg_dump -Fc of gatePass
   gp* soft delete (deletedById=caller, isDeleted set), runAsSystem (createdById=System),
   no-context (null). Gates: tsc clean, CRM harness 176/0, qa:work 27/0. Real counts intact
   261/68/62/0, 59 holidays; System user present.
+- Commit (backend): 3eeb712.
+
+### Part 3 - Central AuditLog  [DONE]
+- Schema: new AuditLog model (module, entity, entityId, action, changes JsonB, userId, ip,
+  userAgent, platform, requestId, createdAt) with indexes on (entity, entityId), userId,
+  createdAt, action. Applied via db push (formal migration generated in Part 5).
+- Writer (src/core/audit/auditWriter.ts): moduleFor map, actionFor (CREATE/UPDATE/DELETE/RESTORE/
+  STATUS_CHANGE/ASSIGN/PERMISSION_CHANGE), diffChanges (only changed fields, before+after),
+  loadBefore (pre-image), masking (password/token/otp/secret/signature/faceDescriptor -> ***;
+  large/binary fields image/specs/config/previousUpdates/permissions etc -> [redacted]; strings
+  >1000 chars -> [large]). Bulk ops (createMany/updateMany/deleteMany) write ONE row with
+  {filter, count}. No-op UPDATEs (empty diff) are skipped.
+- Same-transaction guarantee: the audit extension in base.model.ts writes the AuditLog row on the
+  SAME tx as the business write. Two paths: (a) writes outside a caller tx open one raw
+  (basePrisma) tx and run op+before+audit together (args already stamped, raw delegate does not
+  re-enter the hook -> no recursion); (b) a service's own prisma.$transaction is wrapped by an
+  overridden $transaction (client extension) that stashes the tx in AsyncLocalStorage, so writes
+  inside it audit on that same tx and the caller's atomicity is preserved. Verified: a throwing
+  caller tx rolls back BOTH the write and its audit row. AUDIT_LOG=0 disables logging (read
+  lazily); AUDIT_ENFORCE=0 makes a failed audit non-fatal (default: audit failure rolls the write
+  back, so no write without its log).
+- Excluded tables (no audit): BlacklistToken, LoggedInUsers, AttendanceScheduler, Notification,
+  ActivityLog, AuditLog (session/token/log/noise).
+- Explicit events (src/core/audit/event.ts logEvent): LOGIN / LOGIN_FAILED / LOGOUT in the auth
+  controller (ip/ua/platform passed explicitly since login runs before the context middleware);
+  EXPORT in the CRM report controller; IMPORT in leadImport/returnImport/shopifyImport. RBAC grant
+  writes (FeaturePermission, Role, Group, UserRole, GroupRole, UserGroup) are auto-classified as
+  PERMISSION_CHANGE; TaskAssignee/TaskWatcher and agentId changes as ASSIGN.
+- CRM timeline: lead.service.timeline now merges AuditLog field-change entries alongside the
+  LeadActivity feed and the legacy ActivityLog, newest first. previousUpdates and the activity
+  feed are untouched and still work.
+- Fix: the $transaction override widened the tx callback type, so ~8 existing services' tx/prisma
+  callback params were annotated `: any` (noImplicitAny). No behaviour change.
+- qa:cleanup extended to clear AuditLog residue: orphaned rows (business row hard-deleted),
+  QA-user rows, harness report-export rows, QA auth-event rows, and bulk-op rows for child/join
+  entities + parent-orphaned bulk rows. qa:cleanup is local-only so it never touches a prod trail.
+  The functional harnesses (qa/crm.ts, qa/work.ts) set AUDIT_LOG=0 for their own prisma-direct
+  churn (server-side API writes still audit and are orphan-cleaned).
+- Verified end to end: Holiday create/update/soft-delete logged with before/after and actor; User
+  create masks the password; Lead create (CRM) + STATUS_CHANGE logged; FeaturePermission ->
+  PERMISSION_CHANGE; bulk filter+count; LOGIN_FAILED (with ip/platform) and EXPORT logged.
+  Gates: tsc clean, CRM 176/0, Work 27/0, qa:cleanup AuditLog residue 0, real counts 261/68/62/0.
 - Commit (backend): see hash below.
 
 ## Run 10 (2026-10-16, Work migration, daily-report scope, rollout)

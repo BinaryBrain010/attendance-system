@@ -285,7 +285,7 @@ const attendanceModel = prisma.$extends({
       // Method to mark attendance
       async markAttendance(attendanceData: Attendance & { createdByUserId?: string; updatedByUserId?: string; createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string }) {
         // Use database transaction to prevent race conditions
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: any) => {
           // Extract audit trail fields and leave-related fields
           const { createdByUserId, updatedByUserId, createLeaveRequest, leaveType, leaveReason, ...attendanceFields } = attendanceData as any;
           const shouldClearTimes = (status?: string | null) =>

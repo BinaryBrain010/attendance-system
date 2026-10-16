@@ -7,6 +7,10 @@
  * roles/groups are "QA_..."; QA records carry QA_ name prefixes. Record ids from _created.json are
  * also removed as a complement. Local-only (lib.ts refuses a non-localhost DATABASE_URL).
  */
+// Cleanup is a maintenance sweep, not business activity: do not let its own deletes write AuditLog
+// rows. The audit hook reads this env lazily, so setting it here (before any DB op) disables logging
+// for this process. Must be set before base.model's hook runs.
+process.env.AUDIT_LOG = "0";
 import fs from "fs";
 import path from "path";
 import { api, mintGodToken } from "./lib";
@@ -134,6 +138,52 @@ async function main() {
       await run("team", () => prisma.team.deleteMany({ where: { id: { in: qaTeamIds } } }));
     }
     if (qaUserIds.length) await run("notification", () => prisma.notification.deleteMany({ where: { userId: { in: qaUserIds } } }));
+
+    // AuditLog residue (Run 11). Rows attributed to QA users; the harness report-export rows
+    // (entity "Report"); and orphaned rows whose business row was hard-deleted above (real entities
+    // are soft-deleted so they still exist and their audit rows are kept). NOT EXISTS is evaluated in
+    // the DB so no id lists are pulled into node.
+    if (qaUserIds.length) await run("auditLog(qaUser)", () => prisma.auditLog.deleteMany({ where: { userId: { in: qaUserIds } } }));
+    await run("auditLog(report-export)", () => prisma.auditLog.deleteMany({ where: { entity: "Report" } }));
+    // QA auth events (failed/success logins from tests using qa* or *@test.local usernames).
+    await run("auditLog(qa-auth)", () => prisma.$executeRawUnsafe(
+      `DELETE FROM "AuditLog" WHERE action IN ('LOGIN','LOGOUT','LOGIN_FAILED') AND (changes->>'username' ILIKE 'qa%' OR changes->>'username' ILIKE '%@test.local')`,
+    ).then((count: number) => ({ count })));
+    const AUDIT_ENTITIES = [
+      "Customer", "Item", "GatePass", "User", "Group", "Role", "FeaturePermission", "Employee",
+      "Attendance", "LeaveRequest", "AttendanceRequest", "LeaveConfiguration", "LeaveAllocation",
+      "Shift", "ShiftAssignment", "Team", "Task", "DailyReport", "Holiday", "Unit", "Visitor",
+      "Category", "Brand", "Product", "PriceList", "Bundle", "SalesAgent", "Lead", "LeadActivity",
+      "Quotation", "QuotationItem", "SalesOrder", "SalesOrderItem", "SalesReturn", "ReturnItem",
+      "TaskComment", "DailyReportComment",
+    ];
+    for (const entity of AUDIT_ENTITIES) {
+      await run(`auditLog(orphan)`, async () => {
+        const n: number = await prisma.$executeRawUnsafe(
+          `DELETE FROM "AuditLog" a WHERE a.entity = $1 AND a."entityId" IS NOT NULL ` +
+          `AND NOT EXISTS (SELECT 1 FROM "${entity}" t WHERE t.id = a."entityId")`,
+          entity,
+        );
+        return { count: n };
+      });
+    }
+    // Bulk-op audit rows (entityId null, filter+count) for child/join entities: these are always part
+    // of a parent operation and carry no standalone audit value, so harness churn leaves them behind.
+    // qa:cleanup is local-only (lib refuses a non-local DB), so this never touches a prod audit trail.
+    await run("auditLog(bulk-child)", () => prisma.auditLog.deleteMany({
+      where: { entityId: null, entity: { in: [
+        "TeamMember", "TaskAssignee", "TaskWatcher", "TaskChecklistItem", "QuotationItem",
+        "SalesOrderItem", "ReturnItem", "UserRole", "GroupRole", "UserGroup", "FeaturePermission",
+        "UnitEmployee", "BundleItem", "ProductVariant", "ProductImage",
+      ] } },
+    }));
+    // Bulk-op rows whose filter targets a now-deleted parent (QA price/quotation churn).
+    await run("auditLog(bulk-orphan)", () => prisma.$executeRawUnsafe(
+      `DELETE FROM "AuditLog" a WHERE a."entityId" IS NULL AND a.changes ? 'filter' AND (` +
+      `(a.entity='PriceList' AND a.changes->'filter'->>'productId' IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "Product" p WHERE p.id = a.changes->'filter'->>'productId')) OR ` +
+      `(a.entity='Quotation' AND a.changes->'filter'->>'quotationNo' IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "Quotation" q WHERE q."quotationNo" = a.changes->'filter'->>'quotationNo'))` +
+      `)`,
+    ).then((count: number) => ({ count })));
 
     await prisma.$disconnect().catch(() => {});
   } catch (e: any) {

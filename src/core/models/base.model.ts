@@ -1,10 +1,21 @@
 import { Prisma } from "@prisma/client";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { getCurrentTimeInPST } from "../../helper/date.helper";
 import { prisma as basePrisma } from "../database/prisma.client";
 import { getActorId } from "../context/requestContext";
 import { stampArgs } from "../audit/stamp";
-import { WRITE_OPS } from "../audit/auditModels";
+import { WRITE_OPS, AUDIT_EXCLUDE } from "../audit/auditModels";
+import { writeAudit, loadBefore, lowerFirst } from "../audit/auditWriter";
 // import { tableNames } from "../static/staticData";
+
+// Run 11 Part 2/3. Audit toggles (default on). AUDIT_LOG=0 disables logging entirely;
+// AUDIT_ENFORCE=0 makes a failed audit insert non-fatal (write still commits) for emergencies.
+// Read lazily so a maintenance script (e.g. qa/cleanup.ts) can set AUDIT_LOG=0 at startup.
+const isAuditOn = () => process.env.AUDIT_LOG !== "0";
+const AUDIT_ENFORCE = process.env.AUDIT_ENFORCE !== "0";
+
+// Carries the active transaction client so the audit row is written on the SAME tx as the write.
+const txAls = new AsyncLocalStorage<{ tx: any }>();
 
 // Run 11 Part 2: apply the audit query extension FIRST so that the model-extension helpers below
 // (gpCreate/gpUpdate/gpSoftDelete, whose internal this.create/this.update must be stamped) run on a
@@ -13,13 +24,47 @@ const audited = basePrisma.$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }: any) {
-        if (WRITE_OPS.has(operation)) {
+        const isWrite = WRITE_OPS.has(operation);
+        if (isWrite) {
           const actor = getActorId();
           if (actor) {
             try { stampArgs(model, operation, args, actor); } catch { /* never block a write on stamping */ }
           }
         }
-        return query(args);
+        // Not an audited write -> pass straight through.
+        if (!isAuditOn() || !isWrite || AUDIT_EXCLUDE.has(model)) return query(args);
+
+        const store = txAls.getStore();
+        if (store && store.tx) {
+          // Inside a transaction we are tracking (caller opened one): run the op via the bound
+          // executor and log on the same tx. loadBefore/writeAudit use the extended tx client;
+          // their reads/inserts pass through the hook harmlessly (reads + excluded AuditLog).
+          let before: any = null;
+          try { before = await loadBefore(store.tx, model, operation, args); } catch { /* best-effort pre-image */ }
+          const result = await query(args);
+          try {
+            await writeAudit(store.tx, { model, operation, args, before, result });
+          } catch (e: any) {
+            if (AUDIT_ENFORCE) throw e; // no write without its log: roll the tx back
+            console.error("writeAudit failed (non-enforced):", e?.message || e);
+          }
+          return result;
+        }
+        // Not in a tracked tx: open one on the RAW client and run the op + before + audit on that
+        // raw tx. args are already stamped above, and a raw tx delegate does NOT re-enter this hook,
+        // so there is no recursion. The write and its audit row commit atomically.
+        return basePrisma.$transaction(async (rawTx: any) => {
+          let before: any = null;
+          try { before = await loadBefore(rawTx, model, operation, args); } catch { /* best-effort */ }
+          const result = await rawTx[lowerFirst(model)][operation](args);
+          try {
+            await writeAudit(rawTx, { model, operation, args, before, result });
+          } catch (e: any) {
+            if (AUDIT_ENFORCE) throw e;
+            console.error("writeAudit failed (non-enforced):", e?.message || e);
+          }
+          return result;
+        });
       },
     },
   },
@@ -274,4 +319,19 @@ const prisma = audited.$extends({
   },
 });
 
-export default prisma;
+// Override $transaction so that when a service opens its own interactive transaction, writes inside
+// it are audited on THAT tx (preserving the caller's atomicity) instead of each opening a new one.
+const prismaFinal = prisma.$extends({
+  client: {
+    $transaction(this: any, ...a: any[]) {
+      const arg = a[0];
+      if (typeof arg === "function") {
+        return (prisma as any).$transaction((tx: any) => txAls.run({ tx }, () => arg(tx)), a[1]);
+      }
+      // Batch array form: delegate unchanged (each op self-audits in its own tx).
+      return (prisma as any).$transaction(...a);
+    },
+  },
+});
+
+export default prismaFinal;

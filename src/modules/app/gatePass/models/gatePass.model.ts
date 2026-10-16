@@ -17,7 +17,7 @@ const gatePassModel = prisma.$extends({
         gatePass: GatePass,
         gatePassItem: CreateGatePassItem[]
       ) {
-        const transaction = await prisma.$transaction(async (prisma) => {
+        const transaction = await prisma.$transaction(async (prisma: any) => {
           try {
             const createdGatePass = await prisma.gatePass.gpCreate(gatePass);
             if (createdGatePass) {

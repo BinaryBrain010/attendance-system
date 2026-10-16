@@ -79,7 +79,7 @@ class SalesOrderService {
     const priced = await priceLines(items, h.tier ?? "RETAIL");
     const { lines, subtotal, total } = computeTotals(priced, h.discount || 0);
     const orderNo = h.orderNo || (await nextOrderNo());
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const o = await tx.salesOrder.create({
         data: {
           orderNo, leadId: h.leadId ?? null, quotationId: h.quotationId ?? null, customerName: h.customerName, phone: h.phone ?? null, phoneNormalized: normalizePhone(h.phone),
@@ -130,7 +130,7 @@ class SalesOrderService {
     assertRowInScope(scope, existing.agentId, "Order");
     const { items, ...h } = data;
     if ("agentId" in h) h.agentId = resolveAssignment(scope, h.agentId);
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       let subtotal = existing.subtotal, total = existing.total;
       if (items) {
         const priced = await priceLines(items, h.tier ?? "RETAIL");

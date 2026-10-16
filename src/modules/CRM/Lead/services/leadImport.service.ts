@@ -15,6 +15,7 @@
  *   8. Full addresses go to `address`; short localities to `area`.
  */
 import prisma from "../../../../core/models/base.model";
+import { logEvent } from "../../../../core/audit/event";
 import { normalizePhone } from "../../shared/phone";
 
 export interface SourceFile { name: string; csv: string; }
@@ -322,7 +323,7 @@ class LeadImportService {
 
     // ---- persist: transactional, with before/after counts (only when approved) ----
     const before = await prisma.lead.count();
-    const res = await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx: any) => {
       let created = 0, updated = 0;
       for (const r of unique) {
         const data = {
@@ -338,6 +339,7 @@ class LeadImportService {
       return { created, updated };
     }, { timeout: 120000 });
     const after = await prisma.lead.count();
+    await logEvent({ module: "CRM", entity: "Lead", action: "IMPORT", changes: { source: "leads", created: res.created, updated: res.updated, before, after } });
     return { ...report, persisted: { ...res, before, after } };
   }
 }

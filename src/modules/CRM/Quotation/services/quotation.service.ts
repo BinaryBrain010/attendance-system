@@ -92,7 +92,7 @@ class QuotationService {
     const priced = await priceLines(items, h.tier ?? "RETAIL");
     const { lines, subtotal, total } = computeTotals(priced, h.discount || 0);
     const quotationNo = h.quotationNo || (await nextQuotationNo());
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const q = await tx.quotation.create({
         data: {
           quotationNo, version: 1, isActive: true, leadId: h.leadId ?? null, customerName: h.customerName, phone: h.phone ?? null, phoneNormalized: normalizePhone(h.phone),
@@ -113,7 +113,7 @@ class QuotationService {
     assertRowInScope(scope, existing.agentId, "Quotation");
     const { items, ...h } = data;
     if ("agentId" in h) h.agentId = resolveAssignment(scope, h.agentId);
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       let subtotal = existing.subtotal, total = existing.total;
       if (items) {
         const priced = await priceLines(items, (h.tier ?? existing.tier ?? "RETAIL") as any);
@@ -142,7 +142,7 @@ class QuotationService {
     const priced = await priceLines(items);
     const { lines, subtotal, total } = computeTotals(priced, 0);
     const quotationNo = await nextQuotationNo();
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const q = await tx.quotation.create({
         data: { quotationNo, version: 1, isActive: true, leadId: lead.id, customerName: lead.customerName, phone: lead.phone, phoneNormalized: normalizePhone(lead.phone),
           tier: "RETAIL", status: "DRAFT", subtotal, discount: 0, total, agentId, outlet: lead.outlet, company: "OKASHASMART", createdBy: userId },
@@ -160,7 +160,7 @@ class QuotationService {
     assertRowInScope(scope, cur.agentId, "Quotation");
     const agg = await prisma.quotation.aggregate({ where: { quotationNo: cur.quotationNo }, _max: { version: true } });
     const newV = (agg._max.version || cur.version) + 1;
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       await tx.quotation.updateMany({ where: { quotationNo: cur.quotationNo }, data: { isActive: false } });
       const q = await tx.quotation.create({
         data: {

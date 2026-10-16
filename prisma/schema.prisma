@@ -714,6 +714,30 @@ model Holiday {
   deletedById     String?   @db.VarChar(36)
 }
 
+// Run 11 Part 3: central audit trail. One row per audited write (and per explicit event:
+// LOGIN/LOGOUT/LOGIN_FAILED/PERMISSION_CHANGE/EXPORT/IMPORT). Written by the Prisma audit
+// extension inside the same transaction as the business write. `changes` holds only the changed
+// fields as { field: { before, after } }, or { filter, count } for a bulk op. Secrets are masked.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  module     String?  // CRM | AMS | Work | RBAC | Frontdesk | App | Auth | System
+  entity     String   // model name, e.g. "Lead"
+  entityId   String?  @db.VarChar(36)
+  action     String   // CREATE | UPDATE | DELETE | RESTORE | STATUS_CHANGE | ASSIGN | LOGIN | LOGOUT | LOGIN_FAILED | PERMISSION_CHANGE | EXPORT | IMPORT
+  changes    Json?    @db.JsonB
+  userId     String?  @db.VarChar(36)
+  ip         String?
+  userAgent  String?
+  platform   String?
+  requestId  String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+}
+
 // Singleton system-wide configuration (single row, id = 'default')
 model SystemConfig {
   id          String    @id @db.VarChar(36)

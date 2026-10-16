@@ -14,6 +14,7 @@ import accessModel from "../../Access/models/access.model";
 import { secretKey } from "../../../../environment/environment";
 import AccessService from "../../Access/service/access.service";
 import EmployeeService from "../../../AMS/Employee/services/employee.service";
+import { logEvent } from "../../../../core/audit/event";
 class UserController extends BaseController<UserService> {
   protected service = new UserService();
   protected tokenService = new BlackListedTokenService();
@@ -274,17 +275,25 @@ class UserController extends BaseController<UserService> {
     // Security: Never log passwords or sensitive data
     // Using logger instead of console.log
 
+    // Audit context for login events (login runs before the context middleware, so pass explicitly).
+    const _ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null;
+    const _ua = (req.headers["user-agent"] as string) || null;
+    const loginFailed = (userId: string | null, reason: string) =>
+      logEvent({ module: "Auth", entity: "User", entityId: userId, action: "LOGIN_FAILED", changes: { username, reason }, userId, ip: _ip, userAgent: _ua, platform });
+
     let user: User | null = await this.service.getUserByUsername(username);
     const roleIds: string[] = await accessModel.role.getRoleIds(user?.id || "");
     // const isAdmin = roleIds.includes("2d9c89e7-466d-4b1c-b1b3-3ef5be815ed4");
-    
+
     // Security: Use async password comparison to prevent timing attacks
     if (!user) {
+      await loginFailed(null, "unknown username");
       return res.status(401).json({ message: "Invalid username or password" });
     }
-    
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      await loginFailed(user.id || null, "bad password");
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
@@ -406,6 +415,9 @@ class UserController extends BaseController<UserService> {
         }
       }
 
+      // Audit: successful login (covers both the employee/Attendance and Admin return paths below).
+      await logEvent({ module: "Auth", entity: "User", entityId: user.id || null, action: "LOGIN", changes: { username: user.username, platform }, userId: user.id || null, ip: _ip, userAgent: _ua, platform });
+
       // Get allowed permissions for the user
       let permissions: string[] = [];
       try {
@@ -463,7 +475,9 @@ class UserController extends BaseController<UserService> {
       console.log("user id :", userId);
       if (userId && token) {
         await this.service.removeLoggedInUser(userId, token);
-        
+
+        await logEvent({ module: "Auth", entity: "User", entityId: userId, action: "LOGOUT", userId });
+
         // Log logout activity
         try {
           const { logActivityFromRequest } = await import('../../../ActivityLog/helper/activityLog.helper');

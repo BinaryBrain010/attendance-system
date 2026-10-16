@@ -5,6 +5,7 @@
  * (in one transaction) when dryRun=false.
  */
 import prisma from "../../../../core/models/base.model";
+import { logEvent } from "../../../../core/audit/event";
 import { normalizePhone } from "../../shared/phone";
 
 export interface SourceFile { name: string; csv: string; }
@@ -183,7 +184,7 @@ class ReturnImportService {
     // ---------- persist (transaction) ----------
     const RSTATUS: Record<string, string> = {}; // could map "Order Cancel" etc.; returns import as REPORTED
     const before = { orders: await prisma.salesOrder.count(), returns: await prisma.salesReturn.count() };
-    const res = await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx: any) => {
       let ordersCreated = 0, returnsCreated = 0, reattemptsApplied = 0, ordersLinkedToLead = 0, returnsLinkedToLead = 0;
       const nextNo = async (model: "order" | "return") => {
         const field = model === "order" ? "orderNo" : "returnNo"; const prefix = model === "order" ? "SO-" : "RET-";
@@ -232,6 +233,7 @@ class ReturnImportService {
       return { ordersCreated, returnsCreated, reattemptsApplied, ordersLinkedToLead, returnsLinkedToLead };
     }, { timeout: 180000 });
     const after = { orders: await prisma.salesOrder.count(), returns: await prisma.salesReturn.count() };
+    await logEvent({ module: "CRM", entity: "SalesReturn", action: "IMPORT", changes: { source: "returns", ...res, before, after } });
     return { ...report, persisted: { ...res, before, after } };
   }
 }

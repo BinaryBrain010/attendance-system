@@ -5,6 +5,7 @@ import ReportService from "../services/report.service";
 import { ReportPDF } from "../../../../pdf/report";
 import { canSeeCost, stripCost } from "../../shared/cost";
 import { ForbiddenError } from "../../../../core/errors/app.error";
+import { logEvent } from "../../../../core/audit/event";
 
 const pdf = new ReportPDF();
 
@@ -49,6 +50,8 @@ class ReportController extends BaseController<ReportService> {
       if (report === "margin" && !(await canSeeCost(uid))) return res.status(403).json({ success: false, message: "Forbidden: crm.catalogue.cost.* required for margin" });
       const data = await this.runReport(uid, report, f);
       const { title, columns, rows, subtitle } = tabulate(report, data, f);
+      // Audit the export (report + format + row count + filters). Fire-and-forget, never blocks the file.
+      logEvent({ module: "CRM", entity: "Report", entityId: report, action: "EXPORT", changes: { report, format, rows: Array.isArray(rows) ? rows.length : undefined, filters: f } });
       if (format === "pdf") {
         const doc = pdf.generate(title, columns, rows, subtitle);
         return doc.getBuffer((buf: Buffer) => {

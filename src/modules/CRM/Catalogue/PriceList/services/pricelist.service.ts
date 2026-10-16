@@ -15,7 +15,7 @@ class PriceListService {
   async create(data: any) {
     const { productId, tier, variantId = null, price = null, cost = null, createdBy } = data;
     const pricePending = price === null || price === undefined;
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       await tx.priceList.updateMany({
         where: { productId, tier, variantId, validTo: null, isDeleted: null },
         data: { validTo: new Date() },
@@ -49,7 +49,7 @@ class PriceListService {
     }
     if (dryRun) return { dryRun: true, matched: matched.length, unmatched, sample: matched.slice(0, 15) };
     let updated = 0;
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       for (const m of matched) {
         await tx.priceList.updateMany({ where: { productId: m.productId, tier: "RETAIL", variantId: null, validTo: null, isDeleted: null }, data: { validTo: new Date() } });
         await tx.priceList.create({ data: { productId: m.productId, tier: "RETAIL", variantId: null, price: m.price, cost: m.cost, pricePending: m.price == null, createdBy } });
