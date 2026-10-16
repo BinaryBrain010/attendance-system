@@ -988,3 +988,56 @@ Ran the PROD_DEPLOY_PLAN steps against the gatePassSystem_restore DB (pre-work, 
 - Harness: added 19 validation/mass-assignment/fuzz tests. CRM harness now 155/0.
 - Gates: tsc clean, qa:rbac 306/1/3, CRM harness 155/0.
 - Commit (backend): see hash below.
+
+---
+
+## Demo prep (2026-10-16, demo stack for tomorrow's client demo)
+
+Same rules. Local only, no push, no attribution lines. All demo data lives only in the
+`gatepass_demo` database; the dev database (`gatePassSystem`) stays at leads 261, orders 68,
+returns 62, quotations 0 (reconfirmed at the end).
+
+Stack: `gatepass_demo` is a copy of the dev DB. A second backend runs on :3005 against it
+(RBAC_ENFORCE=on, origins include :3006). A production admin build (.next-demo) runs on :3006
+via `next start`, pointing at :3005. The dev stack (:3001/:3002) is untouched.
+
+Seed (seedDemo.ts, refuses any DB except gatepass_demo): 8 role logins (one per recipe,
+password demo1234) plus a few more employees, 4 sales agents incl. a shared Online Orders
+agent, 20 demo leads with follow-ups due today and overdue, 15 quotations across statuses,
+10 orders across statuses, 3 returns, 3 teams (Sales/Operations/HR), 30 tasks, 7 days of
+daily reports (some missing on purpose), a few notifications, and a few edits for History.
+
+### Click-through QA (Admin, Sales Agent, Employee; light and dark)  [DONE]
+
+Swept every page as Admin and the role-specific pages as Sales Agent and Employee. Menus
+differ correctly: Admin has every section, Sales Agent has CRM (own scope) and Work,
+Employee has Work only. Dashboard, CRM boards/lists/details, Work, Reports, Audit Log and
+AMS pages all load with data. Dark and light both render cleanly. Live API calls on the demo
+pages return 200 (the earlier analytics 403 was the parent-wildcard bug, already fixed).
+
+Four issues found and fixed (fixes committed to code):
+
+1. Leads list "Updated by" column showed "Invalid-Date". The shared table picked date
+   columns by name with `includes('date')`, and "updatedBy" lowercases to "updatedby" which
+   contains "date" (up-DATE-dby), so the actor value was run through the date formatter.
+   Excluded actor columns (ending in by/byid) from the date check.
+   admin commit 010069e.
+2. Admin "Employees" menu item redirected to not-found. The menu shows it on `employee.*`
+   but the page requires `employee.read.*`, which the client permission matcher refused to
+   grant from the `employee.*` wildcard. Let `employee.read.*` cascade from `employee.*` (same
+   as `attendance.read.*` already does); mutating/PII leaves still need explicit grants.
+   admin commit 8a26e30.
+3. Admin "System Configuration" link (avatar menu) redirected to not-found. The link showed
+   on `systemConfig.*` but the page requires `appModules.quickMark.*`. Gated the link on the
+   same feature the page needs. admin commit 40f4d87.
+4. Customer 360 showed "(unknown)" when opened from the customers list. seedDemo created CRM
+   records with direct Prisma writes, which do not set `phoneNormalized`, so the exact-match
+   lookup found nothing. Backfilled phoneNormalized for the 48 demo CRM records and fixed
+   seedDemo.ts to set it on future reseeds.
+
+Also added `NEXT_DIST_DIR` to admin next.config so the demo prod build targets .next-demo
+without clobbering the dev .next (admin commit 95781c6).
+
+Docs: docs/DEMO_SCRIPT.md (logins, URLs, start/stop commands, a 15 minute click path).
+
+Dev DB reconfirmed untouched: leads 261, orders 68, returns 62, quotations 0.
