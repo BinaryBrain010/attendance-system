@@ -90,11 +90,23 @@ async function main() {
 
     // QA records by name/code pattern (shifts + their children, customers, items, visitors, features,
     // gate passes from _created.json).
-    const qaShiftIds = await ids("shift", { name: { startsWith: "QA_Shift_" } });
+    // Shifts: the harness names them "QA_Shift_..." or "QA_<epochMillis>"; both start "QA_". Real
+    // shifts have descriptive names ("Morning shift ...") so the underscore-prefixed pattern is safe.
+    const qaShiftIds = await ids("shift", { name: { startsWith: "QA_" } });
     if (qaShiftIds.length) {
+      await run("shiftTimetableBlock", () => prisma.shiftTimetableBlock.deleteMany({ where: { shiftId: { in: qaShiftIds } } }));
       await run("shiftAssignment(shift)", () => prisma.shiftAssignment.deleteMany({ where: { shiftId: { in: qaShiftIds } } }));
       await run("shiftTimetable", () => prisma.shiftTimetable.deleteMany({ where: { shiftId: { in: qaShiftIds } } }));
       await run("shift", () => prisma.shift.deleteMany({ where: { id: { in: qaShiftIds } } }));
+    }
+    // QA leave configurations ("QA_<epochMillis>") + their allocations (and the leave requests that
+    // reference those allocations). Real configs are "Casual Leave" etc., never underscore-prefixed.
+    const qaLeaveCfgIds = await ids("leaveConfiguration", { name: { startsWith: "QA_" } });
+    if (qaLeaveCfgIds.length) {
+      const allocIds = await ids("leaveAllocation", { leaveConfigId: { in: qaLeaveCfgIds } });
+      if (allocIds.length) await run("leaveRequest(cfg)", () => prisma.leaveRequest.deleteMany({ where: { leaveAllocationId: { in: allocIds } } }));
+      await run("leaveAllocation(cfg)", () => prisma.leaveAllocation.deleteMany({ where: { leaveConfigId: { in: qaLeaveCfgIds } } }));
+      await run("leaveConfiguration", () => prisma.leaveConfiguration.deleteMany({ where: { id: { in: qaLeaveCfgIds } } }));
     }
     // QA gate-pass chain: customers (QA_Cust_), items (QA_Item_), and the gate passes / gate-pass
     // items that reference them (GatePassItem RESTRICTs deleting a referenced Item/GatePass).
@@ -117,8 +129,13 @@ async function main() {
     // EVERY past run, not only ids recorded in _created.json (the API /holiday/delete above only
     // soft-deletes recorded ids and never touched the attendance side-effect, which is how QA
     // holidays and ~7k HOLIDAYS attendance rows had been leaking).
+    // All HOLIDAYS attendance on any far-future date (>= 2030) is a test-holiday cascade: creating a
+    // Holiday marks HOLIDAYS attendance for every employee, and tests use future dates (2031, 2035,
+    // 2099, ...). Real holidays never fall in 2030+. This catches both the 2099 run.ts holidays and
+    // the audit-harness holidays (2031-2039) whose Holiday rows were deleted but whose attendance
+    // cascade had leaked (Run 12 item 1).
     await run("attendance(QA holidays)", () => prisma.attendance.deleteMany({
-      where: { status: "HOLIDAYS", date: { gte: new Date("2099-01-01T00:00:00.000Z"), lt: new Date("2100-01-01T00:00:00.000Z") } },
+      where: { status: "HOLIDAYS", date: { gte: new Date("2030-01-01T00:00:00.000Z") } },
     }));
     await run("holiday", () => prisma.holiday.deleteMany({ where: { reason: { startsWith: "QA_" } } }));
 
@@ -138,6 +155,24 @@ async function main() {
       await run("team", () => prisma.team.deleteMany({ where: { id: { in: qaTeamIds } } }));
     }
     if (qaUserIds.length) await run("notification", () => prisma.notification.deleteMany({ where: { userId: { in: qaUserIds } } }));
+
+    // QA units ("QA_<epochMillis>") + members. After teams (Team.unitId FK). Real units are named
+    // "Head Office" etc., so the underscore-prefixed pattern never matches real data.
+    const qaUnitIds = await ids("unit", { name: { startsWith: "QA_" } });
+    if (qaUnitIds.length) {
+      await run("unitEmployee(unit)", () => prisma.unitEmployee.deleteMany({ where: { unitId: { in: qaUnitIds } } }));
+      await run("team(unit)", () => prisma.team.deleteMany({ where: { unitId: { in: qaUnitIds } } }).catch(() => ({ count: 0 })));
+      await run("unit", () => prisma.unit.deleteMany({ where: { id: { in: qaUnitIds } } }));
+    }
+
+    // Legacy ActivityLog orphans: entries whose referenced business row was hard-deleted above (QA
+    // harness churn across runs). Real rows are soft-deleted (still present) so their logs are kept.
+    for (const [et, model] of [["Lead", "lead"], ["Quotation", "quotation"], ["SalesOrder", "salesOrder"], ["SalesReturn", "salesReturn"], ["User", "user"], ["Employee", "employee"], ["Customer", "customer"], ["Item", "item"], ["GatePass", "gatePass"], ["Visitor", "visitor"], ["Unit", "unit"], ["Shift", "shift"], ["LeaveConfiguration", "leaveConfiguration"], ["Role", "role"], ["Group", "group"], ["Holiday", "holiday"], ["FeaturePermission", "featurePermission"]] as [string, string][]) {
+      await run("activityLog(orphan)", () => prisma.$executeRawUnsafe(
+        `DELETE FROM "ActivityLog" a WHERE a."entityType" = $1 AND a."entityId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "${et}" t WHERE t.id = a."entityId")`,
+        et,
+      ).then((count: number) => ({ count })));
+    }
 
     // AuditLog residue (Run 11). Rows attributed to QA users; the harness report-export rows
     // (entity "Report"); and orphaned rows whose business row was hard-deleted above (real entities

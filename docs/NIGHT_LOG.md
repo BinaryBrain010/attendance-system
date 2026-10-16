@@ -4,6 +4,37 @@ Autonomous overnight run. Local only. Started 2026-10-13.
 
 ---
 
+## Run 12 (2026-10-16, close Run 11 gaps)
+
+Same rules. Backup first: qa/backups/run12_pre_20261016_182517.dump (pg_dump of gatePassSystem, 222 MB).
+
+### Item 1 - Verify the load-test purge (restore pre-Run-11 dump, compare every table)  [DONE]
+Restored run11_pre_20261016_165211.dump into scratch gatepass_shadow and compared exact row counts for
+every table against dev. Findings:
+- **Load-test purge confirmed complete.** Attendance, Holiday, Lead, SalesOrder, SalesReturn, Employee,
+  Visitor, GatePass, User(business), Quotation all matched the pre-Run-11 baseline exactly. The
+  449,850 /holiday/create cascade rows from the Run-11 first load test are gone.
+- **Expected net-new diffs** (intended Run 11 additions, all explained): _prisma_migrations +1 (the
+  audit migration), AppFeature +3 (audit.* / audit.read.* / audit.export.*), User +1 (the System
+  user), new AuditLog table (0 rows), plus the audit id columns (no row-count change).
+- **Residue found + cleaned** (all this conversation's harness artifacts, confirmed created after the
+  dump or matching `QA_<digits>` / future-date patterns; no real record touched):
+  - Attendance +1650 HOLIDAYS rows on 2031-2039 = cascade from the Run-11 audit/stamp test holidays
+    whose Holiday rows were deleted but whose attendance side-effect leaked (same bug as the load
+    test). Deleted (now matches baseline exactly).
+  - QA_`<epochMillis>` Shift (26) + ShiftTimetable (156), Unit (26), LeaveConfiguration (40) =
+    accumulated qa:rbac harness residue across runs (present in the baseline too). Removed; the 14
+    shifts / 19 units / 2 leave configs that remain are the real, descriptively-named records.
+  - ActivityLog: deleted 6306 orphaned Holiday logs from the deleted test holidays + orphaned logs
+    for every hard-deleted QA entity across churn types. Real (soft-deleted) rows keep their logs.
+- **qa:cleanup hardened** so none of this re-leaks: shift pattern broadened `QA_Shift_` -> `QA_`
+  (+ ShiftTimetableBlock), new QA leave-configuration + QA unit blocks, HOLIDAYS-attendance purge
+  widened from the 2099-only window to any date >= 2030, and a legacy-ActivityLog orphan sweep over
+  the churn entity types. Re-ran cleanup: clean, zero residue. Scratch DB dropped.
+- Real counts intact: leads 261, orders 68, returns 62, quotations 0, holidays 59, attendance 69883
+  (== baseline), shifts 14, units 19; AuditLog 0.
+- Commit (backend): see hash below.
+
 ## Run 11 (2026-10-16, audit fields + central AuditLog)
 
 Same rules (local only, backup first, no push, no attribution, never edit records I did not
