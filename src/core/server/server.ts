@@ -72,6 +72,7 @@ import TaskRoutes from "../../modules/Work/Task/routes/task.routes";
 import DailyReportRoutes from "../../modules/Work/DailyReport/routes/dailyReport.routes";
 import NotificationRoutes from "../../modules/Work/Notification/routes/notification.routes";
 import WorkReportRoutes from "../../modules/Work/Report/routes/workReport.routes";
+import AuditLogRoutes from "../../modules/Audit/routes/auditLog.routes";
 import WorkSchedulerHelper from "../../modules/Work/helper/workSchedule.helper";
 import { ensureSystemUser } from "../audit/systemUser";
 
@@ -258,7 +259,10 @@ class App {
       TaskRoutes,
       DailyReportRoutes,
       NotificationRoutes,
-      WorkReportRoutes
+      WorkReportRoutes,
+
+      //Audit
+      AuditLogRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

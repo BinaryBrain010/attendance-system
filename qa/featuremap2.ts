@@ -84,6 +84,13 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /shift/timetable/upsert": { feature: "shift.update.*", kind: "update", access: "feature" },
   "POST /shift/timetable/delete": { feature: "shift.update.*", kind: "update", access: "feature" },
   "POST /attendance/face-attendance": { feature: "attendance.markAttendance.*", kind: "create", access: "feature", note: "marks attendance via face recognition" },
+  // Audit log (Run 11). The admin list + export require audit.read.* (admin only). The per-record
+  // History tab and actor-name resolution are token-access: any logged-in user passes the route
+  // gate and the service enforces that the caller can read the specific record.
+  "POST /auditLog/get": { feature: "audit.read.*", kind: "read", access: "feature", note: "admin audit log list" },
+  "POST /auditLog/export": { feature: "audit.read.*", kind: "export", access: "feature", note: "admin audit log Excel export" },
+  "POST /auditLog/entity": { feature: "-", kind: "read", access: "token", note: "per-record History tab; service enforces record-read" },
+  "POST /auditLog/actors": { feature: "-", kind: "read", access: "token", note: "resolve actor ids -> names for footers/columns" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

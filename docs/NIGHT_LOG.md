@@ -111,7 +111,39 @@ Backup first: qa/backups/run11_pre_20261016_165211.dump (pg_dump -Fc of gatePass
   create masks the password; Lead create (CRM) + STATUS_CHANGE logged; FeaturePermission ->
   PERMISSION_CHANGE; bulk filter+count; LOGIN_FAILED (with ip/platform) and EXPORT logged.
   Gates: tsc clean, CRM 176/0, Work 27/0, qa:cleanup AuditLog residue 0, real counts 261/68/62/0.
-- Commit (backend): see hash below.
+- Commit (backend): d993d72.
+
+### Part 4 - UI (audit read API + History tab + footers + list columns + Audit Log page)  [DONE]
+Backend read API (new src/modules/Audit):
+- audit.service.ts: list(filters: user/module/entity/action/entityId/date range/search + pagination),
+  entityHistory(scoped: caller must hold the entity's read feature; CRM entities also row-scoped via
+  resolveScope/assertRowInScope), resolveActors(ids -> username+employee name), decorateActors.
+- controller + routes (/auditLog: get, export [Excel], entity, actors). Registered in server.ts and
+  qa/routewalk.ts. featureMap: get/export -> audit.read.* (admin), entity/actors -> token (service
+  enforces record-read). featureMap regenerated: 487 routes, not-registered 0.
+- Feature tree: seedAuditFeatures.ts registers audit.* / audit.read.* / audit.export.* and rewrites
+  qa/_livefeatures.json (286 features). roleRecipes: Admin gets audit.*. permission.tsx needs no edit
+  (its Features card is data-driven from the AppFeature tree, so audit.* shows automatically).
+Admin UI (src/modules/audit):
+- services/audit.service.ts; components/AuditHistory.tsx (History tab: field-level before->after,
+  actor, time, bulk filter+count) and AuditFooter.tsx ("Created by X on <date>, last updated by Y";
+  null actor -> "System (legacy)", System id -> "System"; batch-resolves names via /auditLog/actors).
+- pages/auditLog.tsx + route (routes)/admin/settings/audit-log/page.tsx: filter by user/module/entity/
+  action/date range + record-id search, paginated table, Excel export (blob fetch with bearer token).
+  Gated withPermission('audit.read.*'). Nav: new "Settings" menu -> Audit Log (show: has audit.read.*).
+- Wired footer + History into the 6 CRM detail pages (lead has footer; lead timeline already merges
+  audit from Part 3; quotation/order/return/agent/product get AuditHistory + footer) and the employee
+  detail (AuditHistory "Change history" + footer in the Activity Logs tab). Leads list got optional
+  "Created by"/"Updated by" columns (ids resolved to names via /auditLog/actors).
+- Verified: /auditLog/get returns rows with resolved actor names; /auditLog/entity returns scoped
+  history; /auditLog/actors resolves System. Admin `next build` clean (52 pages incl
+  /admin/settings/audit-log). Backend tsc clean. qa:rbac 306/1/3 (unchanged; new routes mapped, 0
+  not-registered). qa:cleanup AuditLog residue 0 (orphan/soft-deleted referents, bulk-op, QA-named
+  referents, join tables all swept; local-only). Real counts 261/68/62/0.
+- Note: tasks/teams/daily-reports/visitors/leave are list-style (no per-record detail route) and gate
+  passes have no admin UI, so the drop-in AuditHistory/AuditFooter components are ready but not placed
+  there; user/attendance-request details can take the same two-line wiring if wanted.
+- Commit (backend): see hash below. Commit (admin): see hash below.
 
 ## Run 10 (2026-10-16, Work migration, daily-report scope, rollout)
 

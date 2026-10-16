@@ -156,12 +156,20 @@ async function main() {
       "Category", "Brand", "Product", "PriceList", "Bundle", "SalesAgent", "Lead", "LeadActivity",
       "Quotation", "QuotationItem", "SalesOrder", "SalesOrderItem", "SalesReturn", "ReturnItem",
       "TaskComment", "DailyReportComment",
-    ];
+      "UserRole", "GroupRole", "UserGroup", "TeamMember", "TaskAssignee", "TaskWatcher",
+      "UnitEmployee", "ShiftTimetable", "ShiftTimetableBlock",
+    ]; // NB: AppFeature keyed by name (no id col), so its audit rows are entityId-null -> bulk-child.
+    // An audit row is residue when its referent is gone OR soft-deleted (the harness soft-deletes
+    // some config entities rather than hard-deleting). qa:cleanup is local-only, so removing audit
+    // for a soft-deleted referent here never touches a prod trail.
+    const NO_SOFT_DELETE = new Set(["TaskAssignee", "TaskWatcher"]); // these lack an isDeleted column
     for (const entity of AUDIT_ENTITIES) {
       await run(`auditLog(orphan)`, async () => {
+        const cond = NO_SOFT_DELETE.has(entity)
+          ? `NOT EXISTS (SELECT 1 FROM "${entity}" t WHERE t.id = a."entityId")`
+          : `NOT EXISTS (SELECT 1 FROM "${entity}" t WHERE t.id = a."entityId" AND t."isDeleted" IS NULL)`;
         const n: number = await prisma.$executeRawUnsafe(
-          `DELETE FROM "AuditLog" a WHERE a.entity = $1 AND a."entityId" IS NOT NULL ` +
-          `AND NOT EXISTS (SELECT 1 FROM "${entity}" t WHERE t.id = a."entityId")`,
+          `DELETE FROM "AuditLog" a WHERE a.entity = $1 AND a."entityId" IS NOT NULL AND ${cond}`,
           entity,
         );
         return { count: n };
@@ -175,8 +183,25 @@ async function main() {
         "TeamMember", "TaskAssignee", "TaskWatcher", "TaskChecklistItem", "QuotationItem",
         "SalesOrderItem", "ReturnItem", "UserRole", "GroupRole", "UserGroup", "FeaturePermission",
         "UnitEmployee", "BundleItem", "ProductVariant", "ProductImage",
+        // Churn entities the harness bulk-writes (createMany/updateMany). On a local QA DB these
+        // bulk-op rows are always harness activity; qa:cleanup is local-only.
+        "Attendance", "AppFeature", "ShiftTimetable", "ShiftTimetableBlock", "ShiftAssignment",
+        "Holiday", "Unit", "LeaveConfiguration", "LeaveAllocation", "Shift", "GatePass",
+        "Customer", "Item", "PriceList",
       ] } },
     }));
+    // Audit rows whose referent is a QA-named entity that the harness leaves live (e.g. a shift it
+    // created/restored). Keyed on the record's own QA name so real records are never matched.
+    for (const [entity, table, col] of [
+      ["Shift", "Shift", "name"], ["Unit", "Unit", "name"], ["LeaveConfiguration", "LeaveConfiguration", "name"],
+      ["Team", "Team", "name"], ["Customer", "Customer", "name"], ["Item", "Item", "name"],
+    ] as [string, string, string][]) {
+      await run("auditLog(qa-named)", () => prisma.$executeRawUnsafe(
+        `DELETE FROM "AuditLog" a WHERE a.entity = $1 AND a."entityId" IS NOT NULL ` +
+        `AND EXISTS (SELECT 1 FROM "${table}" t WHERE t.id = a."entityId" AND t."${col}" LIKE 'QA%')`,
+        entity,
+      ).then((count: number) => ({ count })));
+    }
     // Bulk-op rows whose filter targets a now-deleted parent (QA price/quotation churn).
     await run("auditLog(bulk-orphan)", () => prisma.$executeRawUnsafe(
       `DELETE FROM "AuditLog" a WHERE a."entityId" IS NULL AND a.changes ? 'filter' AND (` +

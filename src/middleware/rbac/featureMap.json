@@ -314,6 +314,26 @@
     "feature": "attendance.request.approve.*",
     "kind": "approve"
   },
+  "POST /auditLog/actors": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /auditLog/entity": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /auditLog/export": {
+    "access": "feature",
+    "feature": "audit.read.*",
+    "kind": "export"
+  },
+  "POST /auditLog/get": {
+    "access": "feature",
+    "feature": "audit.read.*",
+    "kind": "read"
+  },
   "POST /auth/login": {
     "access": "open",
     "feature": "-",
