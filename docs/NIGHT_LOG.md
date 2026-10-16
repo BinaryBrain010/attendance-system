@@ -17,8 +17,28 @@ stray `Q-0001 "ttest"` quotation was removed to restore the quotations=0 baselin
 since confirmed it was theirs, so no restore is needed, but under this rule I would ask first rather
 than delete.)
 
-### Item 2 - Proper Work migration [IN PROGRESS]
-Root cause of the `20260204000000_add_shift_timetable` shadow-replay failure: see below.
+### Item 2 - Proper Work migration [DONE]
+- Cause of the `20260204000000_add_shift_timetable` shadow-replay failure: that migration adds an FK
+  `ShiftTimetable.shiftId -> Shift(id)` but **no migration ever creates `Shift`**. A drift audit shows
+  the whole Sales CRM (Brand/Category/Product/ProductVariant/ProductImage/PriceList/Bundle/BundleItem/
+  SalesAgent/Lead/LeadActivity/Quotation/QuotationItem/SalesOrder/SalesOrderItem/SalesReturn/ReturnItem)
+  and Shift/ShiftAssignment were built with `db push` and never captured as migration files, and
+  `_prisma_migrations` was empty (0 of 31 recorded). So Prisma Migrate was never actually adopted.
+- Did NOT rename/edit any existing migration. Listed all 31 (see folder) and the cause above.
+- Generated the Work migration by restoring the pre-Run-9 dump (qa/backups/night3) into a scratch DB
+  `gatepass_shadow` and running `prisma migrate diff --from-url <shadow> --to-schema-datamodel
+  schema.prisma --script`. Reviewed: 2 enums (TaskPriority, RecurringRule), drop Todo + its 2 enums
+  (made IF EXISTS), create the 10 Work tables with all indexes and FKs. Saved as
+  prisma/migrations/20261016120000_add_work_module/. Validated by applying it to the pre-Work scratch
+  DB (Todo dropped, 10 Work tables created).
+- Baselined the dev DB: `migrate resolve --applied` for all 31 existing + the Work migration;
+  `prisma migrate status` now prints "Database schema is up to date!" (32 recorded).
+- From-scratch `migrate deploy` on an empty DB fails at 20260204000000 (`relation "Shift" does not
+  exist`) - the pre-existing db-push drift, not the Work migration. Documented the two prod paths
+  (db push, or baseline-resolve + deploy) and the optional future squash in PROD_DEPLOY_PLAN §2.3.
+  Dropped both scratch DBs; dev data untouched (261/68/62/0, 59 holidays).
+
+### Item 3 - Daily report scope [IN PROGRESS]
 
 ---
 
