@@ -214,25 +214,60 @@ ls -l src/middleware/rbac/featureMap.json
 rollback (RBAC is off). If you must, delete the added `crm.*` AppFeature rows and restore the prior
 `featureMap.json` from git.
 
+### 4.3 🖥️ Work module features (`seedWorkFeatures` = `workSeed.ts`)
+
+The Work module (Run 9/10) adds its own `work.*` feature tree + `appModules.work.*`. Seed it the same
+idempotent way as the CRM features:
+```bash
+npx ts-node workSeed.ts --allow-remote    # upserts 26 work.* AppFeatures (+ appModules.work.*)
+```
+It `upsert`s every feature (safe to re-run) and, locally, rewrites `qa/_livefeatures.json` so the
+featureMap generator sees them. The committed `featureMap.json` already maps all Work routes (`/team`,
+`/task`, `/dailyReport`, `/notification`, `/workReport`), so §4.2's `not-registered: 0` gate still
+holds after a regenerate.
+
+**Order for the Work module on prod** (fits inside the plan above):
+1. §2.3 — apply the Work schema (either `db push`, or baseline-resolve the existing migrations then
+   `migrate deploy` the two Work migrations `20261016120000_add_work_module` +
+   `20261016130000_team_member_requires_report`). The only destructive change is dropping the empty
+   `Todo` stub.
+2. §4.3 — `workSeed.ts --allow-remote` to register the `work.*` features.
+3. §4.2 — regenerate/verify featureMap (`not-registered: 0`).
+4. §5 — seed/refresh roles so the right people get `work.*` (see the table and the work tiers below).
+5. §9 — flip `RBAC_ENFORCE=on` as usual.
+
 ---
 
 ## 5. Roles on prod
 
 Roles are defined as code recipes in `roleRecipes.ts` and created by `seedRoles.ts` (idempotent:
-upserts the `Role` row and its `FeaturePermission`). Six roles ship:
+upserts the `Role` row and its `FeaturePermission`). Eight roles ship:
 
-| Role | What it grants (summary) | CRM scope | SalesAgent link |
-|------|--------------------------|-----------|-----------------|
-| **Sales Agent** | own leads/quotes/orders/returns + reports (no cost) | OWN | yes, scope OWN |
-| **Sales Manager** | Sales Agent + team reads + cost/margin | TEAM | yes, scope TEAM |
-| **Order Ops** | `crm.order.*` + `crm.return.*`, **no lead access** | ALL | not required |
-| **Frontdesk** | visitor management (`visitor.*`) + `employee.read.*` | — | — |
-| **HR** | employee / attendance / leave / shift / holiday / unit | — | — |
-| **Admin** | all modules (short of the hardcoded god account) | ALL | — |
+| Role | What it grants (summary) | CRM scope | Work scope | SalesAgent link |
+|------|--------------------------|-----------|-----------|-----------------|
+| **Employee** | own tasks (move/comment) + own daily report | — | OWN | no |
+| **Team Lead** | their team's tasks (create/assign/manage) + team daily reports & compliance | — | TEAM | no (lead a Team) |
+| **Sales Agent** | own leads/quotes/orders/returns + reports (no cost); own tasks + report | OWN | OWN | yes, scope OWN |
+| **Sales Manager** | Sales Agent + team reads + cost/margin; team-scope Work | TEAM | TEAM | yes, scope TEAM |
+| **Order Ops** | `crm.order.*` + `crm.return.*`, **no lead access** | ALL | — | not required |
+| **Frontdesk** | visitor management (`visitor.*`) + `employee.read.*` | — | — | — |
+| **HR** | employee / attendance / leave / shift / holiday / unit | — | — | — |
+| **Admin** | all modules incl. `work.*` (short of the hardcoded god account) | ALL | ALL | — |
 
 Exact feature lists live in `roleRecipes.ts` (single source of truth). The app-module umbrellas
-(`appModules.crm.*`, `appModules.frontdesk.*`, `appModules.quickMark.*`, …) are included in each recipe
+(`appModules.crm.*`, `appModules.work.*`, `appModules.frontdesk.*`, …) are included in each recipe
 where that module's nav should appear.
+
+**Work feature tiers** (constants `WORK_OWN` / `WORK_TEAM` / `WORK_ALL` in `roleRecipes.ts`):
+- **employee (own):** `appModules.work.*`, `work.task.read.own.*`, `work.task.transition.*`,
+  `work.task.comment.*`, `work.report.read.own.*`, `work.report.submit.*`.
+- **team lead (team):** the own set **plus** `work.team.read.*`/`create`/`update`,
+  `work.task.read.team.*`/`create`/`update`/`assign`/`delete`, `work.report.read.team.*`,
+  `work.report.comment.*`. A team-scope reader must actually be the Team's **lead** for TEAM to resolve
+  (otherwise it narrows to OWN) — set them as `Team.leadId`.
+- **manager / admin (all):** `appModules.work.*` + `work.*`.
+Membership note: only members whose `TeamMember.requiresDailyReport` is true are expected to file a
+daily report; add staff to a Team to put them on the compliance list.
 
 ### 5.1 🖥️ Create/refresh the roles
 ```bash

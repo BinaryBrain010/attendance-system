@@ -18,6 +18,21 @@ export const APP_MODULES = {
   crm: "appModules.crm.*",
 };
 
+// Work module feature tiers. own = your own tasks + your daily report; team = your team's tasks and
+// reports + manage teams; all = everything. appModules.work.* gates the Work menu + the bell.
+const WORK_OWN = [
+  "appModules.work.*",
+  "work.task.read.own.*", "work.task.transition.*", "work.task.comment.*",
+  "work.report.read.own.*", "work.report.submit.*",
+];
+const WORK_TEAM = [
+  ...WORK_OWN,
+  "work.team.read.*", "work.team.create.*", "work.team.update.*",
+  "work.task.read.team.*", "work.task.create.*", "work.task.update.*", "work.task.assign.*", "work.task.delete.*",
+  "work.report.read.team.*", "work.report.comment.*",
+];
+const WORK_ALL = ["appModules.work.*", "work.*"];
+
 const CRM_AGENT_BASE = [
   "login.admin.*", "appModules.crm.*", "profile.*",
   "crm.catalogue.read.*", "crm.agent.read.*",
@@ -29,14 +44,22 @@ const CRM_AGENT_BASE = [
 ];
 
 export const ROLE_RECIPES: Record<string, { description: string; features: string[] }> = {
+  "Employee": {
+    description: "Any staff member: view and work their own tasks (move status, comment) and file their own daily report. No CRM. Link to their Employee; add to a Team to be expected to report.",
+    features: ["login.admin.*", "profile.*", ...WORK_OWN],
+  },
+  "Team Lead": {
+    description: "Leads one or more Teams: team-scope tasks (create, assign, manage) + their team's daily reports and compliance. Make them the Team's lead so TEAM scope resolves.",
+    features: ["login.admin.*", "profile.*", "employee.read.*", ...WORK_TEAM],
+  },
   "Sales Agent": {
-    description: "Own-scope selling: own leads/quotes/orders/returns, reports (no cost). Link to a SalesAgent with scope OWN.",
-    features: [...CRM_AGENT_BASE],
+    description: "Own-scope selling: own leads/quotes/orders/returns, reports (no cost). Own tasks + own daily report. Link to a SalesAgent with scope OWN.",
+    features: [...CRM_AGENT_BASE, ...WORK_OWN],
   },
   "Sales Manager": {
-    description: "Team-scope: everything a Sales Agent has, plus team reads, cost/margin, agent edits and catalogue management. Link to a SalesAgent with scope TEAM.",
+    description: "Team-scope: everything a Sales Agent has, plus team reads, cost/margin, agent edits, catalogue management, and team-scope Work (tasks + daily reports). Link to a SalesAgent with scope TEAM.",
     features: [
-      ...CRM_AGENT_BASE,
+      ...CRM_AGENT_BASE, ...WORK_TEAM,
       "crm.lead.read.team.*", "crm.quotation.read.team.*", "crm.order.read.team.*", "crm.return.read.team.*",
       "crm.catalogue.cost.*", "crm.catalogue.create.*", "crm.catalogue.update.*", "crm.agent.update.*",
     ],
@@ -72,7 +95,7 @@ export const ROLE_RECIPES: Record<string, { description: string; features: strin
       "user.*", "role.*", "group.*", "featurePermission.*",
       "employee.*", "shift.*", "attendance.*", "attendanceReq.*",
       "leave.*", "leaveReq.*", "leaveAlloc.*", "leaveConfig.*", "holiday.*", "visitor.*", "unit.*",
-      "crm.*",
+      "crm.*", "work.*",
     ],
   },
 };

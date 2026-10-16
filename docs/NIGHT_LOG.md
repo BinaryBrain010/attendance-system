@@ -53,7 +53,13 @@ than delete.)
 - qa:work extended with item-3 tests (expected excludes not-required member; on-leave not missing;
   holiday -> non-working day). 27/27 pass.
 
-### Item 4 - Rollout notes [DONE below in PROD_DEPLOY_PLAN]
+### Item 4 - Rollout notes [DONE]
+- roleRecipes.ts: added WORK_OWN / WORK_TEAM / WORK_ALL tiers and two new recipes (Employee = own
+  tasks + own report; Team Lead = team) plus wired own-Work into Sales Agent, team-Work into Sales
+  Manager, and work.* into Admin.
+- PROD_DEPLOY_PLAN: 4.3 seedWorkFeatures step (workSeed.ts), the work.* tiers per role, the updated
+  8-role table with a Work-scope column, and the exact Work rollout order (schema -> workSeed ->
+  featureMap -> roles -> RBAC on).
 
 ---
 
