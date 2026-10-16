@@ -33,6 +33,34 @@ every table against dev. Findings:
   the churn entity types. Re-ran cleanup: clean, zero residue. Scratch DB dropped.
 - Real counts intact: leads 261, orders 68, returns 62, quotations 0, holidays 59, attendance 69883
   (== baseline), shifts 14, units 19; AuditLog 0.
+- Commit (backend): 2361dcb.
+
+### Item 2 - Audit the raw-SQL writes; lock reset.helper to local  [DONE]
+- The only raw-SQL writes (per AUDIT_INVENTORY) are in shift.service.ts (ShiftTimetable INSERT,
+  ShiftTimetableBlock INSERT/UPDATE/soft-delete) and reset.helper.ts (full DELETE). The shift ones
+  are FALLBACK branches — the code prefers the Prisma client path, which the audit extension already
+  logs. Added explicit logEvent(...) to each raw fallback branch anyway (ShiftTimetable CREATE;
+  ShiftTimetableBlock CREATE with after, UPDATE with only-changed before/after via a pre-image fetch,
+  DELETE) so they are logged even if the raw path ever runs.
+- reset.helper.resetDB now refuses unless DATABASE_URL is local (localhost/127.0.0.1/[::1]/*.localhost);
+  a full-DB wipe can never hit staging/prod. It is the one write intentionally excluded from auditing.
+- Commit (backend): see hash below.
+
+### Item 4 - Production safety  [DONE]
+- app.set('trust proxy', 1) in server.ts so req.ip (and the AuditLog ip column) resolve to the real
+  client IP from X-Forwarded-For behind a proxy. contextMiddleware + the login handler now prefer
+  req.ip with the X-Forwarded-For/socket fallback. Verified: a request with X-Forwarded-For:
+  203.0.113.77 lands that IP in the audit row.
+- src/core/audit/auditBoot.ts auditBootCheck(): at boot, if AUDIT_LOG=0 it logs a loud banner, and if
+  NODE_ENV=production it also records a SYSTEM AuditLog event (logEvent writes directly, so the
+  "audit is off" fact is itself captured even with logging suppressed). Wired after ensureSystemUser.
+- AuditLog indexes verified (createdAt, action, userId, composite (entity,entityId) + PK) — cover the
+  Audit Log page filters/sort and the History-tab query. PROD_DEPLOY_PLAN §2.4 documents the indexes,
+  the trust-proxy note, the boot warning, and a RETENTION PLAN (keep 2 years online, then archive
+  older; NO automatic deletion implemented — purging is a deliberate, separately-approved op).
+- qa/audit.ts extended with tests for items 2 and 4 (reset refuses non-local; ShiftTimetableBlock
+  create audited; forwarded client IP stored in AuditLog; audit-disabled boot writes a SYSTEM event).
+  qa:audit now 23/0. Also purges its own far-future holiday-cascade attendance.
 - Commit (backend): see hash below.
 
 ## Run 11 (2026-10-16, audit fields + central AuditLog)

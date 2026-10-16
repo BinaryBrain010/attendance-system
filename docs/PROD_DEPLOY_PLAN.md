@@ -176,6 +176,25 @@ only fills the new columns and never changes a business field.
 **Audit runtime flags:** `AUDIT_LOG=0` disables audit logging entirely; `AUDIT_ENFORCE=0` makes a
 failed audit insert non-fatal (the business write still commits). Default (both on): the AuditLog row
 is written in the same transaction as the business write, so a write never commits without its log.
+At boot, if `NODE_ENV=production` and `AUDIT_LOG=0`, the server logs a loud banner AND records a
+SYSTEM AuditLog event noting that auditing is off (Run 12 item 4), so the gap is itself auditable.
+
+**Behind a proxy:** the backend sets `app.set('trust proxy', 1)` so `req.ip` (and the AuditLog `ip`
+column) resolve to the real client IP from `X-Forwarded-For`, not the proxy address. If prod runs
+behind more than one proxy hop, bump the number to the correct hop count in `server.ts`.
+
+**AuditLog indexes (verified):** `createdAt`, `action`, `userId`, and composite `(entity, entityId)`,
+plus the PK. These cover the admin Audit Log page (order by createdAt desc; filter by user / entity /
+action / record id / date range) and the per-record History tab (filter `entity`+`entityId`). The
+`module` filter is low-cardinality and rides the `createdAt` index; add a composite
+`(entity, entityId, createdAt)` only if entity-history on a very high-volume entity ever gets slow.
+
+**Retention (plan only — do NOT implement deletion):** keep AuditLog rows for **2 years** online,
+then **archive** older rows to cold storage (e.g. a monthly `audit_log_archive` table or an S3/Parquet
+export via `COPY (SELECT ... WHERE "createdAt" < now() - interval '2 years') TO ...`) and only then
+remove the archived rows. No automatic deletion is implemented in this release; purging the audit
+trail must be a deliberate, reviewed, separately-approved operation. Monitor table size (a busy write
+workload adds one row per write) and revisit the window if growth warrants it.
 
 ---
 

@@ -75,6 +75,7 @@ import WorkReportRoutes from "../../modules/Work/Report/routes/workReport.routes
 import AuditLogRoutes from "../../modules/Audit/routes/auditLog.routes";
 import WorkSchedulerHelper from "../../modules/Work/helper/workSchedule.helper";
 import { ensureSystemUser } from "../audit/systemUser";
+import { auditBootCheck } from "../audit/auditBoot";
 
 class App {
   private app: Express;
@@ -93,6 +94,7 @@ class App {
     AttendanceSchedulerHelper;
     WorkSchedulerHelper;
     ensureSystemUser();
+    auditBootCheck();
   }
 
   /**
@@ -110,7 +112,11 @@ class App {
   }
 
   private accessControl() {
-    this.app.use(cors({ 
+    // Behind a reverse proxy (nginx / load balancer) the real client IP is in X-Forwarded-For.
+    // Trust the first proxy hop so req.ip and the audit context capture the client IP, not the
+    // proxy's. Adjust the hop count if there is more than one proxy in front (Run 12 item 4).
+    this.app.set("trust proxy", 1);
+    this.app.use(cors({
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);

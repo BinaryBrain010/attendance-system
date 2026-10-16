@@ -276,7 +276,7 @@ class UserController extends BaseController<UserService> {
     // Using logger instead of console.log
 
     // Audit context for login events (login runs before the context middleware, so pass explicitly).
-    const _ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null;
+    const _ip = req.ip || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null;
     const _ua = (req.headers["user-agent"] as string) || null;
     const loginFailed = (userId: string | null, reason: string) =>
       logEvent({ module: "Auth", entity: "User", entityId: userId, action: "LOGIN_FAILED", changes: { username, reason }, userId, ip: _ip, userAgent: _ua, platform });

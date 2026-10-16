@@ -15,8 +15,13 @@
 process.env.AUDIT_LOG = "0";
 import { api, mintGodToken, mintTokenFor, IS_LOCAL } from "./lib";
 import prisma from "../src/core/models/base.model";
-import { runAsSystem, SYSTEM_USER_ID } from "../src/core/context/requestContext";
+import { runAsSystem, runWithContext, SYSTEM_USER_ID } from "../src/core/context/requestContext";
+import ResetHelper from "../src/helper/reset.helper";
+import ShiftService from "../src/modules/AMS/Shift/services/shift.service";
+import { auditBootCheck } from "../src/core/audit/auditBoot";
 import { randomUUID } from "crypto";
+
+const BASE = process.env.QA_BASE_URL || "http://localhost:3002";
 
 if (!IS_LOCAL) { console.error("[audit] refuse: non-local DB"); process.exit(2); }
 
@@ -112,11 +117,67 @@ async function main() {
   const listGod = await api("POST", "/auditLog/get", god, { entity: "Lead", pageSize: 5 });
   ok("admin audit list works", listGod.status === 200 && typeof listGod.data?.total === "number");
 
+  console.log("[audit] item 2: raw-SQL writes audited + reset.helper local-only...");
+  // reset.helper must refuse a non-local DATABASE_URL (a full wipe may only run locally).
+  const realUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = "postgresql://postgres:x@db.prod.example.com:5432/gatePassSystem";
+  let resetRefused = false;
+  try { await new ResetHelper().resetDB(); } catch { resetRefused = true; }
+  process.env.DATABASE_URL = realUrl;
+  ok("reset.helper refuses non-local DB", resetRefused);
+  // ShiftTimetableBlock writes (shift.service) are audited. The service prefers the Prisma client
+  // path (audited by the extension); the raw-SQL fallback additionally calls logEvent. Verify a
+  // block create produces a ShiftTimetableBlock CREATE audit row.
+  process.env.AUDIT_LOG = "1";
+  const qaShift = await prisma.shift.create({ data: { name: "QA_AUDIT_SHIFT_" + randomUUID().slice(0, 8), startTime: new Date("2020-01-01T09:00:00Z"), endTime: new Date("2020-01-01T17:00:00Z"), createdAt: new Date(), updatedAt: new Date() } as any });
+  let blockId = "";
+  await runWithContext({ userId: GOD_ID }, async () => {
+    const blk: any = await new ShiftService().createTimetableBlock({ shiftId: qaShift.id, dayOfWeek: 1, startTime: "2020-01-01T09:00:00Z" as any, endTime: "2020-01-01T12:00:00Z" as any, type: "WORK" } as any);
+    blockId = blk?.id;
+  });
+  process.env.AUDIT_LOG = "0";
+  const blkAudit = blockId ? await auditRows("ShiftTimetableBlock", blockId) : [];
+  ok("ShiftTimetableBlock create audited", blkAudit.some((r) => r.action === "CREATE"), `rows=${blkAudit.length}`);
+
+  console.log("[audit] item 4: X-Forwarded-For IP + audit-disabled boot event...");
+  // trust proxy -> the AuditLog ip column reflects the forwarded client IP, not the socket address.
+  const xffHol = await fetch(BASE + "/holiday/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${god}`, "X-Forwarded-For": "203.0.113.77" },
+    body: JSON.stringify({ date: "2036-08-08", reason: "QA_AUDIT_XFF", isActive: true }),
+  });
+  const xffBody: any = await xffHol.json().catch(() => ({}));
+  const xffId = xffBody?.data?.id;
+  if (xffId) createdHolidayIds.push(xffId);
+  const xffAudit = xffId ? await auditRows("Holiday", xffId) : [];
+  ok("AuditLog stores forwarded client IP", xffAudit.some((r) => (r.ip || "").includes("203.0.113.77")), `ips=${xffAudit.map((r) => r.ip).join(",")}`);
+  // auditBootCheck writes a SYSTEM event when NODE_ENV=production and AUDIT_LOG=0.
+  const realNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production"; process.env.AUDIT_LOG = "0";
+  await auditBootCheck();
+  process.env.NODE_ENV = realNodeEnv;
+  const bootEvt = await prisma.auditLog.findMany({ where: { module: "System", entity: "AuditLog" }, orderBy: { createdAt: "desc" }, take: 3 });
+  ok("audit-disabled boot writes a SYSTEM event", bootEvt.some((r) => (JSON.stringify(r.changes || {})).includes("auditDisabled")));
+
   // ---- cleanup ----
   console.log("[audit] cleanup...");
   if (leadId) { await prisma.auditLog.deleteMany({ where: { entityId: leadId } }); await prisma.leadActivity.deleteMany({ where: { leadId } }); await prisma.lead.deleteMany({ where: { id: leadId } }); }
   for (const hid of createdHolidayIds) if (hid) { await prisma.auditLog.deleteMany({ where: { entityId: hid } }); }
-  await prisma.holiday.deleteMany({ where: { reason: { in: ["QA_AUDIT_LC", "QA_AUDIT_LC2", "QA_AUDIT_SYS"] } } });
+  await prisma.holiday.deleteMany({ where: { reason: { in: ["QA_AUDIT_LC", "QA_AUDIT_LC2", "QA_AUDIT_SYS", "QA_AUDIT_XFF"] } } });
+  // item 2/4 artifacts: the QA shift + its timetable blocks, and the SYSTEM audit-disabled boot event
+  const shiftIds = (await prisma.shift.findMany({ where: { name: { startsWith: "QA_AUDIT_SHIFT_" } }, select: { id: true } })).map((s) => s.id);
+  if (shiftIds.length) {
+    const blkIds = (await prisma.shiftTimetableBlock.findMany({ where: { shiftId: { in: shiftIds } }, select: { id: true } })).map((b) => b.id);
+    if (blkIds.length) await prisma.auditLog.deleteMany({ where: { entity: "ShiftTimetableBlock", entityId: { in: blkIds } } });
+    await prisma.shiftTimetableBlock.deleteMany({ where: { shiftId: { in: shiftIds } } });
+    await prisma.shiftTimetable.deleteMany({ where: { shiftId: { in: shiftIds } } });
+    await prisma.auditLog.deleteMany({ where: { entity: "ShiftTimetable", entityId: { in: shiftIds } } });
+    await prisma.shift.deleteMany({ where: { id: { in: shiftIds } } });
+  }
+  await prisma.auditLog.deleteMany({ where: { module: "System", entity: "AuditLog" } });
+  // Creating a Holiday cascades HOLIDAYS attendance for every employee; purge the far-future
+  // (test-date) cascade this harness generated so it does not accumulate.
+  await prisma.attendance.deleteMany({ where: { status: "HOLIDAYS", date: { gte: new Date("2030-01-01T00:00:00.000Z") } } });
   if (u) { await prisma.auditLog.deleteMany({ where: { entityId: u.id } }); await prisma.featurePermission.deleteMany({ where: { parentId: u.id } }); await prisma.loggedInUsers.deleteMany({ where: { userId: u.id } }); await prisma.user.deleteMany({ where: { id: u.id } }); }
   await prisma.auditLog.deleteMany({ where: { userId: { in: [uNoCrm] } } });
   await prisma.featurePermission.deleteMany({ where: { parentId: uNoCrm } });

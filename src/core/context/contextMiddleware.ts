@@ -15,7 +15,9 @@ function firstIp(xff: unknown, fallback?: string): string | null {
 
 export function requestContext(req: Request, res: Response, next: NextFunction): void {
   const userId = (req as Request & { userId?: string }).userId ?? null;
-  const ip = firstIp(req.headers["x-forwarded-for"], req.socket?.remoteAddress || undefined);
+  // With `trust proxy` set (server.ts), Express resolves req.ip to the real client IP from
+  // X-Forwarded-For. Fall back to parsing the header / socket address if req.ip is unset.
+  const ip = req.ip || firstIp(req.headers["x-forwarded-for"], req.socket?.remoteAddress || undefined);
   const uaRaw = req.headers["user-agent"];
   const userAgent = typeof uaRaw === "string" ? uaRaw : null;
   const platRaw = req.headers["x-platform"];
