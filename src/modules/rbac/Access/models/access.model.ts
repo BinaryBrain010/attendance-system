@@ -2,6 +2,19 @@ import { AppFeature } from "@prisma/client";
 import { createFeaturePermission } from "../types/access";
 import { prisma } from "../../../../core/database/prisma.client";
 
+/**
+ * Parent-feature rule (same as requirePermission.ts): holding a parent wildcard grants every
+ * descendant. "a.b.c.*" is satisfied by holding "a.*" or "a.b.*". Returns the ancestor wildcards of a
+ * feature so a check for e.g. "attendance.read.*" passes when the caller holds "attendance.*".
+ */
+function featureAncestors(f: string): string[] {
+  if (!f || !f.endsWith(".*")) return [];
+  const segs = f.slice(0, -2).split(".");
+  const out: string[] = [];
+  for (let i = 1; i < segs.length; i++) out.push(segs.slice(0, i).join(".") + ".*");
+  return out;
+}
+
 const accessModel = prisma.$extends({
   model: {
     $allModels: {
@@ -274,7 +287,12 @@ const accessModel = prisma.$extends({
             permission.permissions?.allowedFeatures ?? [];
 
           if (Array.isArray(allowedFeatures)) {
-            return allowedFeatures.includes(featureId);
+            // Exact grant, OR any ancestor wildcard (parent grants descendant — same rule the RBAC
+            // middleware uses, so controller-level checks stay consistent, e.g. "attendance.*" grants
+            // "attendance.read.*").
+            if (allowedFeatures.includes(featureId)) return true;
+            for (const anc of featureAncestors(featureId)) if (allowedFeatures.includes(anc)) return true;
+            return false;
           } else {
             console.error("allowedFeatures is not an array:", allowedFeatures);
             return false;
