@@ -61,7 +61,26 @@ every table against dev. Findings:
 - qa/audit.ts extended with tests for items 2 and 4 (reset refuses non-local; ShiftTimetableBlock
   create audited; forwarded client IP stored in AuditLog; audit-disabled boot writes a SYSTEM event).
   qa:audit now 23/0. Also purges its own far-future holiday-cascade attendance.
-- Commit (backend): see hash below.
+- Commit (backend): c7e3876 (item 2), d84dcb0 (item 4).
+
+### Item 3 - History tab + footer on all remaining detail pages / drawers  [DONE]
+- Reusable: AuditHistoryDrawer.tsx (right slide-over wrapping AuditHistory) for list-only modules,
+  plus an optional per-row "History" action added to the shared DataGrid (useTableColumns.tsx +
+  table.tsx `onHistory`), so any list using TableComponent can offer it.
+- Detail pages/modals got the embedded AuditHistory + AuditFooter: users (detailedUser), roles
+  (role/detailed), groups (group/detailed), shifts (detailedShift), units (detailedUnit),
+  attendance requests (AttendanceReqView), tasks (TaskModal, only for an existing task).
+- List-only modules got a History button opening the drawer: holidays + visitors (shared DataGrid
+  onHistory), leave requests (MUI DataGrid actions column, History action always shown), teams
+  (per-card button), daily reports (per manager-row + the "mine" view; backend compliance() now
+  returns reportId so the row can open its report's history).
+- Gate passes: no admin UI exists for them (src/modules/gatePass has only services/types) and no
+  route, so there is nowhere to attach a History button; noted. Everything else in the brief's list
+  is covered.
+- All entities used are in the audit read-scope map, so the scoped /auditLog/entity endpoint serves
+  each History tab for users who can read that record.
+- Gates: backend tsc clean, admin next build clean (52 pages), CRM 176/0, qa:work 27/0, qa:audit 23/0.
+- Commit (backend): see hash below. Commit (admin): see hash below.
 
 ## Run 11 (2026-10-16, audit fields + central AuditLog)
 

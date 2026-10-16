@@ -79,13 +79,13 @@ class DailyReportService {
     const exp = await expectedReporters({ mode: scope.mode, ledTeamIds: scope.ledTeamIds, employeeId: scope.employeeId }, date);
     if (exp.nonWorkingDay) return { date, nonWorkingDay: true, reason: exp.reason, total: 0, submitted: 0, onLeave: 0, missing: 0, rows: [] };
     const empIds = exp.employees.map((e) => e.id);
-    const reports = empIds.length ? await prisma.dailyReport.findMany({ where: { date, isDeleted: null, employeeId: { in: empIds } }, select: { employeeId: true, hours: true, late: true } }) : [];
+    const reports = empIds.length ? await prisma.dailyReport.findMany({ where: { date, isDeleted: null, employeeId: { in: empIds } }, select: { id: true, employeeId: true, hours: true, late: true } }) : [];
     const byEmp = new Map(reports.map((r) => [r.employeeId, r]));
     const rows = exp.employees.map((e) => {
       const r = byEmp.get(e.id);
       const submitted = !!r;
       const status = submitted ? (r!.late ? "late" : "submitted") : e.onLeave ? "leave" : "missing";
-      return { employeeId: e.id, name: `${e.name} ${e.surname || ""}`.trim(), submitted, onLeave: e.onLeave, late: r?.late || false, hours: r?.hours ?? null, status };
+      return { employeeId: e.id, name: `${e.name} ${e.surname || ""}`.trim(), reportId: r?.id ?? null, submitted, onLeave: e.onLeave, late: r?.late || false, hours: r?.hours ?? null, status };
     });
     return {
       date, nonWorkingDay: false,
