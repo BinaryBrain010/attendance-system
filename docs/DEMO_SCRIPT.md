@@ -88,6 +88,15 @@ Start logged in as Admin.
     employee@demo.pk to show the shorter menus.
 12. Audit log (1 min). As Admin, Settings, then Audit Log. Filter by module or action and
     show who changed what, with time and IP.
+13. Help (30 sec). Click the "?" icon in the top bar to open the guide for the current page.
+    Point out that the Help list is role aware: a sales agent and an employee see only the
+    guides for the screens they can use. There is also a Help item in the menu under your name.
+
+## Help page
+
+Every role has a built in Help page. The "?" icon in the top bar opens the guide for the page
+you are on, and the menu under your name has a Help link. The left list and the guides shown
+follow the same permissions as the menu, so each role sees only what it can use.
 
 ## Demo data (only in gatepass_demo)
 
