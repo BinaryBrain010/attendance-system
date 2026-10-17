@@ -1041,3 +1041,47 @@ without clobbering the dev .next (admin commit 95781c6).
 Docs: docs/DEMO_SCRIPT.md (logins, URLs, start/stop commands, a 15 minute click path).
 
 Dev DB reconfirmed untouched: leads 261, orders 68, returns 62, quotations 0.
+
+---
+
+## Demo prep 2 (2026-10-17, crash sweep + Help page)
+
+Same rules. Backup first: qa/backups/demoprep2_demo_20261016_223315.dump and
+demoprep2_dev_20261016_223315.dump. Local only, no push, no attribution lines. All changes are in
+the admin app. Demo admin rebuilt (.next-demo) and restarted on :3006.
+
+### Crash sweep
+
+Swept the demo roles (admin, sales agent, employee) across their routes. No Next.js error overlays,
+unhandled rejections or blank screens were found. The real problems were expected-but-unhandled 403s
+that the global axios interceptor turned into error toasts on page load, plus the complete absence of
+error boundaries. Fixes (admin commits 8ada120, d627186, ba9d6bd):
+
+| Page | Error | Cause | Fix |
+| --- | --- | --- | --- |
+| Daily Reports (My report) | Toast "your account is not linked to an employee" on load for a no-employee login (e.g. admin@panel.com) | myToday() fired on mount with no catch; the interceptor toasts any 4xx | Read the cached employeeId; skip the personal-report calls when there is none; show a calm note; open the Team tab by default for managers |
+| My Tasks | Toast on GET /employee/get 403 for own-scope roles (agent, employee) | getPeople() best-effort assignee lookup 403s; the interceptor toasts before the caller's catch | Added a suppressErrorToast opt-out to the interceptor; getAllEmployees({ silent }) used by getPeople; logged at debug |
+| Team Board | Toast on POST /team/get 403 for own-scope roles | teamService.list() 403s for a role without team read | Do not call the team API when the role cannot read teams; show a calm note pointing to My Tasks |
+| Every module | A render error showed the raw Next.js overlay or a blank screen | No error boundaries existed anywhere in src/app | Shared ModuleError fallback + error.tsx per module (crm, work, ams, analytics, frontdesk, settings, user, role, group, profile, admin catch-all) + root global-error.tsx |
+
+Daily Reports, My Tasks and Team Board all work normally for roles that have the needed access
+(verified on :3006 after rebuild: no error toasts, calm notes where applicable).
+
+### Help page
+
+New /help route, role aware. A left module list, a search box across guides, and a Print button.
+Guides are markdown files in admin/public/assets/guides keyed by feature; each is gated by the same
+permission as the matching menu item, so a role sees only guides for screens it can use (verified:
+admin sees all groups, sales agent sees Start here + CRM + Work, employee sees Start here + Work).
+Each guide says what the screen is for, numbered steps, and which permission an action needs when it
+is hidden. A "?" icon in the top bar opens the guide for the current page; a Help item is in the
+avatar menu. A small markdown renderer covers the subset the guides use. admin commit 77a16b8.
+
+### Gates
+
+Both builds green (admin next build exit 0, backend tsc exit 0). Harnesses against the dev backend
+(:3002, RBAC on): CRM 176/0, work 27/0, audit 23/0, rbac 305/2/3 (the 2 fails are the pre-existing
+unit-scoping data gaps T0278/T0279, not regressions). qa:cleanup run, zero QA residue, dev counts
+restored to leads 261 / orders 68 / returns 62 / quotations 0.
+
+DEMO_SCRIPT.md updated with a Help step.
