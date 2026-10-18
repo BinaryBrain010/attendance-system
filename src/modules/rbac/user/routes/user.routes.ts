@@ -449,7 +449,11 @@ class UserRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.put('/update', this.controller.updateUser.bind(this.controller));
-    
+
+    // Link / unlink a login to an employee, and list employees with no login (for the picker).
+    this.router.post('/linkEmployee', this.controller.linkEmployee.bind(this.controller));
+    this.router.post('/unlinkedEmployees', this.controller.unlinkedEmployees.bind(this.controller));
+
     /**
      * @swagger
      * /user/restore:

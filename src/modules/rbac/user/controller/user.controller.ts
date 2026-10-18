@@ -213,6 +213,24 @@ class UserController extends BaseController<UserService> {
     });
   }
 
+  /** Link or unlink a login to an employee. Body: { userId, employeeId | null }. */
+  async linkEmployee(req: Request, res: Response) {
+    const { userId, employeeId } = req.body;
+    const operation = () => this.service.linkEmployee(userId, employeeId ?? null);
+    await this.handleRequest(operation, res, {
+      successMessage: employeeId ? "Employee linked to login" : "Employee unlinked from login",
+      logActivity: { action: "UPDATE", entityType: "User", entityId: userId, description: employeeId ? `Linked employee ${employeeId}` : "Unlinked employee", metadata: { employeeId: employeeId ?? null } },
+      req,
+    });
+  }
+
+  /** Employees with no linked login (for the user form's "Linked employee" picker). Body: { includeId? }. */
+  async unlinkedEmployees(req: Request, res: Response) {
+    const includeId = req.body?.includeId ?? null;
+    const operation = () => this.service.unlinkedEmployees(includeId);
+    await this.handleRequest(operation, res, { successMessage: "Unlinked employees retrieved" });
+  }
+
   async deleteUser(req: Request, res: Response) {
     let { id } = req.body;
     let operation = () => this.service.deleteUser(id);

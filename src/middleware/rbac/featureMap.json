@@ -2214,6 +2214,16 @@
     "feature": "user.update.*",
     "kind": "update"
   },
+  "POST /user/linkEmployee": {
+    "access": "feature",
+    "feature": "user.update.*",
+    "kind": "update"
+  },
+  "POST /user/unlinkedEmployees": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
   "POST /userGroup/create": {
     "access": "feature",
     "feature": "user.update.*",
