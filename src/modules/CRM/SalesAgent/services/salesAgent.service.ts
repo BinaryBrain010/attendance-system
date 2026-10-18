@@ -3,6 +3,8 @@ import prisma from "../../../../core/models/base.model";
 const include = {
   employee: { select: { id: true, name: true, surname: true, code: true, company: true } },
   teamLead: { select: { id: true, agentCode: true } },
+  // The agent's login (via SalesAgent.userId). Null -> no login -> the agent cannot use the CRM.
+  user: { select: { id: true, username: true } },
 };
 
 class SalesAgentService {
