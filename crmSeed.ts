@@ -281,10 +281,18 @@ async function regenerateLiveFeatures() {
   console.log(`\n[crmSeed] qa/_livefeatures.json rewritten (${names.length} features)`);
 }
 
+// --features-only: register the crm.* AppFeature tree and nothing else (no catalogue products, no
+// SalesAgent rows). Used for a clean prod launch where CRM must come up EMPTY of business data.
+const FEATURES_ONLY = process.argv.includes("--features-only");
+
 async function main() {
   await seedFeatures();
-  await seedCatalogue();
-  await seedAgents();
+  if (!FEATURES_ONLY) {
+    await seedCatalogue();
+    await seedAgents();
+  } else {
+    console.log("[crmSeed] --features-only: skipped catalogue + agent mapping (no business data).");
+  }
   await regenerateLiveFeatures();
   await prisma.$disconnect();
   console.log("\n[crmSeed] done.");
