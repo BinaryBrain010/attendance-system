@@ -12,6 +12,7 @@
  * Never touches rows that already have an agentId, rows with no createdById, or rows whose creator
  * has no agent. Idempotent: re-running after an apply finds nothing left to do.
  */
+import "dotenv/config"; // load ~/server/.env (DATABASE_URL) when run as a standalone script
 import prisma from "../src/core/models/base.model";
 
 const APPLY = process.argv.includes("--apply");

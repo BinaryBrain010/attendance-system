@@ -12,6 +12,7 @@
  * Skips an agent whose employee has no login, and (SalesAgent.userId is unique) an agent whose would-be
  * login is already tied to a different agent — those are reported as conflicts to resolve by hand.
  */
+import "dotenv/config"; // load ~/server/.env (DATABASE_URL) when run as a standalone script
 import prisma from "../src/core/models/base.model";
 
 const APPLY = process.argv.includes("--apply");
