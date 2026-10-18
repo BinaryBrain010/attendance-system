@@ -220,6 +220,32 @@ async function main() {
   check("no-agent getById own lead -> 200", (await api("POST", "/lead/getById", tNoAgent, { id: naLeadRow?.id })).status === 200);
   check("no-agent getById others' lead -> 403 (never sees others)", (await api("POST", "/lead/getById", tNoAgent, { id: outLead1.id })).status === 403);
 
+  console.log("\n[crm] ===== #1 linkEmployee syncs SalesAgent.userId (+ OWN via agent) =====");
+  {
+    const GOD = "58c55d6a-910c-46f8-a422-4604bea6cd15";
+    const godTok = mintTokenFor(GOD);
+    const empS = await mkEmp("SYNC", "QA Sync Agent");
+    const agentS = await prisma.salesAgent.create({ data: { agentCode: `${QA_AGCODE}SYNC`, employeeId: empS.id, userId: null, scope: "OWN", company: "OKASHASMART" } });
+    const userS = await mkUser("syncuser");
+    await grant(userS.id, ["crm.lead.read.own.*", "crm.lead.create.*"]);
+    const link = await api("POST", "/user/linkEmployee", godTok, { userId: userS.id, employeeId: empS.id });
+    check("linkEmployee -> 200", link.status === 200, `status ${link.status}`);
+    const agAfter = await prisma.salesAgent.findUnique({ where: { id: agentS.id }, select: { userId: true } });
+    check("agent.userId synced to the linked login", agAfter?.userId === userS.id, `got ${agAfter?.userId}`);
+    const uAfter = await prisma.user.findUnique({ where: { id: userS.id }, select: { employeeId: true } });
+    check("user.employeeId set", uAfter?.employeeId === empS.id);
+    const tS = mintTokenFor(userS.id);
+    const naL = await api("POST", "/lead/create", tS, { customerName: `${QTAG}Sync own`, stage: "NEW", company: "OKASHASMART" });
+    const row = Array.isArray(naL.data) ? naL.data[0] : naL.data;
+    check("linked user's new lead carries the agent id (OWN via agent)", naL.status === 201 && row?.agentId === agentS.id, `status ${naL.status} agent ${row?.agentId}`);
+    const lst = await leadCount(tS);
+    check("linked user now resolves to OWN via agent", lst.mode === "OWN", `mode ${lst.mode}`);
+    const unlink = await api("POST", "/user/linkEmployee", godTok, { userId: userS.id, employeeId: null });
+    check("unlink -> 200", unlink.status === 200);
+    const agUn = await prisma.salesAgent.findUnique({ where: { id: agentS.id }, select: { userId: true } });
+    check("unlink clears agent.userId", agUn?.userId === null, `got ${agUn?.userId}`);
+  }
+
   console.log("\n[crm] ===== scope: getById out-of-scope -> 403 =====");
   check("AGENT_OWN getById AG004 lead -> 403", (await api("POST", "/lead/getById", tOwn, { id: outLead1.id })).status === 403);
   check("TEAM_LEAD getById AG004 lead -> 403", (await api("POST", "/lead/getById", tTeam, { id: outLead1.id })).status === 403);

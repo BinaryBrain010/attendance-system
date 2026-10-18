@@ -6,19 +6,36 @@ import prisma from "../../../../core/models/base.model";
 import { AppError, NotFoundError } from "../../../../core/errors/app.error";
 class UserService {
   /**
-   * Link (or unlink with employeeId=null) a login to an employee. User.employeeId is unique, so an
-   * employee can back at most one login; a friendly 409 is raised if the employee is already taken.
+   * Link (or unlink with employeeId=null) a login to an employee, AND keep SalesAgent.userId in sync in
+   * the SAME transaction: the agent of the linked employee gets this login's userId (cleared on unlink).
+   * User.employeeId and SalesAgent.userId are both unique, so a login backs at most one employee and an
+   * agent is tied to at most one login; a friendly 409 is raised if the employee, or that employee's
+   * agent, is already tied to another login.
    */
   async linkEmployee(userId: string, employeeId: string | null): Promise<UserData | null> {
     if (!userId) throw new AppError(400, "userId is required");
-    if (employeeId) {
-      const emp = await prisma.employee.findFirst({ where: { id: employeeId, isDeleted: null }, select: { id: true } });
-      if (!emp) throw new NotFoundError("Employee");
-      const taken = await prisma.user.findFirst({ where: { employeeId, id: { not: userId }, isDeleted: null }, select: { id: true, username: true } });
-      if (taken) throw new AppError(409, `That employee is already linked to the login "${taken.username}". Unlink it first.`);
-    }
-    // employeeId may be null (unlink); the column is nullable. Cast past the stricter UserData type.
-    return await userModel.user.gpUpdate(userId, { employeeId } as any);
+    return await prisma.$transaction(async (tx: any) => {
+      let targetAgent: { id: string; agentCode: string; userId: string | null } | null = null;
+      if (employeeId) {
+        const emp = await tx.employee.findFirst({ where: { id: employeeId, isDeleted: null }, select: { id: true } });
+        if (!emp) throw new NotFoundError("Employee");
+        const taken = await tx.user.findFirst({ where: { employeeId, id: { not: userId }, isDeleted: null }, select: { username: true } });
+        if (taken) throw new AppError(409, `That employee is already linked to the login "${taken.username}". Unlink it first.`);
+        // The agent (if any) for this employee must not already be tied to a different login.
+        targetAgent = await tx.salesAgent.findFirst({ where: { employeeId, isDeleted: null }, select: { id: true, agentCode: true, userId: true } });
+        if (targetAgent && targetAgent.userId && targetAgent.userId !== userId) {
+          throw new AppError(409, `That employee's agent (${targetAgent.agentCode}) is already tied to another login. Unlink that login first.`);
+        }
+      }
+      // Set / clear the user's employee link.
+      const updated = await tx.user.update({ where: { id: userId }, data: { employeeId } });
+      // Keep SalesAgent.userId consistent: clear this login from any agent it was on (except the new
+      // target, to respect the unique userId), then attach it to the target agent. On unlink there is no
+      // target, so this just clears the login off its old agent.
+      await tx.salesAgent.updateMany({ where: { userId, isDeleted: null, ...(targetAgent ? { id: { not: targetAgent.id } } : {}) }, data: { userId: null } });
+      if (targetAgent) await tx.salesAgent.update({ where: { id: targetAgent.id }, data: { userId } });
+      return updated as any;
+    });
   }
 
   /** Employees with no linked login (for the "Linked employee" picker). `includeId` keeps the one the
