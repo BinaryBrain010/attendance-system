@@ -52,7 +52,7 @@ class SalesReturnService {
     const scope = await resolveScope(userId, "return");
     const row = await prisma.salesReturn.findUnique({ where: { id }, include: { items: { where: { isDeleted: null } } } });
     if (!row || row.isDeleted) return null;
-    assertRowInScope(scope, row.agentId, "Return");
+    assertRowInScope(scope, row, "Return");
     return row;
   }
 
@@ -97,7 +97,7 @@ class SalesReturnService {
     const scope = await resolveScope(userId, "return");
     const existing = await prisma.salesReturn.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Return");
-    assertRowInScope(scope, existing.agentId, "Return");
+    assertRowInScope(scope, existing, "Return");
     const d: any = {};
     for (const k of ["customerName", "phone", "city", "courier", "trackingNo", "reason"]) if (k in data) d[k] = data[k];
     if ("phone" in data) d.phoneNormalized = normalizePhone(data.phone);
@@ -109,7 +109,7 @@ class SalesReturnService {
     const scope = await resolveScope(userId, "return");
     const r = await prisma.salesReturn.findUnique({ where: { id } });
     if (!r || r.isDeleted) throw new NotFoundError("Return");
-    assertRowInScope(scope, r.agentId, "Return");
+    assertRowInScope(scope, r, "Return");
     assertTransition("return", r.status, to, reason);
     const data: any = { status: to, updatedBy: userId, updatedAt: new Date() };
     if (to === "DAMAGED" && reason) data.reason = `${r.reason} | damaged: ${reason}`;
@@ -121,7 +121,7 @@ class SalesReturnService {
     const scope = await resolveScope(userId, "return");
     const existing = await prisma.salesReturn.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Return");
-    assertRowInScope(scope, existing.agentId, "Return");
+    assertRowInScope(scope, existing, "Return");
     return prisma.salesReturn.gpSoftDelete(id);
   }
 }

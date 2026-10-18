@@ -134,7 +134,8 @@ async function main() {
   const AG004 = await mkAgent("OUT", empOut.id, uOut.id, "OWN");
   // non-agent persona users (no employee, no agent)
   const adminUser = (await mkUser("admin")).id, viewerUser = (await mkUser("viewer")).id,
-    noCrmUser = (await mkUser("nocrm")).id, umbrellaUser = (await mkUser("umbrella")).id;
+    noCrmUser = (await mkUser("nocrm")).id, umbrellaUser = (await mkUser("umbrella")).id,
+    noAgentUser = (await mkUser("noagent")).id;
   const agentOwnUser = AG001.userId!, teamLeadUser = AG006.userId!;
 
   // write features (create/update/delete/restore) a selling agent needs; scope of WHICH rows they can
@@ -146,9 +147,13 @@ async function main() {
   await grant(teamLeadUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...WRITES, ...OPS, "crm.catalogue.read.*", "crm.report.read.*"]);
   await grant(viewerUser, [...ENTS.map(OWN), ...ENTS.map(TEAM), ...ENTS.map(ALL), "crm.report.read.*", "crm.report.export.*", "crm.catalogue.read.*"]);
   await grant(umbrellaUser, ["appModules.crm.*"]);
+  // #4 safety persona: holds a CRM read feature but has NO SalesAgent profile. Must fall back to
+  // OWN-by-createdBy (its own created rows only), NEVER ALL. read.own + create so it can make leads.
+  await grant(noAgentUser, ["crm.lead.read.own.*", "crm.lead.create.*"]);
 
   const tAdmin = mintTokenFor(adminUser), tOwn = mintTokenFor(agentOwnUser), tTeam = mintTokenFor(teamLeadUser),
-    tViewer = mintTokenFor(viewerUser), tNo = mintTokenFor(noCrmUser), tUmb = mintTokenFor(umbrellaUser);
+    tViewer = mintTokenFor(viewerUser), tNo = mintTokenFor(noCrmUser), tUmb = mintTokenFor(umbrellaUser),
+    tNoAgent = mintTokenFor(noAgentUser);
 
   // ---- fixtures: leads (via prisma, tagged) ----
   const mkLead = async (agentId: string, i: number, extra: any = {}) => {
@@ -203,6 +208,17 @@ async function main() {
   check("TEAM_LEAD sees 5 leads (team)", lt.n === 5, `got ${lt.n} mode=${lt.mode}`);
   check("ADMIN sees 7 leads (all)", la.n === 7, `got ${la.n} mode=${la.mode}`);
   check("VIEWER sees 7 leads (all)", lv.n === 7, `got ${lv.n} mode=${lv.mode}`);
+
+  console.log("\n[crm] ===== scope: no-agent read.own -> OWN by createdBy (#4) =====");
+  // A read.own login with no SalesAgent used to see NONE; it must now see ONLY its own created rows
+  // (never ALL, never anyone else's). Create one lead as it (agentId must come back null).
+  const naLead = await api("POST", "/lead/create", tNoAgent, { customerName: `${QTAG}NA own`, stage: "NEW", company: "OKASHASMART" });
+  const naLeadRow = Array.isArray(naLead.data) ? naLead.data[0] : naLead.data;
+  check("no-agent create lead -> 201, agentId null", naLead.status === 201 && (naLeadRow?.agentId ?? null) === null, `status ${naLead.status} agentId ${naLeadRow?.agentId}`);
+  const lna = await leadCount(tNoAgent);
+  check("no-agent read.own sees ONLY own created (1), mode OWN, never ALL", lna.n === 1 && lna.mode === "OWN", `got ${lna.n} mode=${lna.mode}`);
+  check("no-agent getById own lead -> 200", (await api("POST", "/lead/getById", tNoAgent, { id: naLeadRow?.id })).status === 200);
+  check("no-agent getById others' lead -> 403 (never sees others)", (await api("POST", "/lead/getById", tNoAgent, { id: outLead1.id })).status === 403);
 
   console.log("\n[crm] ===== scope: getById out-of-scope -> 403 =====");
   check("AGENT_OWN getById AG004 lead -> 403", (await api("POST", "/lead/getById", tOwn, { id: outLead1.id })).status === 403);

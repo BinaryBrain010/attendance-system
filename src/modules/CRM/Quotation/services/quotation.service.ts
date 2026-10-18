@@ -80,7 +80,7 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const row = await prisma.quotation.findUnique({ where: { id }, include: { items: { where: { isDeleted: null } } } });
     if (!row || row.isDeleted) return null;
-    assertRowInScope(scope, row.agentId, "Quotation");
+    assertRowInScope(scope, row, "Quotation");
     const versions = await prisma.quotation.findMany({ where: { quotationNo: row.quotationNo, isDeleted: null }, select: { id: true, version: true, status: true, isActive: true }, orderBy: { version: "asc" } });
     return { ...row, versions };
   }
@@ -110,7 +110,7 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const existing = await prisma.quotation.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Quotation");
-    assertRowInScope(scope, existing.agentId, "Quotation");
+    assertRowInScope(scope, existing, "Quotation");
     const { items, ...h } = data;
     if ("agentId" in h) h.agentId = resolveAssignment(scope, h.agentId);
     return prisma.$transaction(async (tx: any) => {
@@ -157,7 +157,7 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const cur = await prisma.quotation.findUnique({ where: { id }, include: { items: { where: { isDeleted: null } } } });
     if (!cur) throw new NotFoundError("Quotation");
-    assertRowInScope(scope, cur.agentId, "Quotation");
+    assertRowInScope(scope, cur, "Quotation");
     const agg = await prisma.quotation.aggregate({ where: { quotationNo: cur.quotationNo }, _max: { version: true } });
     const newV = (agg._max.version || cur.version) + 1;
     return prisma.$transaction(async (tx: any) => {
@@ -179,7 +179,7 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const q = await prisma.quotation.findUnique({ where: { id } });
     if (!q || q.isDeleted) throw new NotFoundError("Quotation");
-    assertRowInScope(scope, q.agentId, "Quotation");
+    assertRowInScope(scope, q, "Quotation");
     assertTransition("quotation", q.status, to, reason);
     if (to === "SENT" || to === "ACCEPTED") {
       const other = await prisma.quotation.findFirst({ where: { quotationNo: q.quotationNo, id: { not: id }, status: { in: ["SENT", "ACCEPTED"] }, isDeleted: null } });
@@ -196,14 +196,14 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const existing = await prisma.quotation.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Quotation");
-    assertRowInScope(scope, existing.agentId, "Quotation");
+    assertRowInScope(scope, existing, "Quotation");
     return prisma.quotation.gpSoftDelete(id);
   }
   async restore(userId: string, id: string) {
     const scope = await resolveScope(userId, "quotation");
     const existing = await prisma.quotation.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Quotation");
-    assertRowInScope(scope, existing.agentId, "Quotation");
+    assertRowInScope(scope, existing, "Quotation");
     return prisma.quotation.gpRestore(id);
   }
 
@@ -212,7 +212,7 @@ class QuotationService {
     const scope = await resolveScope(userId, "quotation");
     const q = await prisma.quotation.findUnique({ where: { id }, include: { items: { where: { isDeleted: null } } } });
     if (!q || q.isDeleted) throw new NotFoundError("Quotation");
-    assertRowInScope(scope, q.agentId, "Quotation");
+    assertRowInScope(scope, q, "Quotation");
     return q;
   }
 }

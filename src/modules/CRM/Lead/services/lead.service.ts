@@ -78,7 +78,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) return null;
-    assertRowInScope(scope, lead.agentId, "Lead");
+    assertRowInScope(scope, lead, "Lead");
     return withComputed(lead);
   }
 
@@ -93,7 +93,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
-    assertRowInScope(scope, existing.agentId, "Lead");
+    assertRowInScope(scope, existing, "Lead");
     if (Object.prototype.hasOwnProperty.call(data, "agentId")) data.agentId = resolveAssignment(scope, data.agentId);
     if (Object.prototype.hasOwnProperty.call(data, "stage")) delete data.stage; // stage only via /transition
     if (Object.prototype.hasOwnProperty.call(data, "phone")) data.phoneNormalized = normalizePhone(data.phone);
@@ -104,7 +104,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
-    assertRowInScope(scope, existing.agentId, "Lead");
+    assertRowInScope(scope, existing, "Lead");
     return prisma.lead.gpSoftDelete(id);
   }
 
@@ -112,7 +112,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
-    assertRowInScope(scope, existing.agentId, "Lead");
+    assertRowInScope(scope, existing, "Lead");
     return prisma.lead.gpRestore(id);
   }
 
@@ -120,7 +120,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
-    assertRowInScope(scope, existing.agentId, "Lead");
+    assertRowInScope(scope, existing, "Lead");
     const target = resolveAssignment(scope, agentId);
     return prisma.lead.update({ where: { id }, data: { agentId: target, updatedBy: userId } });
   }
@@ -130,7 +130,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
-    assertRowInScope(scope, lead.agentId, "Lead");
+    assertRowInScope(scope, lead, "Lead");
     assertTransition("lead", lead.stage, to, reason);
     const data: any = { stage: to, updatedBy: userId, updatedAt: new Date() };
     if (to === "LOST") { data.lostReason = reason; data.stageReason = reason; }
@@ -162,7 +162,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
-    assertRowInScope(scope, lead.agentId, "Lead");
+    assertRowInScope(scope, lead, "Lead");
     const [acts, legacy, audit] = await Promise.all([
       prisma.leadActivity.findMany({ where: { leadId: id, isDeleted: null } }),
       prisma.activityLog.findMany({ where: { entityType: "Lead", entityId: id }, orderBy: { createdAt: "desc" } }),

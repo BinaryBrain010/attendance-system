@@ -69,7 +69,7 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const row = await prisma.salesOrder.findUnique({ where: { id }, include: { items: { where: { isDeleted: null } } } });
     if (!row || row.isDeleted) return null;
-    assertRowInScope(scope, row.agentId, "Order");
+    assertRowInScope(scope, row, "Order");
     return row;
   }
 
@@ -127,7 +127,7 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const existing = await prisma.salesOrder.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Order");
-    assertRowInScope(scope, existing.agentId, "Order");
+    assertRowInScope(scope, existing, "Order");
     const { items, ...h } = data;
     if ("agentId" in h) h.agentId = resolveAssignment(scope, h.agentId);
     return prisma.$transaction(async (tx: any) => {
@@ -148,7 +148,7 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const o = await prisma.salesOrder.findUnique({ where: { id } });
     if (!o || o.isDeleted) throw new NotFoundError("Order");
-    assertRowInScope(scope, o.agentId, "Order");
+    assertRowInScope(scope, o, "Order");
     assertTransition("order", o.status, to, reason);
     const data: any = { status: to, updatedBy: userId, updatedAt: new Date() };
     if (to === "CANCELLED" || to === "RETURNED") data.statusReason = reason;
@@ -164,7 +164,7 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const o = await prisma.salesOrder.findUnique({ where: { id } });
     if (!o || o.isDeleted) throw new NotFoundError("Order");
-    assertRowInScope(scope, o.agentId, "Order");
+    assertRowInScope(scope, o, "Order");
     if (o.status !== "DISPATCHED") throw new AppError(409, `Only a DISPATCHED order can be re-attempted (it is ${o.status})`);
     return prisma.salesOrder.update({ where: { id }, data: { reattemptCount: (o.reattemptCount || 0) + 1, updatedBy: userId, updatedAt: new Date() } });
   }
@@ -173,14 +173,14 @@ class SalesOrderService {
     const scope = await resolveScope(userId, "order");
     const existing = await prisma.salesOrder.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Order");
-    assertRowInScope(scope, existing.agentId, "Order");
+    assertRowInScope(scope, existing, "Order");
     return prisma.salesOrder.gpSoftDelete(id);
   }
   async restore(userId: string, id: string) {
     const scope = await resolveScope(userId, "order");
     const existing = await prisma.salesOrder.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Order");
-    assertRowInScope(scope, existing.agentId, "Order");
+    assertRowInScope(scope, existing, "Order");
     return prisma.salesOrder.gpRestore(id);
   }
 }

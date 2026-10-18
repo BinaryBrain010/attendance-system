@@ -8,7 +8,7 @@ class LeadActivityService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
     if (!lead) throw new NotFoundError("Lead");
-    assertRowInScope(scope, lead.agentId, "Lead");
+    assertRowInScope(scope, lead, "Lead");
     return lead;
   }
 
