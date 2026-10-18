@@ -10,6 +10,15 @@ import "dotenv/config";
 import jwt from "jsonwebtoken";
 import prisma from "../src/core/models/base.model";
 
+// Safety: this helper mints login tokens for real users, so it must only ever run against a LOCAL dev
+// database — never a remote/production DATABASE_URL.
+const DB = process.env.DATABASE_URL || "";
+const DB_HOST = (() => { try { return DB.split("://")[1].split("@").pop()!.split("/")[0].split(":")[0]; } catch { return ""; } })();
+if (!["localhost", "127.0.0.1", "[::1]"].includes(DB_HOST)) {
+  console.error(`[personaTokens] REFUSING — DATABASE_URL host "${DB_HOST}" is not local. This helper only runs against a local dev DB.`);
+  process.exit(2);
+}
+
 const API = process.env.QA_API || "http://localhost:3002";
 const SECRET = process.env.JWT_SECRET!;
 const mint = (userId: string) => jwt.sign({ userId, unitIds: [] }, SECRET, { expiresIn: "3h" });
