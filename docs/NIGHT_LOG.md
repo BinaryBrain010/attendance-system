@@ -320,6 +320,15 @@ stray `Q-0001 "ttest"` quotation was removed to restore the quotations=0 baselin
 since confirmed it was theirs, so no restore is needed, but under this rule I would ask first rather
 than delete.)
 
+**Never change a real user's password or feature grants — not even to get a local login for a
+browser/QA check.** When a run needs a login with specific permissions, create a `QA_`-prefixed
+test user with its own grants, use it, and delete it afterward (added 2026-10-19). Why: during the
+Quick Pass polish browser check I set a test password and merged Quick Pass feature grants onto the
+real users `ahadnawaz@phw` and `kamran@admin.com` to get an enabled login. Reverted the same day by
+stripping exactly the appended grant suffix from each (verified-suffix match, so no over-removal) and
+resetting `ahadnawaz@phw` to the shared local test password (`CrmTest!2026`). `kamran@admin.com`'s
+original password hash was unrecoverable, but that account is soft-deleted and cannot authenticate.
+
 ### Item 2 - Proper Work migration [DONE]
 - Cause of the `20260204000000_add_shift_timetable` shadow-replay failure: that migration adds an FK
   `ShiftTimetable.shiftId -> Shift(id)` but **no migration ever creates `Shift`**. A drift audit shows
