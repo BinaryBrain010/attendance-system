@@ -1209,6 +1209,46 @@
     "feature": "analytics.read.*",
     "kind": "read"
   },
+  "POST /insights/dashboard/create": {
+    "access": "feature",
+    "feature": "analytics.dashboard.*",
+    "kind": "write"
+  },
+  "POST /insights/dashboard/delete": {
+    "access": "feature",
+    "feature": "analytics.dashboard.*",
+    "kind": "write"
+  },
+  "POST /insights/dashboard/duplicate": {
+    "access": "feature",
+    "feature": "analytics.dashboard.*",
+    "kind": "write"
+  },
+  "POST /insights/dashboard/get": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "GET /insights/dashboard/list": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "POST /insights/dashboard/setHome": {
+    "access": "feature",
+    "feature": "analytics.dashboard.*",
+    "kind": "write"
+  },
+  "POST /insights/dashboard/share": {
+    "access": "feature",
+    "feature": "analytics.dashboard.*",
+    "kind": "write"
+  },
+  "POST /insights/dashboard/update": {
+    "access": "feature",
+    "feature": "analytics.dashboard.*",
+    "kind": "write"
+  },
   "POST /insights/widget/data": {
     "access": "feature",
     "feature": "analytics.read.*",

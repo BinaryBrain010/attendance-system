@@ -53,6 +53,16 @@ class InsightsRoutes {
      *       401: { $ref: '#/components/responses/401' }
      */
     this.router.post("/widget/data", this.controller.getWidgetData.bind(this.controller));
+
+    // ---- dashboards (reads: analytics.read.*; writes: analytics.dashboard.*) ----
+    this.router.get("/dashboard/list", this.controller.listDashboards.bind(this.controller));
+    this.router.post("/dashboard/get", this.controller.getDashboard.bind(this.controller));
+    this.router.post("/dashboard/create", this.controller.createDashboard.bind(this.controller));
+    this.router.post("/dashboard/update", this.controller.updateDashboard.bind(this.controller));
+    this.router.post("/dashboard/delete", this.controller.deleteDashboard.bind(this.controller));
+    this.router.post("/dashboard/duplicate", this.controller.duplicateDashboard.bind(this.controller));
+    this.router.post("/dashboard/setHome", this.controller.setHomeDashboard.bind(this.controller));
+    this.router.post("/dashboard/share", this.controller.shareDashboard.bind(this.controller));
   }
 
   public getRouter(): Router {

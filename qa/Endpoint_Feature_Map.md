@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-500 routes walked from the live routers. Real DB users counted: 176.
+508 routes walked from the live routers. Real DB users counted: 176.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,7 +11,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 1 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 16. Open: 6.
+Proposed features not yet registered: 7 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 16. Open: 6.
 
 | Method | Path | Kind | Access | Feature | Registered | Held by (of 176) | Note |
 |---|---|---|---|---|---|---|---|
@@ -257,6 +257,14 @@ Proposed features not yet registered: 1 (all mapped features exist in the DB). D
 | GET | /holiday/total | read | feature | `holiday.read.*` | yes | 3 |  |
 | PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 3 |  |
 | GET | /insights/catalog | read | feature | `analytics.read.*` | yes | 38 |  |
+| POST | /insights/dashboard/create | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/dashboard/delete | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/dashboard/duplicate | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/dashboard/get | read | feature | `analytics.read.*` | yes | 38 |  |
+| GET | /insights/dashboard/list | read | feature | `analytics.read.*` | yes | 38 |  |
+| POST | /insights/dashboard/setHome | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/dashboard/share | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/dashboard/update | write | feature | `analytics.dashboard.*` | NO | 38 |  |
 | POST | /insights/widget/data | read | feature | `analytics.read.*` | yes | 38 |  |
 | POST | /item/create | create | feature | `item.create.*` | yes | 3 |  |
 | POST | /item/delete | delete | feature | `item.delete.*` | yes | 3 |  |
@@ -519,3 +527,9 @@ Proposed features not yet registered: 1 (all mapped features exist in the DB). D
 ## Not-yet-registered proposed features
 
 - `voucher.approve.*` (POST /gatePass/reject)
+- `analytics.dashboard.*` (POST /insights/dashboard/create)
+- `analytics.dashboard.*` (POST /insights/dashboard/delete)
+- `analytics.dashboard.*` (POST /insights/dashboard/duplicate)
+- `analytics.dashboard.*` (POST /insights/dashboard/setHome)
+- `analytics.dashboard.*` (POST /insights/dashboard/share)
+- `analytics.dashboard.*` (POST /insights/dashboard/update)

@@ -207,8 +207,13 @@ function resolveFeature(method: string, p: string): { feature: string; kind: str
   // stats -> voucher.read.* (gate pass dashboard data)
   if (p.startsWith("/stats/")) return { feature: "voucher.read.*", kind: "read", access: "feature" };
 
-  // analytics / insights -> analytics.read.* (per-widget module + scope is enforced in the service)
-  if (p.startsWith("/insights/")) return { feature: "analytics.read.*", kind: "read", access: "feature" };
+  // analytics / insights. Reads -> analytics.read.*; dashboard writes -> analytics.dashboard.*;
+  // custom-widget builder -> analytics.customWidget.*. Per-widget module + scope is enforced in the service.
+  if (p.startsWith("/insights/")) {
+    if (p.startsWith("/insights/customWidget/") && /\/(save|preview|delete)(\/|$)/.test(p)) return { feature: "analytics.customWidget.*", kind: "write", access: "feature" };
+    if (/\/(create|update|delete|duplicate|setHome|share)(\/|$)/.test(p)) return { feature: "analytics.dashboard.*", kind: "write", access: "feature" };
+    return { feature: "analytics.read.*", kind: "read", access: "feature" };
+  }
 
   // gate pass approve
   if (key === "POST /gatePass/approve") return { feature: GATEPASS_APPROVE_FEATURE, kind: "approve", access: "feature", note: "feature QuickPass checks before approve" };
