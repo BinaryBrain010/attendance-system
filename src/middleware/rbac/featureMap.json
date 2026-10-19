@@ -909,6 +909,11 @@
     "feature": "voucher.post.*",
     "kind": "approve"
   },
+  "POST /gatePass/cancel": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
   "POST /gatePass/create": {
     "access": "feature",
     "feature": "voucher.create.*",
@@ -928,6 +933,11 @@
     "access": "feature",
     "feature": "voucher.delete.*",
     "kind": "delete"
+  },
+  "POST /gatePass/dispatch": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
   },
   "GET /gatePass/get": {
     "access": "feature",
@@ -959,6 +969,11 @@
     "feature": "voucher.pdf.*",
     "kind": "export"
   },
+  "POST /gatePass/reject": {
+    "access": "feature",
+    "feature": "voucher.approve.*",
+    "kind": "approve"
+  },
   "GET /gatePass/report": {
     "access": "feature",
     "feature": "voucher.read.*",
@@ -969,42 +984,17 @@
     "feature": "voucher.restore.*",
     "kind": "restore"
   },
-  "POST /gatePass/webList": {
+  "POST /gatePass/return": {
     "access": "feature",
     "feature": "voucher.read.*",
     "kind": "read"
   },
-  "POST /gatePass/webDetail": {
+  "POST /gatePass/status": {
     "access": "feature",
     "feature": "voucher.read.*",
     "kind": "read"
   },
   "POST /gatePass/statusHistory": {
-    "access": "feature",
-    "feature": "voucher.read.*",
-    "kind": "read"
-  },
-  "POST /gatePass/reject": {
-    "access": "feature",
-    "feature": "gatePass.reject.*",
-    "kind": "update"
-  },
-  "POST /gatePass/dispatch": {
-    "access": "feature",
-    "feature": "gatePass.dispatch.*",
-    "kind": "update"
-  },
-  "POST /gatePass/return": {
-    "access": "feature",
-    "feature": "gatePass.return.*",
-    "kind": "update"
-  },
-  "POST /gatePass/cancel": {
-    "access": "feature",
-    "feature": "gatePass.cancel.*",
-    "kind": "update"
-  },
-  "POST /gatePass/status": {
     "access": "feature",
     "feature": "voucher.read.*",
     "kind": "read"
@@ -1018,6 +1008,16 @@
     "access": "feature",
     "feature": "voucher.update.*",
     "kind": "update"
+  },
+  "POST /gatePass/webDetail": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/webList": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
   },
   "POST /gatePassItem/create": {
     "access": "feature",
@@ -1203,6 +1203,16 @@
     "access": "feature",
     "feature": "holiday.update.*",
     "kind": "update"
+  },
+  "GET /insights/catalog": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "POST /insights/widget/data": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
   },
   "POST /item/create": {
     "access": "feature",
@@ -2229,6 +2239,21 @@
     "feature": "user.read.*",
     "kind": "read"
   },
+  "POST /user/impersonate": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/impersonate/exit": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
+  "POST /user/linkEmployee": {
+    "access": "feature",
+    "feature": "user.read.*",
+    "kind": "read"
+  },
   "POST /user/restore": {
     "access": "feature",
     "feature": "user.delete.*",
@@ -2244,30 +2269,15 @@
     "feature": "user.read.*",
     "kind": "read"
   },
-  "PUT /user/update": {
-    "access": "feature",
-    "feature": "user.update.*",
-    "kind": "update"
-  },
-  "POST /user/linkEmployee": {
-    "access": "feature",
-    "feature": "user.update.*",
-    "kind": "update"
-  },
   "POST /user/unlinkedEmployees": {
     "access": "feature",
     "feature": "user.read.*",
     "kind": "read"
   },
-  "POST /user/impersonate": {
+  "PUT /user/update": {
     "access": "feature",
-    "feature": "user.impersonate.*",
-    "kind": "special"
-  },
-  "POST /user/impersonate/exit": {
-    "access": "token",
-    "feature": "-",
-    "kind": "self"
+    "feature": "user.update.*",
+    "kind": "update"
   },
   "POST /userGroup/create": {
     "access": "feature",

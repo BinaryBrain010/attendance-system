@@ -13,6 +13,7 @@ import GatePassRoutes from "../../modules/app/gatePass/routes/gatePass.routes";
 import GatePassItemRoutes from "../../modules/app/gatePassItem/routes/gatePassItem.routes";
 import ItemRoutes from "../../modules/app/item/routes/item.routes";
 import StatsRoutes from "../../modules/app/stats/routes/stats.routes";
+import InsightsRoutes from "../../modules/Insights/routes/insights.routes";
 import AuthRoutes from "../../Auth/routes/auth.routes";
 
 import path from "path";
@@ -268,7 +269,10 @@ class App {
       WorkReportRoutes,
 
       //Audit
-      AuditLogRoutes
+      AuditLogRoutes,
+
+      //Analytics / Insights
+      InsightsRoutes
     ];
     
     const openRoutes: any[] = [AuthRoutes, WebhookRoutes];

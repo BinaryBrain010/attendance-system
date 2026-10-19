@@ -53,6 +53,7 @@ import DailyReportRoutes from "../src/modules/Work/DailyReport/routes/dailyRepor
 import NotificationRoutes from "../src/modules/Work/Notification/routes/notification.routes";
 import WorkReportRoutes from "../src/modules/Work/Report/routes/workReport.routes";
 import AuditLogRoutes from "../src/modules/Audit/routes/auditLog.routes";
+import InsightsRoutes from "../src/modules/Insights/routes/insights.routes";
 
 const authed: any[] = [
   CustomerRoutes, GatePassRoutes, GatePassItemRoutes, ItemRoutes, StatsRoutes,
@@ -65,6 +66,7 @@ const authed: any[] = [
   SalesAgentRoutes, LeadRoutes, LeadActivityRoutes, QuotationRoutes, SalesOrderRoutes, SalesReturnRoutes, CrmReportRoutes,
   TeamRoutes, TaskRoutes, DailyReportRoutes, NotificationRoutes, WorkReportRoutes,
   AuditLogRoutes,
+  InsightsRoutes,
 ];
 const open: any[] = [AuthRoutes, WebhookRoutes];
 

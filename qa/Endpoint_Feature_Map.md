@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-487 routes walked from the live routers. Real DB users counted: 176.
+500 routes walked from the live routers. Real DB users counted: 176.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,7 +11,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 16. Open: 6.
+Proposed features not yet registered: 1 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 16. Open: 6.
 
 | Method | Path | Kind | Access | Feature | Registered | Held by (of 176) | Note |
 |---|---|---|---|---|---|---|---|
@@ -197,21 +197,28 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /featurePermission/restore | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
 | PUT | /featurePermission/update | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
 | POST | /gatePass/approve | approve | feature | `voucher.post.*` | yes | 3 | feature QuickPass checks before approve |
+| POST | /gatePass/cancel | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/create | create | feature | `voucher.create.*` | yes | 3 |  |
 | POST | /gatePass/customerId | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/date | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/delete | delete | feature | `voucher.delete.*` | yes | 3 |  |
+| POST | /gatePass/dispatch | read | feature | `voucher.read.*` | yes | 3 |  |
 | GET | /gatePass/get | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/get | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/getById | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/getDeleted | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/itemId | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/pdf | export | feature | `voucher.pdf.*` | yes | 3 |  |
+| POST | /gatePass/reject | approve | feature | `voucher.approve.*` | NO | 3 |  |
 | GET | /gatePass/report | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/restore | restore | feature | `voucher.restore.*` | yes | 3 |  |
+| POST | /gatePass/return | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/status | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/statusHistory | read | feature | `voucher.read.*` | yes | 3 |  |
 | GET | /gatePass/total | read | feature | `voucher.read.*` | yes | 3 |  |
 | PUT | /gatePass/update | update | feature | `voucher.update.*` | yes | 3 |  |
+| POST | /gatePass/webDetail | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/webList | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePassItem/create | create | feature | `voucher.create.*` | yes | 3 |  |
 | POST | /gatePassItem/delete | delete | feature | `voucher.delete.*` | yes | 3 |  |
 | GET | /gatePassItem/get | read | feature | `voucher.read.*` | yes | 3 |  |
@@ -249,6 +256,8 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /holiday/search | read | feature | `holiday.read.*` | yes | 3 |  |
 | GET | /holiday/total | read | feature | `holiday.read.*` | yes | 3 |  |
 | PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 3 |  |
+| GET | /insights/catalog | read | feature | `analytics.read.*` | yes | 38 |  |
+| POST | /insights/widget/data | read | feature | `analytics.read.*` | yes | 38 |  |
 | POST | /item/create | create | feature | `item.create.*` | yes | 3 |  |
 | POST | /item/delete | delete | feature | `item.delete.*` | yes | 3 |  |
 | GET | /item/get | read | feature | `item.read.*` | yes | 3 |  |
@@ -454,9 +463,13 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /user/getDetaileUserById | read | feature | `user.read.*` | yes | 2 |  |
 | GET | /user/getLoggedInUser | read | token | `-` | - | - | every logged-in user needs their own profile |
 | GET | /user/getNonAssociatedUsers | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/impersonate | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/impersonate/exit | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/linkEmployee | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/restore | restore | feature | `user.delete.*` | yes | 2 | restore mapped to delete feature |
 | POST | /user/search | read | feature | `user.read.*` | yes | 2 |  |
 | GET | /user/total | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/unlinkedEmployees | read | feature | `user.read.*` | yes | 2 |  |
 | PUT | /user/update | update | feature | `user.update.*` | yes | 2 |  |
 | POST | /userGroup/create | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
 | POST | /userGroup/delete | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
@@ -502,3 +515,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /workReport/overdue | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /workReport/timeToComplete | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /workReport/workload | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
+
+## Not-yet-registered proposed features
+
+- `voucher.approve.*` (POST /gatePass/reject)
