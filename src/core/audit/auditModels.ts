@@ -27,6 +27,8 @@ export const AUDIT_EXCLUDE = new Set<string>([
   "BlacklistToken", "LoggedInUsers", "AttendanceScheduler", "Notification", "ActivityLog", "AuditLog",
   // ImpersonationSession is logged via explicit IMPERSONATE_START/END events, not row auto-audit.
   "ImpersonationSession",
+  // GatePassStatusHistory IS the status log; the GatePass status change itself is already audited.
+  "GatePassStatusHistory",
 ]);
 
 // Write operations the extension acts on. Reads are passed straight through.

@@ -533,6 +533,17 @@ class GatePassRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/restore', this.controller.restoreGatePass.bind(this.controller));
+
+    // ----- Admin web additions (do NOT change the existing mobile endpoints above) -----
+    // Filtered, paginated list + full detail + status history for the web UI (real statuses).
+    this.router.post('/webList', this.controller.webList.bind(this.controller));
+    this.router.post('/webDetail', this.controller.webDetail.bind(this.controller));
+    this.router.post('/statusHistory', this.controller.statusHistory.bind(this.controller));
+    // State-machine transitions, each gated by its own gatePass.* feature (approve stays separate).
+    this.router.post('/reject', this.controller.rejectGatePass.bind(this.controller));
+    this.router.post('/dispatch', this.controller.dispatchGatePass.bind(this.controller));
+    this.router.post('/return', this.controller.returnGatePass.bind(this.controller));
+    this.router.post('/cancel', this.controller.cancelGatePass.bind(this.controller));
   }
 
   public getRouter(): Router {

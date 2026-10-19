@@ -969,6 +969,41 @@
     "feature": "voucher.restore.*",
     "kind": "restore"
   },
+  "POST /gatePass/webList": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/webDetail": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/statusHistory": {
+    "access": "feature",
+    "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /gatePass/reject": {
+    "access": "feature",
+    "feature": "gatePass.reject.*",
+    "kind": "update"
+  },
+  "POST /gatePass/dispatch": {
+    "access": "feature",
+    "feature": "gatePass.dispatch.*",
+    "kind": "update"
+  },
+  "POST /gatePass/return": {
+    "access": "feature",
+    "feature": "gatePass.return.*",
+    "kind": "update"
+  },
+  "POST /gatePass/cancel": {
+    "access": "feature",
+    "feature": "gatePass.cancel.*",
+    "kind": "update"
+  },
   "POST /gatePass/status": {
     "access": "feature",
     "feature": "voucher.read.*",

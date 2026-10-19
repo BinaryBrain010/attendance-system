@@ -5,9 +5,50 @@ import { GatePass } from "../../../../types/schema";
 import { GatePassPDF } from "../../../../pdf/gatePass";
 import { DetailedGatePass } from "../../../../types/paginatedData";
 import { CreateGatePassItem } from "../../../../types/schema";
+import GatePassWorkflowService, { TransitionAction } from "../services/gatePassWorkflow.service";
 class GatePassController extends BaseController<GatePassService> {
   protected service = new GatePassService();
+  private workflow = new GatePassWorkflowService();
   private pdfUtility: GatePassPDF = new GatePassPDF();
+
+  // ----- Admin web: filtered list + detail + status history -----
+  async webList(req: Request, res: Response) {
+    const operation = () => this.service.webList(req.body || {});
+    await this.handleRequest(operation, res, { successMessage: "Gate passes retrieved successfully!" });
+  }
+
+  async webDetail(req: Request, res: Response) {
+    const { id } = req.body;
+    const operation = () => this.service.webDetail(id);
+    await this.handleRequest(operation, res, { successMessage: "Gate pass retrieved successfully!" });
+  }
+
+  async statusHistory(req: Request, res: Response) {
+    const { id } = req.body;
+    const operation = () => this.workflow.history(id);
+    await this.handleRequest(operation, res, { successMessage: "Status history retrieved successfully!" });
+  }
+
+  // ----- Status transitions (reject / dispatch / return / cancel) -----
+  private async runTransition(action: TransitionAction, req: Request, res: Response) {
+    const { id, reason, close } = req.body;
+    const operation = () => this.workflow.transition(action, id, { reason, close });
+    await this.handleRequest(operation, res, {
+      successMessage: `Gate pass ${action} applied.`,
+      logActivity: {
+        action: "STATUS_CHANGE",
+        entityType: "GatePass",
+        entityId: id,
+        description: `GatePass ${action}${reason ? `: ${reason}` : ""}`,
+        metadata: { action, reason: reason ?? null, close: !!close },
+      },
+      req,
+    });
+  }
+  async rejectGatePass(req: Request, res: Response) { await this.runTransition("reject", req, res); }
+  async dispatchGatePass(req: Request, res: Response) { await this.runTransition("dispatch", req, res); }
+  async returnGatePass(req: Request, res: Response) { await this.runTransition("return", req, res); }
+  async cancelGatePass(req: Request, res: Response) { await this.runTransition("cancel", req, res); }
 
   async getAllGatePass(req: Request, res: Response) {
     const operation = () => this.service.getAllGatePass();

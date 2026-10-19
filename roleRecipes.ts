@@ -91,7 +91,7 @@ export const ROLE_RECIPES: Record<string, { description: string; features: strin
     description: "Full access to every module (short of the hardcoded god account).",
     features: [
       "login.admin.*", "appModules.*", "profile.*", "setting.*", "systemConfig.*", "activityLog.*",
-      "analytics.*", "voucher.*", "customer.*", "item.*",
+      "analytics.*", "voucher.*", "gatePass.*", "customer.*", "item.*",
       "user.*", "user.impersonate.*", "role.*", "group.*", "featurePermission.*",
       "employee.*", "shift.*", "attendance.*", "attendanceReq.*",
       "leave.*", "leaveReq.*", "leaveAlloc.*", "leaveConfig.*", "holiday.*", "visitor.*", "unit.*",

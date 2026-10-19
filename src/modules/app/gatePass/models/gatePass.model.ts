@@ -2,6 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { Prisma } from "@prisma/client";
 import { Status } from "../../../../enums/schema";
 import { AppError } from "../../../../core/errors/app.error";
+import { getActorId } from "../../../../core/context/requestContext";
 import { DetailedGatePass } from "../../../../types/paginatedData";
 import {
   CreateGatePassItem,
@@ -506,7 +507,14 @@ WHERE
                 where: { id },
                 data: updateData,
             });
-    
+
+            // Record the approval in the status history too (does NOT change this endpoint's response).
+            try {
+                await prisma.gatePassStatusHistory.create({
+                    data: { gatePassId: id, fromStatus: Status.PENDING, toStatus: Status.APPROVED, reason: null, changedById: getActorId() || null },
+                });
+            } catch { /* history is best-effort; never fail an approval on it */ }
+
             return {
                 success: true,
                 message: "Gate pass approved successfully.",

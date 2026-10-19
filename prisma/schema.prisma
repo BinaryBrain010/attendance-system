@@ -10,6 +10,10 @@ datasource db {
 enum Status {
   pending
   approved
+  dispatched
+  returned
+  closed
+  rejected
   cancelled
 }
 
@@ -71,10 +75,27 @@ model GatePass {
   issuedAt      DateTime?      @default(now())
   validUntil    DateTime?
   items         GatePassItem[]
+  statusHistory GatePassStatusHistory[]
   customer      Customer       @relation(fields: [customerId], references: [id])
   createdById   String?        @db.VarChar(36)
   updatedById   String?        @db.VarChar(36)
   deletedById   String?        @db.VarChar(36)
+}
+
+// Append-only log of every gate-pass status transition (approve/reject/dispatch/return/cancel/close),
+// so the detail page and reports can show who moved it, when, and why. Written by the state machine.
+model GatePassStatusHistory {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  gatePassId  String
+  fromStatus  Status?
+  toStatus    Status
+  reason      String?
+  changedById String?   @db.VarChar(36)
+  changedAt   DateTime  @default(now())
+  gatePass    GatePass  @relation(fields: [gatePassId], references: [id])
+
+  @@index([gatePassId])
+  @@index([changedAt])
 }
 
 model GatePassItem {
