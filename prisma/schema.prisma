@@ -1398,3 +1398,69 @@ model ReturnItem {
   quantity    Int         @default(1)
   isDeleted   DateTime?
 }
+
+// ---------------- Analytics: customizable dashboards + custom widgets ----------------
+
+model Dashboard {
+  id            String            @id @default(uuid())
+  name          String
+  ownerId       String            @db.VarChar(36) // owning user; role-default dashboards use the role id with isRoleDefault
+  isRoleDefault Boolean           @default(false) // auto-built default dashboard for a role (ownerId = role id)
+  isHome        Boolean           @default(false) // this owner's home dashboard
+  sharedRoleIds String[] // roles granted read-only access
+  filters       Json? // global filters (date range preset, unitId, teamId, agentId)
+  widgets       DashboardWidget[]
+  createdAt     DateTime?         @default(now())
+  updatedAt     DateTime?         @updatedAt
+  isDeleted     DateTime?
+  createdById   String?           @db.VarChar(36)
+  updatedById   String?           @db.VarChar(36)
+  deletedById   String?           @db.VarChar(36)
+
+  @@index([ownerId])
+  @@index([isRoleDefault])
+  @@index([isDeleted])
+}
+
+model DashboardWidget {
+  id            String    @id @default(uuid())
+  dashboardId   String
+  dashboard     Dashboard @relation(fields: [dashboardId], references: [id])
+  widgetKey     String? // built-in catalog widget key (e.g. "quickpass.passesByStatus")
+  savedWidgetId String? // -> SavedWidget.id for a custom-built widget
+  type          String // render type: kpi|line|bar|area|pie|donut|funnel|table|leaderboard|gauge|heatmap|list
+  title         String?
+  config        Json? // per-widget settings: colors, thresholds, comparison, legend, followGlobal, filterOverride, drillHref
+  x             Int       @default(0)
+  y             Int       @default(0)
+  w             Int       @default(4)
+  h             Int       @default(4)
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+  isDeleted     DateTime?
+  createdById   String?   @db.VarChar(36)
+  updatedById   String?   @db.VarChar(36)
+  deletedById   String?   @db.VarChar(36)
+
+  @@index([dashboardId])
+  @@index([savedWidgetId])
+  @@index([isDeleted])
+}
+
+model SavedWidget {
+  id            String    @id @default(uuid())
+  name          String
+  ownerId       String    @db.VarChar(36)
+  kind          String    @default("custom") // custom-builder widget definition
+  definition    Json // { module, entity, metric, field, groupBy, bucket, filters[], chartType, colors, options }
+  sharedRoleIds String[] // roles granted read-only access
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+  isDeleted     DateTime?
+  createdById   String?   @db.VarChar(36)
+  updatedById   String?   @db.VarChar(36)
+  deletedById   String?   @db.VarChar(36)
+
+  @@index([ownerId])
+  @@index([isDeleted])
+}

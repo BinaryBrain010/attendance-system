@@ -65,6 +65,16 @@ export const features: AppFeature[] = [
     label: "Analytics Graphs",
     parentFeatureId: "analytics.*",
   },
+  {
+    name: "analytics.dashboard.*",
+    label: "Dashboards (create, rename, share)",
+    parentFeatureId: "analytics.*",
+  },
+  {
+    name: "analytics.customWidget.*",
+    label: "Custom Widget Builder",
+    parentFeatureId: "analytics.*",
+  },
   { name: "login.app.*", label: "Login App", parentFeatureId: "login.*" },
   { name: "login.admin.*", label: "Login Admin", parentFeatureId: "login.*" },
   { name: "login.quickmark.*", label: "Login Attendance App", parentFeatureId: "login.*" },
