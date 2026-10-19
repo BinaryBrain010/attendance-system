@@ -397,11 +397,23 @@ WHERE
         GatePassData: GatePass,
         GatePassItem: CreateGatePassItem[]
       ) {
+        // A gate pass can only be edited while it is Pending or Approved. Once it has moved past
+        // approval (dispatched / returned / closed / rejected / cancelled) edits are rejected. The
+        // status is NEVER changed here — status transitions have their own endpoints — so we strip it
+        // from the incoming data (this guards the mobile Edit path too).
+        const current = await prisma.gatePass.findUnique({ where: { id: updateId }, select: { status: true } });
+        if (!current) throw new AppError(404, `Gate pass with ID ${updateId} not found.`);
+        const LOCKED = new Set<Status>([Status.DISPATCHED, Status.RETURNED, Status.CLOSED, Status.REJECTED, Status.CANCELLED]);
+        if (LOCKED.has(current.status as Status)) {
+          throw new AppError(409, "This pass has moved past approval");
+        }
+        const { status, ...editable } = (GatePassData || {}) as any; // never change status via update
+
         try {
           // Update the GatePass and retrieve the updated data
           const updated = await prisma.gatePass.update({
             where: { id: updateId },
-            data: GatePassData,
+            data: editable,
           });
 
           // Check if the update was successful and the ID is valid

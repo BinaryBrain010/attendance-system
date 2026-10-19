@@ -107,6 +107,19 @@ async function main() {
   await grant(u.id, ["gatePass.dispatch.*"]);
   check("user WITH gatePass.dispatch.* -> dispatch 200", (await api("POST", "/gatePass/dispatch", mintTokenFor(u.id), { id: p5.id })).status === 200);
 
+  console.log("[gp] ===== update guard (mobile edit path) =====");
+  // The happy-path pass `id` ended CLOSED — editing it must be rejected.
+  const upLocked = await api("PUT", "/gatePass/update", god, { id, GatePass: { location: "changed" }, GatePassItem: [] });
+  check("update a closed pass -> 409", upLocked.status === 409, `status ${upLocked.status}`);
+  check("update 409 says moved past approval", /moved past approval/i.test(upLocked.message || upLocked.text || ''));
+  // A pending pass can be edited, but status is NEVER changed even if the body sends one.
+  const pEdit = await mkPass(cust.id, item.id, `${TAG}EDIT`);
+  const upOk = await api("PUT", "/gatePass/update", god, { id: pEdit.id, GatePass: { status: 'approved', location: 'Edited Dock' }, GatePassItem: [{ itemId: item.id, quantity: 1, serialNos: [`${TAG}E1`] }] });
+  check("update a pending pass -> 200", upOk.status === 200, `status ${upOk.status}`);
+  const edited = await prisma.gatePass.findUnique({ where: { id: pEdit.id } });
+  check("update did NOT change status (still pending)", edited?.status === 'pending', `got ${edited?.status}`);
+  check("update applied the editable field", edited?.location === 'Edited Dock');
+
   console.log(`\n[gp] ===== RESULT: ${pass} pass / ${fail} fail =====`);
   if (fail) console.log("FAILURES:\n" + fails.map((f) => "  - " + f).join("\n"));
   await cleanup();
