@@ -124,7 +124,7 @@ class GatePassService {
 
   /** Filtered, paginated gate-pass list for the admin web. Returns REAL statuses (not mobile-mapped). */
   async webList(filters: {
-    page?: number; pageSize?: number; status?: string; customerId?: string;
+    page?: number; pageSize?: number; status?: string; customerId?: string; itemId?: string;
     from?: string | Date; to?: string | Date; search?: string;
   }) {
     const page = Math.max(1, Number(filters.page) || 1);
@@ -132,6 +132,7 @@ class GatePassService {
     const where: any = { isDeleted: null };
     if (filters.status) where.status = filters.status as any;
     if (filters.customerId) where.customerId = filters.customerId;
+    if (filters.itemId) where.items = { some: { itemId: filters.itemId, isDeleted: null } };
     if (filters.from || filters.to) {
       where.issuedAt = {};
       if (filters.from) where.issuedAt.gte = new Date(filters.from);

@@ -69,7 +69,7 @@ export class GatePassPDF {
     }
     
     // Contact information
-    const contactInfo = "info@okashasmart.com | +92 300 1110888 | 59, Block J Johar Town, Lahore, 54782";
+    const contactInfo = "powerhighway@gmail.com | +92 300 1110888 | 59, Block J Johar Town, Lahore, 54782";
     const contactInfoWidth = helveticaFont.widthOfTextAtSize(contactInfo, 9);
     page.drawText(contactInfo, {
       x: (width - contactInfoWidth) / 2,
