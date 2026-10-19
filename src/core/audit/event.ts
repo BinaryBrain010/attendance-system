@@ -14,6 +14,8 @@ export function logEvent(opts: {
   action: string;
   changes?: Record<string, any> | null;
   userId?: string | null;
+  impersonatorId?: string | null;
+  impersonationId?: string | null;
   ip?: string | null;
   userAgent?: string | null;
   platform?: string | null;

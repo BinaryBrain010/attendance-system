@@ -156,6 +156,8 @@ export async function writeAudit(txClient: any, input: AuditInput): Promise<void
       action,
       changes: changes && Object.keys(changes).length ? changes : undefined,
       userId: ctx?.userId ?? null,
+      impersonatorId: ctx?.impersonatorId ?? null,
+      impersonationId: ctx?.impersonationId ?? null,
       ip: ctx?.ip ?? null,
       userAgent: ctx?.userAgent ?? null,
       platform: ctx?.platform ?? null,
@@ -172,6 +174,7 @@ export async function auditEvent(
   opts: {
     module?: string | null; entity: string; entityId?: string | null; action: string;
     changes?: AnyRec | null; userId?: string | null;
+    impersonatorId?: string | null; impersonationId?: string | null;
     ip?: string | null; userAgent?: string | null; platform?: string | null; requestId?: string | null;
   },
 ): Promise<void> {
@@ -185,6 +188,8 @@ export async function auditEvent(
         action: opts.action,
         changes: opts.changes ?? undefined,
         userId: opts.userId ?? ctx?.userId ?? null,
+        impersonatorId: opts.impersonatorId ?? ctx?.impersonatorId ?? null,
+        impersonationId: opts.impersonationId ?? ctx?.impersonationId ?? null,
         ip: opts.ip ?? ctx?.ip ?? null,
         userAgent: opts.userAgent ?? ctx?.userAgent ?? null,
         platform: opts.platform ?? ctx?.platform ?? null,

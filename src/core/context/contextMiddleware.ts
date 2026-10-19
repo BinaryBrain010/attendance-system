@@ -14,7 +14,8 @@ function firstIp(xff: unknown, fallback?: string): string | null {
 }
 
 export function requestContext(req: Request, res: Response, next: NextFunction): void {
-  const userId = (req as Request & { userId?: string }).userId ?? null;
+  const r = req as Request & { userId?: string; impersonatorId?: string | null; impersonationId?: string | null };
+  const userId = r.userId ?? null;
   // With `trust proxy` set (server.ts), Express resolves req.ip to the real client IP from
   // X-Forwarded-For. Fall back to parsing the header / socket address if req.ip is unset.
   const ip = req.ip || firstIp(req.headers["x-forwarded-for"], req.socket?.remoteAddress || undefined);
@@ -24,7 +25,10 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
   const platform = typeof platRaw === "string" ? platRaw : null;
   const ridRaw = req.headers["x-request-id"];
   const requestId = typeof ridRaw === "string" && ridRaw.length ? ridRaw : randomUUID();
-  als.run({ userId, ip, userAgent, platform, requestId }, () => next());
+  // Impersonation claims set by the auth middleware (null for normal requests).
+  const impersonatorId = r.impersonatorId ?? null;
+  const impersonationId = r.impersonationId ?? null;
+  als.run({ userId, ip, userAgent, platform, requestId, impersonatorId, impersonationId }, () => next());
 }
 
 export default requestContext;

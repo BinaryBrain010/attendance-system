@@ -15,11 +15,43 @@ import { secretKey } from "../../../../environment/environment";
 import AccessService from "../../Access/service/access.service";
 import EmployeeService from "../../../AMS/Employee/services/employee.service";
 import { logEvent } from "../../../../core/audit/event";
+import ImpersonationService from "../service/impersonation.service";
+import { AppError } from "../../../../core/errors/app.error";
 class UserController extends BaseController<UserService> {
   protected service = new UserService();
   protected tokenService = new BlackListedTokenService();
   protected accessService = new AccessService();
   protected employeeService = new EmployeeService();
+  protected impersonationService = new ImpersonationService();
+
+  /** POST /user/impersonate {userId, reason} — admin "login as user". Gated user.impersonate.*. */
+  async impersonate(req: Request, res: Response) {
+    const callerId = AuthHelper.getUserIdFromHeader(req);
+    const { userId, reason } = req.body || {};
+    const r = req as Request & { impersonatorId?: string | null };
+    const meta = {
+      ip: req.ip || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null,
+      userAgent: (req.headers["user-agent"] as string) || null,
+      alreadyImpersonating: !!r.impersonatorId, // cannot nest impersonation
+    };
+    const operation = () => this.impersonationService.start(callerId || "", userId, reason, meta);
+    await this.handleRequest(operation, res, { successMessage: "Impersonation started" });
+  }
+
+  /** POST /user/impersonate/exit — end the current impersonation (token carries the session id). */
+  async exitImpersonation(req: Request, res: Response) {
+    const r = req as Request & { impersonationId?: string | null };
+    const impersonationId = r.impersonationId || "";
+    const meta = {
+      ip: req.ip || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || null,
+      userAgent: (req.headers["user-agent"] as string) || null,
+    };
+    const operation = () => {
+      if (!impersonationId) throw new AppError(400, "You are not impersonating anyone.");
+      return this.impersonationService.end(impersonationId, meta);
+    };
+    await this.handleRequest(operation, res, { successMessage: "Impersonation ended" });
+  }
 
   async getUsers(req: Request, res: Response) {
     let operation = () => this.service.getUsers();
@@ -142,6 +174,10 @@ class UserController extends BaseController<UserService> {
   }
 
   async logoutOfAllDevices(req: Request, res: Response) {
+    // Blocked during impersonation so an impersonator can't nuke the target's (or their own) sessions.
+    if (AuthHelper.getImpersonatorIdFromHeader(req)) {
+      return res.status(403).json({ success: false, message: "This action is not allowed while you are logged in as another user. Exit first.", statusCode: 403 });
+    }
     const userId = AuthHelper.getUserIdFromHeader(req);
     let operation = () => this.service.removeLoggedInUser(userId, "");
     let successMessage = "logged out of all devices successfully!";
@@ -150,6 +186,9 @@ class UserController extends BaseController<UserService> {
   }
 
   async logoutUserOfAllDevices(req: Request, res: Response) {
+    if (AuthHelper.getImpersonatorIdFromHeader(req)) {
+      return res.status(403).json({ success: false, message: "This action is not allowed while you are logged in as another user. Exit first.", statusCode: 403 });
+    }
     const { id } = req.body;
     let operation = () => this.service.removeLoggedInUser(id, "");
     let successMessage = "logged out of all devices successfully!";

@@ -49,7 +49,7 @@ function holds(set: Set<string>, feature: string): boolean {
 class AuditService {
   /** Admin Audit Log list with filters + pagination. */
   async list(filters: any = {}) {
-    const { userId, module, entity, action, entityId, dateFrom, dateTo, search } = filters || {};
+    const { userId, module, entity, action, entityId, dateFrom, dateTo, search, impersonatorId, impersonated } = filters || {};
     const page = Math.max(1, Number(filters?.page) || 1);
     const pageSize = Math.min(200, Math.max(1, Number(filters?.pageSize) || 50));
     const where: any = {};
@@ -58,6 +58,10 @@ class AuditService {
     if (entity) where.entity = entity;
     if (action) where.action = action;
     if (entityId) where.entityId = entityId;
+    if (impersonatorId) where.impersonatorId = impersonatorId;
+    // Filter impersonated actions: true -> only impersonated, false -> only normal.
+    if (impersonated === true || impersonated === "true") where.impersonatorId = { not: null };
+    else if (impersonated === false || impersonated === "false") where.impersonatorId = null;
     if (dateFrom || dateTo) {
       where.createdAt = {};
       if (dateFrom) where.createdAt.gte = new Date(dateFrom);
@@ -78,6 +82,9 @@ class AuditService {
   /** Per-record History tab. Enforces the caller can read the record. */
   async entityHistory(userId: string, entity: string, entityId: string, limit = 200) {
     if (!entity || !entityId) throw new ForbiddenError("entity and entityId are required");
+    // Only an admin with audit.read.* (or the god account) may see entries produced under impersonation;
+    // for everyone else those rows are hidden so a user doesn't see what an admin did as them.
+    let canSeeImpersonated = userId === GOD_ID;
     if (userId !== GOD_ID) {
       const feats = await access.getAllowedFeaturesForUser(userId);
       const set = new Set<string>(Array.isArray(feats) ? feats : []);
@@ -87,8 +94,11 @@ class AuditService {
       // Row-scope for CRM entities: the record must be inside the caller's scope.
       const crm = CRM_SCOPED[entity];
       if (crm) await this.assertCrmRowReadable(userId, crm, entity, entityId);
+      canSeeImpersonated = holds(set, "audit.read");
     }
-    const rows = await prisma.auditLog.findMany({ where: { entity, entityId }, orderBy: { createdAt: "desc" }, take: Math.min(500, limit) });
+    const where: any = { entity, entityId };
+    if (!canSeeImpersonated) where.impersonatorId = null;
+    const rows = await prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, take: Math.min(500, limit) });
     return this.decorateActors(rows);
   }
 
@@ -101,20 +111,30 @@ class AuditService {
     assertRowInScope(scope, row.agentId, entity);
   }
 
-  /** Attach actor display names (username + employee name) to a set of rows. */
+  /** Attach actor display names (username + employee name) to a set of rows. When a row was produced
+   *  under impersonation it also carries `impersonator` so the UI can show "by <admin> as <user>". */
   private async decorateActors(rows: any[]) {
-    const ids = Array.from(new Set(rows.map((r) => r.userId).filter(Boolean)));
-    if (!ids.length) return rows.map((r) => ({ ...r, actor: null }));
+    const ids = Array.from(new Set(
+      rows.flatMap((r) => [r.userId, r.impersonatorId]).filter(Boolean),
+    ));
+    if (!ids.length) return rows.map((r) => ({ ...r, actor: null, impersonator: null }));
     const users = await prisma.user.findMany({
       where: { id: { in: ids as string[] } },
       select: { id: true, username: true, employee: { select: { name: true, surname: true } } },
     });
     const map = new Map(users.map((u) => [u.id, u]));
-    return rows.map((r) => {
-      const u = r.userId ? map.get(r.userId) : null;
-      const name = u?.employee ? `${u.employee.name || ""} ${u.employee.surname || ""}`.trim() : null;
-      return { ...r, actor: u ? { id: u.id, username: u.username, name: name || u.username } : (r.userId ? { id: r.userId, username: "(deleted user)", name: "(deleted user)" } : null) };
-    });
+    const toActor = (id: string | null) => {
+      if (!id) return null;
+      const u = map.get(id);
+      if (!u) return { id, username: "(deleted user)", name: "(deleted user)" };
+      const name = u.employee ? `${u.employee.name || ""} ${u.employee.surname || ""}`.trim() : null;
+      return { id: u.id, username: u.username, name: name || u.username };
+    };
+    return rows.map((r) => ({
+      ...r,
+      actor: toActor(r.userId),
+      impersonator: r.impersonatorId ? toActor(r.impersonatorId) : null,
+    }));
   }
 
   /** Resolve a set of actor ids to display names (for list-page Created/Updated by columns + footers). */

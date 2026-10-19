@@ -141,6 +141,8 @@ class ActivityLogController extends BaseController<ActivityLogService> {
       entityType,
       from,
       to,
+      // This is the user's OWN activity log — hide anything done while an admin was impersonating them.
+      excludeImpersonated: true,
     };
 
     const operation = () => this.service.getActivityLogsByUser(userId, query);

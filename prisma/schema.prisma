@@ -725,7 +725,9 @@ model AuditLog {
   entityId   String?  @db.VarChar(36)
   action     String   // CREATE | UPDATE | DELETE | RESTORE | STATUS_CHANGE | ASSIGN | LOGIN | LOGOUT | LOGIN_FAILED | PERMISSION_CHANGE | EXPORT | IMPORT
   changes    Json?    @db.JsonB
-  userId     String?  @db.VarChar(36)
+  userId     String?  @db.VarChar(36)  // the ACTING user (the impersonated target during impersonation)
+  impersonatorId  String? @db.VarChar(36) // the admin acting as `userId`, when this was done via impersonation
+  impersonationId String? @db.VarChar(36) // the ImpersonationSession this action belongs to
   ip         String?
   userAgent  String?
   platform   String?
@@ -734,8 +736,27 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([userId])
+  @@index([impersonatorId])
   @@index([createdAt])
   @@index([action])
+}
+
+// One admin "login as user" session. A short-lived impersonation token (30 min, no refresh) is issued
+// for `targetUserId`, carrying this row's id as its impersonationId claim. `endedAt` is set when the
+// admin exits (or is left null if the token simply expired).
+model ImpersonationSession {
+  id             String    @id @default(uuid()) @db.VarChar(36)
+  impersonatorId String    @db.VarChar(36) // the admin who started it
+  targetUserId   String    @db.VarChar(36) // the user being impersonated
+  reason         String    @db.Text
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  ip             String?
+  userAgent      String?
+
+  @@index([impersonatorId])
+  @@index([targetUserId])
+  @@index([startedAt])
 }
 
 // Singleton system-wide configuration (single row, id = 'default')
@@ -808,6 +829,7 @@ model ActivityLog {
   metadata    Json?     @db.JsonB // Additional data about the action
   ipAddress   String?
   userAgent   String?
+  impersonatorId String? @db.VarChar(36) // set when the row was produced under impersonation; hidden from the user's own view
   createdAt   DateTime? @default(now())
 
   user User? @relation(fields: [userId], references: [id])

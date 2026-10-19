@@ -19,6 +19,10 @@ export interface RequestContext {
   userAgent?: string | null;
   platform?: string | null; // "Admin" | "Attendance App" | "Mobile" | "system" | null
   requestId?: string | null;
+  // Impersonation ("login as user"): when an admin is acting as another user, `userId` is the TARGET
+  // (so scope and data behave exactly as that user), while these carry the real admin + session id.
+  impersonatorId?: string | null;
+  impersonationId?: string | null;
 }
 
 const als = new AsyncLocalStorage<RequestContext>();
@@ -32,6 +36,18 @@ export function getContext(): RequestContext | undefined {
 export function getActorId(): string | null {
   const s = als.getStore();
   return s && s.userId ? s.userId : null;
+}
+
+/** The real admin behind an impersonated request (null when not impersonating). Used to attribute
+ *  createdBy/updatedBy and audit rows to the admin while scope still runs as the target user. */
+export function getImpersonatorId(): string | null {
+  const s = als.getStore();
+  return s && s.impersonatorId ? s.impersonatorId : null;
+}
+
+export function getImpersonationId(): string | null {
+  const s = als.getStore();
+  return s && s.impersonationId ? s.impersonationId : null;
 }
 
 export function runWithContext<T>(ctx: RequestContext, fn: () => T): T {

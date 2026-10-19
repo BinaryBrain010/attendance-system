@@ -92,7 +92,7 @@ export const ROLE_RECIPES: Record<string, { description: string; features: strin
     features: [
       "login.admin.*", "appModules.*", "profile.*", "setting.*", "systemConfig.*", "activityLog.*",
       "analytics.*", "voucher.*", "customer.*", "item.*",
-      "user.*", "role.*", "group.*", "featurePermission.*",
+      "user.*", "user.impersonate.*", "role.*", "group.*", "featurePermission.*",
       "employee.*", "shift.*", "attendance.*", "attendanceReq.*",
       "leave.*", "leaveReq.*", "leaveAlloc.*", "leaveConfig.*", "holiday.*", "visitor.*", "unit.*",
       "crm.*", "work.*", "audit.*",

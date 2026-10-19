@@ -112,6 +112,11 @@ export const features: AppFeature[] = [
     parentFeatureId: "user.*",
     label: "Change Password",
   },
+  {
+    name: "user.impersonate.*",
+    parentFeatureId: "user.*",
+    label: "Login as user (impersonate)",
+  },
   { name: "profile.*", label: "Profile" },
   {
     name: "profile.changePassword.*",

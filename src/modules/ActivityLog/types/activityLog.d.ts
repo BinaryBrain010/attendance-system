@@ -20,4 +20,7 @@ export interface ActivityLogQuery {
   to?: Date | string;
   page?: number;
   pageSize?: number;
+  /** When true, rows produced under impersonation (impersonatorId set) are excluded — used for a
+   *  user's OWN activity log so they don't see what an admin did while logged in as them. */
+  excludeImpersonated?: boolean;
 }

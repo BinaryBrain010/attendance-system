@@ -454,6 +454,11 @@ class UserRoutes {
     this.router.post('/linkEmployee', this.controller.linkEmployee.bind(this.controller));
     this.router.post('/unlinkedEmployees', this.controller.unlinkedEmployees.bind(this.controller));
 
+    // Impersonation ("login as user"): start (admin, user.impersonate.*) and exit (the impersonated
+    // session closes itself via its token claim).
+    this.router.post('/impersonate', this.controller.impersonate.bind(this.controller));
+    this.router.post('/impersonate/exit', this.controller.exitImpersonation.bind(this.controller));
+
     /**
      * @swagger
      * /user/restore:

@@ -2224,6 +2224,16 @@
     "feature": "user.read.*",
     "kind": "read"
   },
+  "POST /user/impersonate": {
+    "access": "feature",
+    "feature": "user.impersonate.*",
+    "kind": "special"
+  },
+  "POST /user/impersonate/exit": {
+    "access": "token",
+    "feature": "-",
+    "kind": "self"
+  },
   "POST /userGroup/create": {
     "access": "feature",
     "feature": "user.update.*",

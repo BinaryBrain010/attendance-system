@@ -44,7 +44,24 @@ class Authentication {
         return;
       }
 
-      (req as Request & { userId?: string }).userId = decoded.userId as string;
+      // Impersonation ("login as user") is ADMIN-WEB ONLY. An impersonation token carries an
+      // `impersonatorId` claim; reject it on the attendance app / mobile (any client that declares a
+      // non-Admin x-platform), so a leaked impersonation token can never drive those apps.
+      const impersonatorId = (decoded.impersonatorId as string | undefined) || null;
+      if (impersonatorId) {
+        const platRaw = req.headers["x-platform"];
+        const platform = typeof platRaw === "string" ? platRaw.trim() : "";
+        if (platform && platform.toLowerCase() !== "admin") {
+          logger.warn("Impersonation token rejected on non-admin platform", { path: req.path, platform });
+          res.status(401).json({ success: false, message: "Impersonation is not permitted on this app", statusCode: 401 });
+          return;
+        }
+      }
+
+      const r = req as Request & { userId?: string; impersonatorId?: string | null; impersonationId?: string | null };
+      r.userId = decoded.userId as string;
+      r.impersonatorId = impersonatorId;
+      r.impersonationId = (decoded.impersonationId as string | undefined) || null;
       next();
     });
   }

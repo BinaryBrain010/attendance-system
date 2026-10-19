@@ -25,6 +25,8 @@ export const HAS_DELETED_BY = new Set<string>(FULL);
 // Models excluded from the central AuditLog entirely (session / token / log / noise). Used in Part 3.
 export const AUDIT_EXCLUDE = new Set<string>([
   "BlacklistToken", "LoggedInUsers", "AttendanceScheduler", "Notification", "ActivityLog", "AuditLog",
+  // ImpersonationSession is logged via explicit IMPERSONATE_START/END events, not row auto-audit.
+  "ImpersonationSession",
 ]);
 
 // Write operations the extension acts on. Reads are passed straight through.

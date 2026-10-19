@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { getCurrentTimeInPST } from "../../helper/date.helper";
 import { prisma as basePrisma } from "../database/prisma.client";
-import { getActorId } from "../context/requestContext";
+import { getActorId, getImpersonatorId } from "../context/requestContext";
 import { stampArgs } from "../audit/stamp";
 import { WRITE_OPS, AUDIT_EXCLUDE } from "../audit/auditModels";
 import { writeAudit, loadBefore, lowerFirst } from "../audit/auditWriter";
@@ -26,7 +26,10 @@ const audited = basePrisma.$extends({
       async $allOperations({ model, operation, args, query }: any) {
         const isWrite = WRITE_OPS.has(operation);
         if (isWrite) {
-          const actor = getActorId();
+          // During impersonation, createdBy/updatedBy are attributed to the real admin (impersonator),
+          // NOT the target user — so record ownership reflects who actually made the change. The
+          // AuditLog row still records userId = target (the acting user) + impersonatorId separately.
+          const actor = getImpersonatorId() ?? getActorId();
           if (actor) {
             try { stampArgs(model, operation, args, actor); } catch { /* never block a write on stamping */ }
           }

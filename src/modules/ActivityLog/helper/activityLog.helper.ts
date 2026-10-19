@@ -1,5 +1,6 @@
 import prisma from "../../../core/models/base.model";
 import { ActivityLog } from "../types/activityLog";
+import { getImpersonatorId } from "../../../core/context/requestContext";
 
 /**
  * Logs an activity/action performed by a user
@@ -18,6 +19,9 @@ export async function logActivity(logData: ActivityLog): Promise<any> {
         metadata: logData.metadata || null,
         ipAddress: logData.ipAddress || null,
         userAgent: logData.userAgent || null,
+        // Set when produced under impersonation, so the target user's own Activity Log can hide it
+        // while audit.read.* admins still see it.
+        impersonatorId: getImpersonatorId(),
       },
     });
     console.log('Activity logged successfully:', { action: logData.action, entityType: logData.entityType, entityId: logData.entityId });

@@ -71,8 +71,14 @@ const activityLogModel = prisma.$extends({
           paramIndex++;
         }
 
+        // A user's OWN activity log must not reveal actions performed while an admin was impersonating
+        // them; those rows carry an impersonatorId. Admin surfaces (audit.read.*) leave this off.
+        if (query?.excludeImpersonated) {
+          whereClause += ` AND al."impersonatorId" IS NULL`;
+        }
+
         const data = await prisma.$queryRawUnsafe(`
-          SELECT 
+          SELECT
             al.*,
             u.username AS "userName"
           FROM "ActivityLog" al
@@ -139,8 +145,14 @@ const activityLogModel = prisma.$extends({
           paramIndex++;
         }
 
+        // A user's OWN activity log must not reveal actions performed while an admin was impersonating
+        // them; those rows carry an impersonatorId. Admin surfaces (audit.read.*) leave this off.
+        if (query?.excludeImpersonated) {
+          whereClause += ` AND al."impersonatorId" IS NULL`;
+        }
+
         const data = await prisma.$queryRawUnsafe(`
-          SELECT 
+          SELECT
             al.*,
             u.username AS "userName"
           FROM "ActivityLog" al
@@ -234,6 +246,10 @@ const activityLogModel = prisma.$extends({
           whereClause += ` AND "createdAt" <= $${paramIndex}`;
           params.push(new Date(query.to));
           paramIndex++;
+        }
+
+        if (query?.excludeImpersonated) {
+          whereClause += ` AND "impersonatorId" IS NULL`;
         }
 
         const result = await prisma.$queryRawUnsafe(`

@@ -23,6 +23,21 @@ class AuthHelper {
     console.error("Authorization header missing");
   }
 
+  /** The impersonatorId claim, if this request is an impersonation token; null otherwise. Used on the
+   *  un-authenticated /auth group (logout-of-all) to block those actions during impersonation. */
+  static getImpersonatorIdFromHeader(req: Request): string | null {
+    if (req.headers && req.headers.authorization) {
+      const authorization = req.headers.authorization.split(" ")[1];
+      try {
+        const decoded: any = jwt.verify(authorization, secretKey);
+        return decoded?.impersonatorId || null;
+      } catch (e) {
+        /* invalid token — treat as not impersonating */
+      }
+    }
+    return null;
+  }
+
 //   static getCompanyIdFromHeader(req: Request): string {
 //     if (req.headers && req.headers.authorization) {
 //       const authorization = req.headers.authorization.split(" ")[1];
