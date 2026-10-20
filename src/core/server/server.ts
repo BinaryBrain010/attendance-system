@@ -35,6 +35,7 @@ import { apiLimiter } from '../../middleware/rateLimiter.middleware';
 import logger from '../logger/logger';
 import { environment } from '../../environment/env.schema';
 import { AppError } from '../errors/app.error';
+import { sendError } from '../utils/errorEnvelope';
 import swaggerUi from 'swagger-ui-express';
 import swaggerFactory from '../swagger/swagger.factory';
 
@@ -438,18 +439,10 @@ class App {
       }
     }
     
-    // Default error response
-    const statusCode = (err as { statusCode?: number }).statusCode || 500;
-    const message = environment.nodeEnv === 'production' 
-      ? 'Internal server error' 
-      : err.message;
-    
-    res.status(statusCode).json({
-      success: false,
-      message,
-      ...(environment.nodeEnv !== 'production' && { stack: err.stack }),
-      statusCode
-    });
+    // Default: central envelope — classifies the error and gives genuine 500s a ref id that is
+    // logged (above + inside sendError) so it is traceable in pm2 logs while the user sees a safe
+    // "Something went wrong. Ref: <id>".
+    return sendError(res, err, { method: req.method, path: (req as any).originalUrl || req.path, requestId: (req as any).requestId });
   }
 }
 

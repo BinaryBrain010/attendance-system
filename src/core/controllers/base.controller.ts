@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { AppError } from '../errors/app.error';
 import { ApiResponse } from '../utils/response.util';
 import logger from '../logger/logger';
+import { sendError } from '../utils/errorEnvelope';
 
 abstract class BaseController<T> {
   protected abstract service: T;
@@ -35,7 +35,7 @@ abstract class BaseController<T> {
       
       return ApiResponse.success(res, result, options?.successMessage, options?.statusCode || 200);
     } catch (error) {
-      this.handleError(error, res);
+      this.handleError(error, res, options?.req);
     }
   }
 
@@ -93,19 +93,10 @@ abstract class BaseController<T> {
     }
   }
 
-  protected handleError(error: unknown, res: Response) {
-    if (error instanceof AppError) {
-      logger.warn(`AppError: ${error.message}`, { statusCode: error.statusCode });
-      return ApiResponse.error(res, error.message, error.statusCode);
-    }
-
-    const prismaError: any = error as any;
-    if (prismaError?.code === 'P2002') {
-      return ApiResponse.error(res, prismaError?.meta?.target ? `Unique constraint failed on: ${prismaError.meta.target}` : 'Duplicate value error', 409);
-    }
-    
-    logger.error('Unexpected error:', error);
-    return ApiResponse.error(res, 'Internal server error', 500);
+  protected handleError(error: unknown, res: Response, req?: Request) {
+    // Central classifier: Prisma/validation -> correct 4xx; genuine 500 -> ref id + full server log,
+    // user sees only "Something went wrong. Ref: <id>".
+    return sendError(res, error, { method: req?.method, path: (req as any)?.originalUrl || req?.path, requestId: (req as any)?.requestId });
   }
 }
 

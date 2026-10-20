@@ -374,10 +374,12 @@ export class PersonalAttendanceAnalyticsService {
     const list: { employeeId: string; employeeName: string; attendancePercent: number; onTime: number; late: number; absent: number; total: number }[] = [];
     byEmployee.forEach((v, employeeId) => {
       if (v.total === 0) return;
+      const employeeName = nameById.get(employeeId);
+      if (!employeeName) return; // skip rows whose employee is deleted / resigned / fired (no "Unknown")
       const attendancePercent = Math.round((v.present / v.total) * 10000) / 100;
       list.push({
         employeeId,
-        employeeName: nameById.get(employeeId) ?? "Unknown",
+        employeeName,
         attendancePercent,
         onTime: v.present,
         late: v.late,
