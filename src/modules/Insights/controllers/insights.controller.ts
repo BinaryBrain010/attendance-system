@@ -23,11 +23,13 @@ class InsightsController extends BaseController<InsightsService> {
   async getWidgetData(req: Request, res: Response) {
     const userId = (req as any).userId as string;
     const { key, savedWidgetId, filters } = req.body || {};
+    // No successMessage on these reads: the admin axios auto-toasts non-GET responses that carry a
+    // message, and a dashboard fires one data request per tile — that would be a toast storm.
     if (savedWidgetId) {
-      return this.handleRequest(() => this.custom.render(userId, savedWidgetId, filters || {}), res, { successMessage: "Widget data" });
+      return this.handleRequest(() => this.custom.render(userId, savedWidgetId, filters || {}), res, {});
     }
     if (!key) return res.status(400).json({ success: false, message: "key or savedWidgetId is required", statusCode: 400 });
-    await this.handleRequest(() => this.service.widgetData(userId, key, filters || {}), res, { successMessage: "Widget data" });
+    await this.handleRequest(() => this.service.widgetData(userId, key, filters || {}), res, {});
   }
 
   // ---------- custom widget builder ----------
@@ -40,7 +42,7 @@ class InsightsController extends BaseController<InsightsService> {
     const userId = (req as any).userId as string;
     const { definition, filters } = req.body || {};
     if (!definition) return res.status(400).json({ success: false, message: "definition is required", statusCode: 400 });
-    await this.handleRequest(() => this.custom.preview(userId, definition, filters || {}), res, { successMessage: "Preview" });
+    await this.handleRequest(() => this.custom.preview(userId, definition, filters || {}), res, {}); // no toast (live preview)
   }
   async customSave(req: Request, res: Response) {
     const userId = (req as any).userId as string;
