@@ -63,6 +63,13 @@ class InsightsRoutes {
     this.router.post("/dashboard/duplicate", this.controller.duplicateDashboard.bind(this.controller));
     this.router.post("/dashboard/setHome", this.controller.setHomeDashboard.bind(this.controller));
     this.router.post("/dashboard/share", this.controller.shareDashboard.bind(this.controller));
+
+    // ---- custom widget builder (meta/list/preview read; save/delete -> analytics.customWidget.*) ----
+    this.router.get("/customWidget/meta", this.controller.customMeta.bind(this.controller));
+    this.router.get("/customWidget/list", this.controller.customList.bind(this.controller));
+    this.router.post("/customWidget/preview", this.controller.customPreview.bind(this.controller));
+    this.router.post("/customWidget/save", this.controller.customSave.bind(this.controller));
+    this.router.post("/customWidget/delete", this.controller.customDelete.bind(this.controller));
   }
 
   public getRouter(): Router {

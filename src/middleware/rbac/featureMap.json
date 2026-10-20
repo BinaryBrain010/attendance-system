@@ -1209,6 +1209,31 @@
     "feature": "analytics.read.*",
     "kind": "read"
   },
+  "POST /insights/customWidget/delete": {
+    "access": "feature",
+    "feature": "analytics.customWidget.*",
+    "kind": "write"
+  },
+  "GET /insights/customWidget/list": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "GET /insights/customWidget/meta": {
+    "access": "feature",
+    "feature": "analytics.read.*",
+    "kind": "read"
+  },
+  "POST /insights/customWidget/preview": {
+    "access": "feature",
+    "feature": "analytics.customWidget.*",
+    "kind": "write"
+  },
+  "POST /insights/customWidget/save": {
+    "access": "feature",
+    "feature": "analytics.customWidget.*",
+    "kind": "write"
+  },
   "POST /insights/dashboard/create": {
     "access": "feature",
     "feature": "analytics.dashboard.*",
