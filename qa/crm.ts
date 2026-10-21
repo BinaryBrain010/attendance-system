@@ -458,7 +458,11 @@ async function main() {
   check("activity set lead.nextFollowUpAt (UPCOMING)", (await api("POST", "/lead/getById", tOwn, { id: actLead })).data?.followUpStatus === "UPCOMING");
   check("AGENT_OWN log activity on out-of-scope lead -> 403", (await api("POST", "/leadActivity/create", tOwn, { leadId: outLead1.id, type: "CALL" })).status === 403);
   const tl = await api("POST", "/lead/timeline", tOwn, { id: actLead });
-  check("timeline merges activity + audit", Array.isArray(tl.data) && tl.data.some((e: any) => e.source === "activity") && tl.data.some((e: any) => e.source === "audit"), `len ${tl.data?.length}`);
+  // 2a: one merged entry per action. The CALL is a single entry (kind=activity, sentence-case title,
+  // resolved actor), NOT three separate activity/activity-log/audit rows.
+  const callE = (tl.data || []).filter((e: any) => e.kind === "activity" && e.title === "Called");
+  check("timeline: CALL is ONE merged entry", Array.isArray(tl.data) && callE.length === 1, `calls ${callE.length} of ${tl.data?.length}`);
+  check("timeline: entry has readable title + actor, no raw source fields", !!callE[0]?.actor && !!callE[0]?.title && !(tl.data || []).some((e: any) => "source" in e));
 
   console.log("\n[crm] ===== Phase 2: follow-up status (computed) =====");
   const overdue = await newLead(tAdmin, AG001.id, { nextFollowUpAt: new Date(Date.now() - 2 * 86400000).toISOString() });
@@ -572,7 +576,7 @@ async function main() {
   await api("POST", "/quotation/transition", tAdmin, { id: sq.data?.id, to: "SENT" });
   check("quotation SENT -> lead QUOTATION", (await prisma.lead.findUnique({ where: { id: syncLead.id } }))?.stage === "QUOTATION");
   const stl = await api("POST", "/lead/timeline", tAdmin, { id: syncLead.id });
-  check("auto stage change logged in lead timeline", (stl.data || []).some((e: any) => e.action === "AUTO_STAGE" || /Auto:/.test(e.description || "")));
+  check("auto stage change logged in lead timeline", (stl.data || []).some((e: any) => /Auto/i.test(e.title || "") || /Auto:/.test(e.notes || "")));
   const so = await api("POST", "/salesOrder/create", tAdmin, { customerName: `${QTAG}Sync`, leadId: syncLead.id, items: [{ description: "y", quantity: 1, unitPrice: 2000 }] });
   await api("POST", "/salesOrder/transition", tAdmin, { id: so.data?.id, to: "CONFIRMED" });
   check("order CONFIRMED -> lead WON", (await prisma.lead.findUnique({ where: { id: syncLead.id } }))?.stage === "WON");

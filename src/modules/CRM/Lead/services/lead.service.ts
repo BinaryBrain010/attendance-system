@@ -11,6 +11,39 @@ export interface LeadFilters {
   search?: string; phone?: string;
 }
 
+const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
+const ADMIN_USER_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
+
+// --- Timeline humanizers (sentence case) ---
+const ACTIVITY_TITLE: Record<string, string> = {
+  CALL: "Called", WHATSAPP: "WhatsApp sent", VISIT: "Visit logged", EMAIL: "Email sent",
+  QUOTATION_SENT: "Quotation sent", NOTE: "Note added", OTHER: "Activity logged",
+};
+const ACTION_TITLE: Record<string, string> = {
+  CREATE: "Lead created", UPDATE: "Lead updated", STATUS_CHANGE: "Stage changed",
+  DELETE: "Lead deleted", RESTORE: "Lead restored", ASSIGN: "Agent assigned", PERMISSION_CHANGE: "Permissions changed",
+};
+// Fields that are derived/noise and should not appear under "Show changes" (lastContactAt +
+// nextFollowUpAt are driven by logging an activity and already shown in the entry headline).
+const CHANGE_NOISE = new Set(["updatedAt", "updatedById", "createdById", "lastContactAt", "nextFollowUpAt", "probability", "weightedValue"]);
+
+function sentenceCase(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const t = String(s).replace(/_/g, " ").toLowerCase().trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
+}
+// Flatten an AuditLog.changes object {field:{before,after}} into a display array, dropping noise.
+function flattenChanges(changes: any): Array<{ field: string; before: any; after: any }> {
+  if (!changes || typeof changes !== "object") return [];
+  const out: Array<{ field: string; before: any; after: any }> = [];
+  for (const [field, v] of Object.entries(changes as Record<string, any>)) {
+    if (CHANGE_NOISE.has(field)) continue;
+    if (v && typeof v === "object" && ("before" in v || "after" in v)) out.push({ field, before: (v as any).before ?? null, after: (v as any).after ?? null });
+    else out.push({ field, before: null, after: v });
+  }
+  return out;
+}
+
 function filterWhere(f: LeadFilters = {}): Record<string, any> {
   const w: Record<string, any> = {};
   if (f.company) w.company = f.company;
@@ -157,30 +190,106 @@ class LeadService {
     return lead;
   }
 
-  /** Merged timeline: user-logged LeadActivity + system ActivityLog, newest first. */
+  /**
+   * Merged timeline: ONE entry per user action (newest first). A single action can touch three
+   * sources — a LeadActivity (the touch), a system ActivityLog, and AuditLog field diffs — which were
+   * previously shown as 3 separate rows. Here they are correlated (same actor, within a short time
+   * window) and collapsed into one readable, sentence-case entry. Raw field changes are returned
+   * separately under `changes` so the UI can hide them behind "Show changes".
+   */
   async timeline(userId: string, id: string) {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
     assertRowInScope(scope, lead, "Lead");
+
     const [acts, legacy, audit] = await Promise.all([
       prisma.leadActivity.findMany({ where: { leadId: id, isDeleted: null } }),
-      // Explicit select so metadata survives the global list-blob strip (it's needed for the timeline
-      // detail). Bounded to one lead's rows, and metadata is kept small by the write-time sanitizer.
+      // Explicit select so metadata survives the global list-blob strip (needed for the timeline).
       prisma.activityLog.findMany({
         where: { entityType: "Lead", entityId: id },
         orderBy: { createdAt: "desc" },
-        select: { id: true, createdAt: true, action: true, description: true, metadata: true, userId: true, entityType: true, entityId: true },
+        select: { id: true, createdAt: true, action: true, description: true, metadata: true, userId: true },
       }),
-      // Run 11: central audit field-change entries for this lead, shown alongside the activity feed.
       prisma.auditLog.findMany({ where: { entity: "Lead", entityId: id }, orderBy: { createdAt: "desc" }, take: 200 }),
     ]);
-    const merged = [
-      ...acts.map((a) => ({ source: "activity", at: a.occurredAt, type: a.type, outcome: a.outcome, notes: a.notes, nextFollowUpAt: a.nextFollowUpAt })),
-      ...legacy.map((x) => ({ source: "activity-log", at: x.createdAt, action: x.action, description: x.description, metadata: x.metadata })),
-      ...audit.map((x) => ({ source: "audit", at: x.createdAt, action: x.action, changes: x.changes, userId: x.userId })),
-    ].sort((a, b) => new Date(b.at as any).getTime() - new Date(a.at as any).getTime());
-    return merged;
+
+    // Normalize every raw row to a common correlation shape (use createdAt for correlation — the time
+    // the row was written, which is shared across the three sources of one action).
+    type Raw = { src: "activity" | "log" | "audit"; at: number; actorId: string | null; payload: any };
+    const raws: Raw[] = [];
+    for (const a of acts) raws.push({ src: "activity", at: new Date((a as any).createdAt ?? a.occurredAt ?? 0).getTime(), actorId: (a as any).createdById ?? (a as any).createdBy ?? null, payload: a });
+    for (const l of legacy) raws.push({ src: "log", at: new Date(l.createdAt as any).getTime(), actorId: (l as any).userId ?? null, payload: l });
+    for (const au of audit) raws.push({ src: "audit", at: new Date((au as any).createdAt).getTime(), actorId: (au as any).userId ?? null, payload: au });
+
+    // Correlate into actions: same actor + same 3s bucket (one request writes all its rows within ms).
+    const BUCKET = 3000;
+    const groups = new Map<string, Raw[]>();
+    for (const r of raws) {
+      const key = `${r.actorId ?? "-"}|${Math.floor(r.at / BUCKET)}`;
+      (groups.get(key) ?? groups.set(key, []).get(key)!).push(r);
+    }
+
+    // Resolve actor display names in one query.
+    const actorIds = Array.from(new Set(raws.map((r) => r.actorId).filter(Boolean))) as string[];
+    const users = actorIds.length
+      ? await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, username: true, employee: { select: { name: true, surname: true } } } })
+      : [];
+    const nameOf = (uid: string | null) => {
+      if (!uid) return null;
+      if (uid === SYSTEM_USER_ID) return { id: uid, name: "System" };
+      if (uid === ADMIN_USER_ID) return { id: uid, name: "Admin" };
+      const u = users.find((x) => x.id === uid);
+      if (!u) return { id: uid, name: "Unknown user" };
+      const nm = u.employee ? `${u.employee.name || ""} ${u.employee.surname || ""}`.trim() : "";
+      return { id: uid, name: nm || u.username };
+    };
+
+    const entries = Array.from(groups.values()).map((g) => {
+      const activity = g.find((r) => r.src === "activity")?.payload;
+      const log = g.find((r) => r.src === "log")?.payload;
+      const audits = g.filter((r) => r.src === "audit").map((r) => r.payload);
+      const at = new Date(Math.min(...g.map((r) => r.at))).toISOString();
+      const actor = nameOf(g[0].actorId);
+
+      // Collect field changes from audit rows + any activity-log metadata.changes, dropping noise.
+      let changes: Array<{ field: string; before: any; after: any }> = [];
+      for (const au of audits) changes = changes.concat(flattenChanges(au.changes));
+      if (log?.metadata && (log.metadata as any).changes) changes = changes.concat(flattenChanges((log.metadata as any).changes));
+
+      let kind = "edit";
+      let title = "Updated";
+      let type: string | null = null, outcome: string | null = null, notes: string | null = null, nextFollowUpAt: any = null, occurredAt: any = null;
+
+      if (activity) {
+        kind = "activity";
+        type = activity.type;
+        title = ACTIVITY_TITLE[activity.type] || "Activity logged";
+        outcome = sentenceCase(activity.outcome);
+        notes = activity.notes || null;
+        nextFollowUpAt = activity.nextFollowUpAt || null;
+        occurredAt = activity.occurredAt || null;
+      } else if (log) {
+        kind = log.action === "STATUS_CHANGE" ? "stage" : "system";
+        title = ACTION_TITLE[log.action] || sentenceCase(log.action) || "Updated";
+        notes = log.description || null;
+      } else if (audits.length) {
+        const a0 = audits[0];
+        kind = a0.action === "STATUS_CHANGE" ? "stage" : "edit";
+        title = ACTION_TITLE[a0.action] || sentenceCase(a0.action) || "Updated";
+      }
+
+      return {
+        id: (activity?.id || log?.id || audits[0]?.id || at) as string,
+        at, occurredAt, kind, title,
+        type, outcome, notes, nextFollowUpAt,
+        actor,
+        ...(changes.length ? { changes } : {}),
+      };
+    });
+
+    entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+    return entries;
   }
 }
 

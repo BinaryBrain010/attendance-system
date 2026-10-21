@@ -28,9 +28,11 @@ gated by the export permission).
 ---
 
 ## Phase 2 — CRM  (IN PROGRESS — sub-phase + commit each)
-- [ ] 2a. Lead timeline: merge the 3 entries (activity, activity-log, audit) into ONE entry per
+- [x] 2a. Lead timeline: merge the 3 entries (activity, activity-log, audit) into ONE entry per
       action — type, outcome, notes, next follow-up, who did it, readable sentence case. Raw field
-      changes only behind "Show changes".
+      changes only behind "Show changes". (Backend timeline() correlates by actor+time; admin
+      TimelineItem with Show changes. Incidental: malformed-JSON body now 400 not 500. crm harness
+      188/0.)
 - [ ] 2b. Quick actions on lead detail + lead-list row menu: Called (outcome: no answer, busy,
       interested, not interested, call back), WhatsApp sent, Visit, Quotation sent, Mark won, Mark
       lost (reason required). Small popover: notes + optional next follow-up, 1–2 clicks. Stage chips

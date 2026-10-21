@@ -20,6 +20,15 @@ export function classifyError(error: any): Classified {
   const code = error?.code as string | undefined;
   const name = error?.name as string | undefined;
 
+  // body-parser / http-errors (malformed JSON body, payload too large, unsupported media type) carry
+  // their own 4xx status + `expose`. Honor it so a bad REQUEST is a 4xx, never a scary 500.
+  const httpStatus = Number(error?.status ?? error?.statusCode);
+  if (httpStatus >= 400 && httpStatus < 500 && (error?.expose === true || typeof error?.type === "string")) {
+    if (error?.type === "entity.parse.failed") return { statusCode: 400, message: "Invalid request body: malformed JSON." };
+    if (error?.type === "entity.too.large") return { statusCode: 413, message: "Request body is too large." };
+    return { statusCode: httpStatus, message: httpStatus === 400 ? "Invalid request." : (error?.message || "Request error") };
+  }
+
   // Prisma known-request errors
   if (code === "P2002") {
     const t = error?.meta?.target;
