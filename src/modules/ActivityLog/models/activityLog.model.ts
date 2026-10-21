@@ -88,8 +88,14 @@ const activityLogModel = prisma.$extends({
           LEFT JOIN "User" u ON al."userId" = u.id
           ${whereClause}
           ORDER BY al."createdAt" DESC
-          LIMIT 1000
+          LIMIT 100000
         `, ...params) as any[];
+
+        // Never silently truncate a filtered log export: 100k ceiling (metadata excluded, so the
+        // payload is bounded by row count). Warn if ever hit so the caller knows to paginate/stream.
+        if (data.length >= 100000) {
+          console.warn(`[list-cap] activityLog.gpFindMany: hit 100000-row ceiling — result TRUNCATED; paginate/stream this export.`);
+        }
 
         // Resolve admin username
         const resolvedData = await Promise.all(

@@ -4,6 +4,7 @@ import { paginatedData } from "../../../../types/paginatedData";
 import { EmployeeFaceRecognitionData } from "../types/employee";
 import prisma from "../../../../core/models/base.model";
 import { AttendanceStatus, LeaveStatus } from "@prisma/client";
+import { compressImageDataUrl } from "../../../../core/utils/imageCompression";
 
 class EmployeeService {
   async getAllEmployees(): Promise<Employee[]> {
@@ -70,14 +71,25 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   async createEmployee(
     employeeData: Employee | Employee[]
   ): Promise<Employee | Employee[]> {
-    return await employeeModel.employee.gpCreate(employeeData);
+    // Compress the photo on upload (max 800px, JPEG ~80%) so a single row can't grow to multiple MB.
+    const compressed = Array.isArray(employeeData)
+      ? await Promise.all(employeeData.map((e) => this.withCompressedImage(e)))
+      : await this.withCompressedImage(employeeData);
+    return await employeeModel.employee.gpCreate(compressed);
   }
 
   async updateEmployee(
     employeeId: string,
     employeeData: Employee
   ): Promise<any> {
-    return await employeeModel.employee.gpUpdate(employeeId, employeeData);
+    const compressed = await this.withCompressedImage(employeeData);
+    return await employeeModel.employee.gpUpdate(employeeId, compressed);
+  }
+
+  /** Return a copy of the employee payload with its `image` compressed (no-op if absent/unprocessable). */
+  private async withCompressedImage<T extends { image?: any }>(data: T): Promise<T> {
+    if (!data || data.image == null) return data;
+    return { ...data, image: await compressImageDataUrl(data.image) };
   }
 
   async deleteEmployee(employeeId: string): Promise<void> {

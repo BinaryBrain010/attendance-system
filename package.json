@@ -29,7 +29,8 @@
     "qa:audit": "ts-node qa/audit.ts",
     "qa:load": "ts-node qa/load.ts",
     "qa:insights": "ts-node qa/insights.ts",
-    "qa:listpaging": "ts-node qa/listpaging.ts"
+    "qa:listpaging": "ts-node qa/listpaging.ts",
+    "qa:blobhardening": "ts-node qa/blobhardening.ts"
   },
   "author": "ahad",
   "license": "ISC",

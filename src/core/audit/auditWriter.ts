@@ -51,6 +51,30 @@ function redact(key: string, val: any): any {
   return val;
 }
 
+/**
+ * Recursively strip blob/sensitive fields and over-long strings from an arbitrary value before it is
+ * written to a log (ActivityLog.metadata often holds full before/after records, so blobs are NESTED).
+ * This is the write-time guard that keeps ActivityLog.metadata from growing to megabytes (base64
+ * images/signatures logged verbatim were the prod culprit). Depth-limited to avoid pathological nesting.
+ */
+export function redactDeep(value: any, depth = 0): any {
+  if (value == null) return value;
+  if (typeof value === "string") return value.length > MAX_VAL_LEN ? "[large]" : value;
+  if (typeof value !== "object") return value;
+  if (depth >= 6) return "[deep]";
+  if (Array.isArray(value)) {
+    if (value.length > 500) return `[array:${value.length}]`;
+    return value.map((v) => redactDeep(v, depth + 1));
+  }
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (SENSITIVE_RE.test(k)) { out[k] = "***"; continue; }
+    if (BIG_FIELDS.has(k)) { out[k] = "[redacted]"; continue; }
+    out[k] = redactDeep(v, depth + 1);
+  }
+  return out;
+}
+
 function eq(a: any, b: any): boolean {
   if (a === b) return true;
   try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }

@@ -1,6 +1,7 @@
 import prisma from "../../../core/models/base.model";
 import { ActivityLog } from "../types/activityLog";
 import { getImpersonatorId } from "../../../core/context/requestContext";
+import { redactDeep } from "../../../core/audit/auditWriter";
 
 /**
  * Logs an activity/action performed by a user
@@ -16,7 +17,9 @@ export async function logActivity(logData: ActivityLog): Promise<any> {
         entityType: logData.entityType,
         entityId: logData.entityId || null,
         description: logData.description || null,
-        metadata: logData.metadata || null,
+        // Strip blob/sensitive fields (base64 images, signatures, face descriptors, passwords) from the
+        // metadata before storing — full before/after records were bloating ActivityLog.metadata to MBs.
+        metadata: logData.metadata != null ? redactDeep(logData.metadata) : null,
         ipAddress: logData.ipAddress || null,
         userAgent: logData.userAgent || null,
         // Set when produced under impersonation, so the target user's own Activity Log can hide it

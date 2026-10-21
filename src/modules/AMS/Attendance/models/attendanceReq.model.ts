@@ -61,8 +61,14 @@ const attendanceRequestModel = prisma.$extends({
           LEFT JOIN "User" au ON ar."approvedBy" = au.id
           WHERE ar."isDeleted" IS NULL
           ORDER BY ar."createdAt" DESC
-          LIMIT 500
+          LIMIT 100000
         ` as any[];
+
+        // Never silently truncate: prod has ~11k requests. The 100k ceiling (image excluded, hasImage
+        // flag only, so the payload is bounded by row count) comfortably covers it; warn if ever hit.
+        if (data.length >= 100000) {
+          console.warn(`[list-cap] attendanceRequest.gpFindMany: hit 100000-row ceiling — result TRUNCATED; paginate/stream this export.`);
+        }
 
         // Resolve usernames for admin user
         const resolvedData = await Promise.all(
@@ -87,6 +93,7 @@ const attendanceRequestModel = prisma.$extends({
             ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
             ar."proposedLocation", ar."proposedDate", ar."requestedBy", ar."approvedBy",
             ar."createdAt", ar."updatedAt", ar."isDeleted", ar."createdById", ar."updatedById", ar."deletedById",
+            ar.image,
             (ar.image IS NOT NULL) AS "hasImage",
             e.id AS "employeeId",
             e.code AS "employeeCode",

@@ -155,7 +155,18 @@ async function orphanCase(): Promise<{ failures: string[] }> {
   return { failures };
 }
 
-const MAX_BYTES = 1024 * 1024; // 1MB per page-of-25 (blob columns must never ride along in lists)
+const MAX_BYTES = 1024 * 1024; // 1MB per page-of-25 for PAGINATED lists (blobs must never ride along)
+const MAX_BYTES_PER_ROW = 4096; // for unpaginated getAll/export endpoints: catch a blob riding per row
+                                 // (a base64 image would be ~100KB+/row) while allowing many small rows.
+// Pull the row array out of whatever envelope the endpoint uses ({data:[]} | {data:{data:[]}} | []).
+function rowsOf(body: any): any[] | null {
+  if (!body) return null;
+  if (Array.isArray(body)) return body;
+  const d = body.data;
+  if (Array.isArray(d)) return d;
+  if (d && Array.isArray(d.data)) return d.data;
+  return null;
+}
 async function sizeCheck(persona: { slug: string; features: string[] }, endpoints: R[]) {
   const existing = await prisma.user.findFirst({ where: { username: persona.slug } });
   if (existing) await purge(existing.id);
@@ -163,13 +174,22 @@ async function sizeCheck(persona: { slug: string; features: string[] }, endpoint
   const u = await prisma.user.create({ data: { username: persona.slug, password: hash, createdAt: new Date() } });
   await prisma.featurePermission.create({ data: { parentType: "User", parentId: u.id, permissions: { allowedFeatures: persona.features } as any, createdAt: new Date() } });
   const token = (await login(persona.slug, QA_PASSWORD, "Admin", true)).token;
-  const over: { endpoint: string; bytes: number }[] = [];
+  const over: { endpoint: string; detail: string }[] = [];
   if (token) {
     for (const ep of endpoints) {
       const v = { page: 1, pageSize: 25 };
       const res = ep.method === "GET" ? await http("GET", `${ep.path}?${toQuery(v)}`, { token }) : await http("POST", ep.path, { token, body: v });
       const bytes = Buffer.byteLength(res.text || "", "utf8");
-      if (bytes > MAX_BYTES) over.push({ endpoint: `${ep.method} ${ep.path}`, bytes });
+      const rows = rowsOf(res.json);
+      const n = rows ? rows.length : 0;
+      // A getAll/export endpoint ignores pageSize (returns >25 rows). For those the risk is a BLOB per
+      // row, not total size, so gate on bytes-per-row. Paginated pages (<=25 rows) keep the 1MB rule.
+      if (n > 25) {
+        const perRow = bytes / Math.max(1, n);
+        if (perRow > MAX_BYTES_PER_ROW) over.push({ endpoint: `${ep.method} ${ep.path}`, detail: `${(perRow / 1024).toFixed(1)}KB/row over ${n} rows (blob riding along?)` });
+      } else if (bytes > MAX_BYTES) {
+        over.push({ endpoint: `${ep.method} ${ep.path}`, detail: `${(bytes / 1048576).toFixed(2)}MB page of 25` });
+      }
     }
   }
   await purge(u.id);
@@ -196,9 +216,9 @@ async function run() {
 
   const over = await sizeCheck(PERSONAS[0], endpoints);
   totalFail += over.length;
-  console.log(`\n  [payload size] lists over 1MB for a page of 25: ${over.length}`);
-  for (const o of over) console.log(`    BLOAT ${o.endpoint}  ${(o.bytes / 1048576).toFixed(2)}MB`);
-  if (!over.length) console.log("    no list page exceeds 1MB.");
+  console.log(`\n  [payload size] paginated pages >1MB, or getAll endpoints with a blob per row: ${over.length}`);
+  for (const o of over) console.log(`    BLOAT ${o.endpoint}  ${o.detail}`);
+  if (!over.length) console.log("    no paginated page exceeds 1MB; no getAll endpoint carries blobs.");
 
   process.exit(totalFail ? 1 : 0);
 }

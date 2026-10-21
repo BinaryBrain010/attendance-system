@@ -136,7 +136,9 @@ const leaveReqModel = prisma.$extends({
         return createdItems.length === 1 ? createdItems[0] : createdItems;
       },
 
-      // Find an overlapping PENDING/APPROVED leave for an employee on a date range (or null).
+      // Find an overlapping ACTIVE (PENDING/APPROVED) leave for an employee on a date range (or null).
+      // Only these statuses count: a REJECTED leave must NOT be linked to when marking attendance —
+      // gpEnsureForDate then creates a fresh request instead (LeaveStatus has no CANCELLED).
       async gpFindOverlap(this: any, employeeId: string, startDate: Date, endDate: Date) {
         if (!employeeId) return null;
         return prisma.leaveRequest.findFirst({

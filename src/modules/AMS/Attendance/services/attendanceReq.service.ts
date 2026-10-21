@@ -2,6 +2,7 @@ import attendanceRequestModel from "../models/attendanceReq.model";
 import { AttendanceRequest } from "../types/AttendanceRequest";
 import { paginatedData } from "../../../../types/paginatedData";
 import { LeaveStatus } from "@prisma/client";
+import { compressImageDataUrl } from "../../../../core/utils/imageCompression";
 
 // Only these fields exist on Prisma AttendanceRequest model (no JOIN/alias fields).
 const ATTENDANCE_REQUEST_SCHEMA_KEYS = [
@@ -66,9 +67,13 @@ class LeaveReqService {
   async createAttendanceRequest(
     AttendanceRequestData: AttendanceRequest | AttendanceRequest[]
   ): Promise<AttendanceRequest | AttendanceRequest[]> {
-    const raw = Array.isArray(AttendanceRequestData)
+    const rawPre = Array.isArray(AttendanceRequestData)
       ? AttendanceRequestData.map((d) => sanitizeAttendanceRequestData(d))
       : sanitizeAttendanceRequestData(AttendanceRequestData);
+    // Compress the selfie on upload (max 800px, JPEG ~80%) so the row stays small.
+    const compress = async (o: Record<string, unknown>) =>
+      o && o.image != null ? { ...o, image: await compressImageDataUrl(o.image) } : o;
+    const raw = Array.isArray(rawPre) ? await Promise.all(rawPre.map(compress)) : await compress(rawPre);
     const payload = Array.isArray(raw)
       ? raw.map((o) => {
           const { id: _id, ...rest } = o as { id?: string; [k: string]: unknown };

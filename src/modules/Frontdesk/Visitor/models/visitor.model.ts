@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import prisma from "../../../../core/models/base.model";
+import prisma, { pageAllFindMany } from "../../../../core/models/base.model";
 
 // Hardcoded admin user id (same convention used across the codebase)
 const ADMIN_USER_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
@@ -38,12 +38,17 @@ const visitorModel = prisma.$extends({
   model: {
     visitor: {
       async gpFindMany(this: any) {
-        return await prisma.visitor.findMany({
-          where: { isDeleted: null },
-          orderBy: [{ visitDate: "desc" }, { timeIn: "desc" }],
-          take: 1000, // hard cap: never return an unbounded "all" list
-          include: { referredToEmployee: { select: referredToEmployeeSelect } },
-        });
+        // Page internally instead of a flat cap so a filtered "all visitors" export never silently
+        // truncates; warns (inside the helper) only at the 100k safety ceiling.
+        return await pageAllFindMany(
+          prisma.visitor,
+          {
+            where: { isDeleted: null },
+            orderBy: [{ visitDate: "desc" }, { timeIn: "desc" }],
+            include: { referredToEmployee: { select: referredToEmployeeSelect } },
+          },
+          "visitor.gpFindMany",
+        );
       },
 
       async gpFindById(this: any, id: string) {

@@ -165,7 +165,13 @@ class LeadService {
     assertRowInScope(scope, lead, "Lead");
     const [acts, legacy, audit] = await Promise.all([
       prisma.leadActivity.findMany({ where: { leadId: id, isDeleted: null } }),
-      prisma.activityLog.findMany({ where: { entityType: "Lead", entityId: id }, orderBy: { createdAt: "desc" } }),
+      // Explicit select so metadata survives the global list-blob strip (it's needed for the timeline
+      // detail). Bounded to one lead's rows, and metadata is kept small by the write-time sanitizer.
+      prisma.activityLog.findMany({
+        where: { entityType: "Lead", entityId: id },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, createdAt: true, action: true, description: true, metadata: true, userId: true, entityType: true, entityId: true },
+      }),
       // Run 11: central audit field-change entries for this lead, shown alongside the activity feed.
       prisma.auditLog.findMany({ where: { entity: "Lead", entityId: id }, orderBy: { createdAt: "desc" }, take: 200 }),
     ]);

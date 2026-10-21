@@ -34,8 +34,31 @@ const LIST_BLOB_COLUMNS: Record<string, string[]> = {
   Holiday: ["previousUpdates"],
   Unit: ["previousUpdates"],
   ActivityLog: ["metadata"],
-  AuditLog: ["changes"],
+  // NOTE: AuditLog.changes is intentionally NOT stripped — it is the core content of the audit
+  // list/History tab (the field-level diff), it is small on prod (~0.5KB max), and the audit writer
+  // already redacts blob/sensitive fields before writing it. Stripping it would blank the audit page.
 };
+
+// Absolute safety ceiling for unbounded "get all" / export paths: we page internally up to this many
+// rows rather than returning a flat capped slice, so nothing is silently truncated below it. If it is
+// ever reached we log a warning (the data genuinely exceeds a single response and should be streamed).
+export const LIST_HARD_CEILING = 100000;
+const PAGE_BATCH = 2000;
+
+/** Page a delegate's findMany internally in batches up to LIST_HARD_CEILING; never silently caps below
+ *  it. Blob columns are already excluded by the findMany hook, so the payload is bounded by row count. */
+export async function pageAllFindMany(delegate: any, args: any, label: string): Promise<any[]> {
+  const out: any[] = [];
+  for (let skip = 0; skip < LIST_HARD_CEILING; skip += PAGE_BATCH) {
+    const take = Math.min(PAGE_BATCH, LIST_HARD_CEILING - skip);
+    const rows = await delegate.findMany({ ...args, skip, take });
+    out.push(...rows);
+    if (rows.length < take) return out; // exhausted
+  }
+  // eslint-disable-next-line no-console
+  console.warn(`[list-cap] ${label}: hit LIST_HARD_CEILING (${LIST_HARD_CEILING}) rows — result TRUNCATED; this list must be paginated or streamed.`);
+  return out;
+}
 const _listSelCache: Record<string, Record<string, true> | null> = {};
 function listSelectFor(model: string, args: any): Record<string, true> | null {
   const blobs = LIST_BLOB_COLUMNS[model];
@@ -298,14 +321,9 @@ const prisma = audited.$extends({
       },
 
       async gpFindMany(this: any) {
-        const data = await this.findMany({
-          where: {
-            isDeleted: null,
-          },
-          take: 5000, // ceiling so a generic "all" path can never return unbounded rows
-        });
-
-        return data;
+        // Page internally instead of a flat take cap, so a generic "all" path never silently
+        // truncates real data (prod has 11k+ rows in some tables). Blobs are excluded by the hook.
+        return pageAllFindMany(this, { where: { isDeleted: null } }, "gpFindMany");
       },
 
       async gpFilter(
