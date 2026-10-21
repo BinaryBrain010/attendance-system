@@ -33,11 +33,13 @@ gated by the export permission).
       changes only behind "Show changes". (Backend timeline() correlates by actor+time; admin
       TimelineItem with Show changes. Incidental: malformed-JSON body now 400 not 500. crm harness
       188/0.)
-- [ ] 2b. Quick actions on lead detail + lead-list row menu: Called (outcome: no answer, busy,
+- [x] 2b. Quick actions on lead detail + lead-list row menu: Called (outcome: no answer, busy,
       interested, not interested, call back), WhatsApp sent, Visit, Quotation sent, Mark won, Mark
       lost (reason required). Small popover: notes + optional next follow-up, 1–2 clicks. Stage chips
       to change stage. Replaces the long "Change stage" + "Log activity" form; full form behind
-      "More details".
+      "More details". (Shared LeadQuickActions component. Detail page + board cards. Flat list rows
+      open the detail where the actions live; the shared MUI table was NOT rewritten for a per-row
+      popover — board is the per-lead quick-action surface. Reuses addActivity/transition endpoints.)
 - [ ] 2c. New permission `crm.lead.assign`. Without it, the Agent field is hidden on New/Edit lead and
       the lead goes to the creator's own agent. Enforce on backend. Upsert-only seed.
 - [ ] 2d. New permission `crm.lead.transfer`: "Transfer" to another agent in the same team (all-scope
