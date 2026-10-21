@@ -449,46 +449,63 @@ WHERE "User".id = ${id}
           }
         }
 
-        // Validate and set sortBy field
-        const validSortFields = [
-          'username',
-          'createdAt',
-          'updatedAt',
-        ];
-        const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
         const order = sortOrder === 'asc' ? 'asc' : 'desc';
+        // Sortable columns incl. server-computed group count. Default createdAt.
+        let orderBy: any;
+        if (sortBy === 'groupsCount') orderBy = { userGroups: { _count: order } };
+        else if (['username', 'createdAt', 'updatedAt'].includes(sortBy)) orderBy = { [sortBy]: order };
+        else orderBy = { createdAt: order };
 
-        // Build orderBy clause
-        const orderBy: any = {};
-        orderBy[sortField] = order;
+        if (isFilterMode) {
+          // Lightweight mode (pickers): just id + username.
+          const [data, totalSize] = await Promise.all([
+            this.findMany({ where, select: { id: true, username: true }, take: pageSize, skip, orderBy }),
+            this.count({ where }),
+          ]);
+          return { data, totalSize };
+        }
 
-        // Select clause - limited fields if filter=true, otherwise full fields
-        const select = isFilterMode
-          ? {
-              id: true,
-              username: true,
-            }
-          : {
-              id: true,
-              username: true,
-              createdAt: true,
-              updatedAt: true,
-              employeeId: true,
-            };
-
-        // Execute query with pagination, sorting, and filtering
-        const [data, totalSize] = await Promise.all([
+        // Full list: linked employee, role chips, group count — all server-computed, null-safe.
+        const [rows, totalSize] = await Promise.all([
           this.findMany({
             where,
-            select,
-            take: pageSize,
-            skip: skip,
-            orderBy,
+            select: {
+              id: true, username: true, createdAt: true, updatedAt: true, employeeId: true,
+              employee: { select: { id: true, name: true, surname: true, code: true, status: true } },
+              userRoles: { where: { isDeleted: null }, select: { role: { select: { id: true, name: true } } } },
+              userGroups: { where: { isDeleted: null }, select: { id: true } },
+            },
+            take: pageSize, skip, orderBy,
           }),
-          this.count({
-            where,
-          }),
+          this.count({ where }),
         ]);
+
+        // Resolve last login (most recent session) for this page's users in one query.
+        const ids = rows.map((u: any) => u.id);
+        const sessions = ids.length
+          ? await prisma.loggedInUsers.findMany({ where: { userId: { in: ids } }, select: { userId: true, createdAt: true } })
+          : [];
+        const lastLogin = new Map<string, Date>();
+        for (const s of sessions) {
+          if (!s.createdAt) continue;
+          const cur = lastLogin.get(s.userId);
+          if (!cur || s.createdAt > cur) lastLogin.set(s.userId, s.createdAt);
+        }
+
+        const data = rows.map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt,
+          employeeId: u.employeeId ?? null,
+          employee: u.employee ? { id: u.employee.id, name: u.employee.name, surname: u.employee.surname, code: u.employee.code, status: u.employee.status } : null,
+          employeeName: u.employee ? `${u.employee.name || ''} ${u.employee.surname || ''}`.trim() : null,
+          roles: (u.userRoles || []).map((r: any) => r.role?.name).filter(Boolean),
+          groupsCount: (u.userGroups || []).length,
+          lastLogin: lastLogin.get(u.id) ?? null,
+          // User has no suspend state yet (Phase 3b adds user.suspend); everyone listed here is active.
+          status: 'ACTIVE',
+        }));
 
         return { data, totalSize };
       },

@@ -72,10 +72,14 @@ gated by the export permission).
       order/return list endpoints filtered by agentId; History = AuditHistory (names). CRM 188/0.)
 
 ## Phase 3 — Access Control
-- [ ] 3a. Users/Roles/Groups tables with server-computed, sortable counts; null-safe mapper.
+- [~] 3a. Users/Roles/Groups tables with server-computed, sortable counts; null-safe mapper.
       Users: username, linked employee, roles (chips), groups count, status, last login, created.
       Roles: name, users count, groups count, permissions count, updated.
       Groups: name, members count, roles, updated.
+      BACKEND DONE: GET /user|role|group/get now return server-computed counts (user roles chips +
+      groupsCount + lastLogin + employeeName + status; role users/groups/permissions counts; group
+      members/roles counts), null-safe, sortable by the counts (orderBy relation _count). Additive
+      (old fields kept, admin still renders). FRONTEND (admin tables show the new columns) = TODO.
 - [ ] 3b. User detail: header cards (status, last login + device, roles, groups, linked employee).
       Employee tab last. Suspend/Reactivate behind new `user.suspend` (blocks login, revokes
       sessions+tokens, audited). Role/group detail show members with last login + permission summary.

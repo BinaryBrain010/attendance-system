@@ -215,45 +215,53 @@ const roleModel = prisma.$extends({
         }
       }
 
-      // Validate and set sortBy field
-      const validSortFields = [
-        'name',
-        'createdAt',
-        'updatedAt',
-      ];
-      const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
       const order = sortOrder === 'asc' ? 'asc' : 'desc';
+      // Sortable incl. server-computed users/groups counts. Default createdAt.
+      let orderBy: any;
+      if (sortBy === 'usersCount') orderBy = { userRoles: { _count: order } };
+      else if (sortBy === 'groupsCount') orderBy = { groupRoles: { _count: order } };
+      else if (['name', 'createdAt', 'updatedAt'].includes(sortBy)) orderBy = { [sortBy]: order };
+      else orderBy = { createdAt: order };
 
-      // Build orderBy clause
-      const orderBy: any = {};
-      orderBy[sortField] = order;
+      if (isFilterMode) {
+        const [data, totalSize] = await Promise.all([
+          this.findMany({ where, select: { id: true, name: true }, take: pageSize, skip, orderBy }),
+          this.count({ where }),
+        ]);
+        return { data, totalSize };
+      }
 
-      // Select clause - limited fields if filter=true, otherwise full fields
-      const select = isFilterMode
-        ? {
-            id: true,
-            name: true,
-          }
-        : {
-            id: true,
-            name: true,
-            createdAt: true,
-            updatedAt: true,
-          };
-
-      // Execute query with pagination, sorting, and filtering
-      const [data, totalSize] = await Promise.all([
+      // Full list: server-computed users count, groups count, permissions count.
+      const [rows, totalSize] = await Promise.all([
         this.findMany({
           where,
-          select,
-          take: pageSize,
-          skip: skip,
-          orderBy,
+          select: {
+            id: true, name: true, createdAt: true, updatedAt: true,
+            userRoles: { where: { isDeleted: null }, select: { id: true } },
+            groupRoles: { where: { isDeleted: null }, select: { id: true } },
+          },
+          take: pageSize, skip, orderBy,
         }),
-        this.count({
-          where,
-        }),
+        this.count({ where }),
       ]);
+
+      // Permissions count per role from FeaturePermission(parentType=Role) allowedFeatures.
+      const ids = rows.map((r: any) => r.id);
+      const perms = ids.length
+        ? await prisma.featurePermission.findMany({ where: { parentType: 'Role', parentId: { in: ids } }, select: { parentId: true, permissions: true } })
+        : [];
+      const permCount = new Map<string, number>();
+      for (const p of perms) {
+        const af = (p.permissions as any)?.allowedFeatures;
+        permCount.set(p.parentId, Array.isArray(af) ? af.length : 0);
+      }
+
+      const data = rows.map((r: any) => ({
+        id: r.id, name: r.name, createdAt: r.createdAt, updatedAt: r.updatedAt,
+        usersCount: (r.userRoles || []).length,
+        groupsCount: (r.groupRoles || []).length,
+        permissionsCount: permCount.get(r.id) ?? 0,
+      }));
 
       return { data, totalSize };
     },

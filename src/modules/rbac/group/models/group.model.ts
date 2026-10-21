@@ -198,45 +198,42 @@ const groupModel = prisma.$extends({
             }
           }
 
-          // Validate and set sortBy field
-          const validSortFields = [
-            'name',
-            'createdAt',
-            'updatedAt',
-          ];
-          const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
           const order = sortOrder === 'asc' ? 'asc' : 'desc';
+          // Sortable incl. server-computed member/role counts. Default createdAt.
+          let orderBy: any;
+          if (sortBy === 'membersCount') orderBy = { userGroups: { _count: order } };
+          else if (sortBy === 'rolesCount') orderBy = { groupRoles: { _count: order } };
+          else if (['name', 'createdAt', 'updatedAt'].includes(sortBy)) orderBy = { [sortBy]: order };
+          else orderBy = { createdAt: order };
 
-          // Build orderBy clause
-          const orderBy: any = {};
-          orderBy[sortField] = order;
+          if (isFilterMode) {
+            const [data, totalSize] = await Promise.all([
+              this.findMany({ where, select: { id: true, name: true }, take: pageSize, skip, orderBy }),
+              this.count({ where }),
+            ]);
+            return { data, totalSize };
+          }
 
-          // Select clause - limited fields if filter=true, otherwise full fields
-          const select = isFilterMode
-            ? {
-                id: true,
-                name: true,
-              }
-            : {
-                id: true,
-                name: true,
-                createdAt: true,
-                updatedAt: true,
-              };
-
-          // Execute query with pagination, sorting, and filtering
-          const [data, totalSize] = await Promise.all([
+          // Full list: server-computed members count + roles count.
+          const [rows, totalSize] = await Promise.all([
             this.findMany({
               where,
-              select,
-              take: pageSize,
-              skip: skip,
-              orderBy,
+              select: {
+                id: true, name: true, createdAt: true, updatedAt: true,
+                userGroups: { where: { isDeleted: null }, select: { id: true } },
+                groupRoles: { where: { isDeleted: null }, select: { role: { select: { id: true, name: true } } } },
+              },
+              take: pageSize, skip, orderBy,
             }),
-            this.count({
-              where,
-            }),
+            this.count({ where }),
           ]);
+
+          const data = rows.map((g: any) => ({
+            id: g.id, name: g.name, createdAt: g.createdAt, updatedAt: g.updatedAt,
+            membersCount: (g.userGroups || []).length,
+            rolesCount: (g.groupRoles || []).length,
+            roles: (g.groupRoles || []).map((gr: any) => gr.role?.name).filter(Boolean),
+          }));
 
           return { data, totalSize };
         },
