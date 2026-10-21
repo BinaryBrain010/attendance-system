@@ -1,6 +1,7 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { getFeatureSet, holds, isGod } from "../../shared/access";
+import { notify } from "../../../Work/shared/workHelpers";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
@@ -125,12 +126,31 @@ class LeadService {
 
   async create(userId: string, data: any) {
     const scope = await resolveScope(userId, "lead");
-    // Without crm.lead.assign the caller cannot pick an agent — the lead goes to their OWN agent
-    // (scope.agentId); any requested agentId is ignored. No agent profile -> owned by createdBy (null).
-    const requested = (await this.canAssign(userId)) ? data.agentId : (scope.agentId ?? null);
-    data.agentId = resolveAssignment(scope, requested);
+    const canAssign = await this.canAssign(userId);
+    let unassigned = false;
+    if (canAssign) {
+      // Holder: honor the requested agent (still scope-checked). May legitimately be null.
+      data.agentId = resolveAssignment(scope, data.agentId);
+    } else if (scope.agentId) {
+      // Non-holder with an agent profile: the lead goes to their OWN agent (requested ignored).
+      data.agentId = scope.agentId;
+    } else {
+      // Non-holder with NO agent profile (e.g. front desk): create UNASSIGNED and alert managers,
+      // rather than blocking. (Never throws — self-create of an unassigned lead is always allowed.)
+      data.agentId = null;
+      unassigned = true;
+    }
     if (data.phone !== undefined) data.phoneNormalized = normalizePhone(data.phone);
-    return prisma.lead.gpCreate(data);
+    const created = await prisma.lead.gpCreate(data);
+    const lead = Array.isArray(created) ? created[0] : created;
+    if (unassigned && lead?.id) {
+      // Notify managers (agents with ALL scope) so an unassigned lead doesn't sit unseen.
+      try {
+        const managers = await prisma.salesAgent.findMany({ where: { scope: "ALL", isDeleted: null, userId: { not: null } }, select: { userId: true } });
+        await notify(managers.map((m) => m.userId), "LEAD_UNASSIGNED", `Unassigned lead: ${lead.customerName}`, "A lead was created without an agent. Please assign it.", "Lead", lead.id);
+      } catch { /* best-effort */ }
+    }
+    return created;
   }
 
   async update(userId: string, id: string, data: any) {

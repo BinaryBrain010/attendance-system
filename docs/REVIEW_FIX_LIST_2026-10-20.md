@@ -38,14 +38,19 @@ gated by the export permission).
       lost (reason required). Small popover: notes + optional next follow-up, 1–2 clicks. Stage chips
       to change stage. Replaces the long "Change stage" + "Log activity" form; full form behind
       "More details". (Shared LeadQuickActions component. Detail page + board cards. Flat list rows
-      open the detail where the actions live; the shared MUI table was NOT rewritten for a per-row
-      popover — board is the per-lead quick-action surface. Reuses addActivity/transition endpoints.)
+      open the detail where the actions live. Reuses addActivity/transition endpoints.)
+      Addition: flat list now has a compact "Log" column (LeadQuickLog, single Radix portal popover)
+      via an additive `extraColumns` prop on the shared table (hook untouched); row click still opens
+      the detail, trigger stops propagation.
 - [x] 2c. New permission `crm.lead.assign`. Without it, the Agent field is hidden on New/Edit lead and
       the lead goes to the creator's own agent. Enforce on backend. Upsert-only seed.
       (Backend lead.service create/update: without crm.lead.assign the requested agentId is ignored and
       the lead is forced to the caller's own agent; /lead/assign already gated. seedLeadAssignFeature.ts
       (upsert-only). Admin leadform already hides the Agent field without the permission. Verified with
       QA agents; crm harness 188/0. NOTE for prod: run seedLeadAssignFeature.ts.)
+      Edge case (addition): a user without crm.lead.assign AND without a SalesAgent profile (front
+      desk) creates the lead UNASSIGNED (never blocked) and ALL-scope managers get a LEAD_UNASSIGNED
+      notification. Persistent test: npm run qa:leadassign (5/5).
 - [ ] 2d. New permission `crm.lead.transfer`: "Transfer" to another agent in the same team (all-scope
       managers pick anyone). Requires a reason, goes on the timeline, notifies both agents.
 - [ ] 2e. @mentions in lead and activity notes (team members; everyone for managers). Mentioned user
