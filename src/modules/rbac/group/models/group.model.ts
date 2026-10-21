@@ -1,3 +1,4 @@
+import { userCardSelect } from "../../../../core/db/safeSelect";
 import prisma from "../../../../core/models/base.model";
 import { createGroup } from "../types/group";
 
@@ -134,9 +135,7 @@ const groupModel = prisma.$extends({
                     not: excludedId,
                   },
                 },
-                include: {
-                  user: true,
-                },
+                include: { user: { select: userCardSelect } },
               },
               groupRoles: {
                 where: {

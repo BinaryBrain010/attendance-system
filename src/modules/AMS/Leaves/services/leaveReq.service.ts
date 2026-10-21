@@ -25,7 +25,7 @@ function normalizeLeaveRequestDates(data: any): any {
 
 class LeaveReqService {
   // Get all leave requests
-  async getAllLeaveRequests(userId?: string): Promise<LeaveRequest[]> {
+  async getAllLeaveRequests(userId?: string): Promise<any[]> {
     return await leaveReqModel.leaveRequest.gpFindMany(userId);
   }
 

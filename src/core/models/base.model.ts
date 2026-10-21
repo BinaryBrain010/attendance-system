@@ -20,10 +20,57 @@ const txAls = new AsyncLocalStorage<{ tx: any }>();
 // Run 11 Part 2: apply the audit query extension FIRST so that the model-extension helpers below
 // (gpCreate/gpUpdate/gpSoftDelete, whose internal this.create/this.update must be stamped) run on a
 // client that already has the query hook. Direct prisma.x.create/update calls go through it too.
+// Columns excluded from LIST (findMany) results — base64 blobs / large JSON that can overflow napi
+// string conversion. Detail/getById reads opt back in (they don't go through the findMany path).
+const LIST_BLOB_COLUMNS: Record<string, string[]> = {
+  Employee: ["image", "faceDescriptor", "previousUpdates", "filePaths"],
+  User: ["password"],
+  GatePass: ["signature"],
+  GatePassItem: ["serialNos"], // large string[] of serials; the detail/gate-pass query fetches them
+  LeaveRequest: ["image"],
+  AttendanceRequest: ["image"],
+  Attendance: ["previousUpdates"],
+  Visitor: ["previousUpdates"],
+  Holiday: ["previousUpdates"],
+  Unit: ["previousUpdates"],
+  ActivityLog: ["metadata"],
+  AuditLog: ["changes"],
+};
+const _listSelCache: Record<string, Record<string, true> | null> = {};
+function listSelectFor(model: string, args: any): Record<string, true> | null {
+  const blobs = LIST_BLOB_COLUMNS[model];
+  if (!blobs) return null;
+  if (args && (args.select || args.include)) return null; // respect an explicit shape
+  if (!(model in _listSelCache)) {
+    const meta = (Prisma as any).dmmf?.datamodel?.models?.find((m: any) => m.name === model);
+    if (!meta) { _listSelCache[model] = null; }
+    else {
+      const sel: Record<string, true> = {};
+      for (const f of meta.fields) {
+        if (f.kind === "object" || f.relationName) continue; // scalars + enums only, never relations
+        if (blobs.includes(f.name)) continue;
+        sel[f.name] = true;
+      }
+      _listSelCache[model] = sel;
+    }
+  }
+  return _listSelCache[model];
+}
+
 const audited = basePrisma.$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }: any) {
+        // List blob-safety: for findMany on a model that has blob columns (base64 images/signatures,
+        // large JSON), when the caller gave no explicit select/include, inject a scalar select that
+        // EXCLUDES those columns. A single huge value can otherwise overflow Node's napi string
+        // conversion ("Failed to convert rust String into napi string") and crash the whole list.
+        // Detail reads (findUnique/findFirst) and explicit-select queries are untouched, so images
+        // and signatures still load where a single record is shown.
+        if (operation === "findMany") {
+          const sel = listSelectFor(model, args);
+          if (sel) args = { ...args, select: sel };
+        }
         const isWrite = WRITE_OPS.has(operation);
         if (isWrite) {
           // During impersonation, createdBy/updatedBy are attributed to the real admin (impersonator),
@@ -206,13 +253,13 @@ const prisma = audited.$extends({
       },
       
       async gpPgFindMany(this: any, page: number, pageSize: number) {
-        const skip = (page - 1) * pageSize;
-// console.log(page,pageSize);
+        const size = Math.min(Math.max(1, Number(pageSize) || 10), 100); // hard max take 100
+        const skip = (Math.max(1, Number(page) || 1) - 1) * size;
         const data = await this.findMany({
           where: {
             isDeleted: null,
           },
-          take: pageSize,
+          take: size,
           skip: skip,
         });
 
@@ -226,7 +273,8 @@ const prisma = audited.$extends({
       },
 
       async gpPgFindDeletedMany(this: any, page: number, pageSize: number) {
-        const skip = (page - 1) * pageSize;
+        const size = Math.min(Math.max(1, Number(pageSize) || 10), 100); // hard max take 100
+        const skip = (Math.max(1, Number(page) || 1) - 1) * size;
 
         const data = await this.findMany({
           where: {
@@ -234,8 +282,8 @@ const prisma = audited.$extends({
               not: null,
             },
           },
-          // take: pageSize,
-          // skip: skip,
+          take: size,   // was commented out -> returned EVERY deleted row
+          skip: skip,
         });
 
         const totalSize = await this.count({
@@ -254,6 +302,7 @@ const prisma = audited.$extends({
           where: {
             isDeleted: null,
           },
+          take: 5000, // ceiling so a generic "all" path can never return unbounded rows
         });
 
         return data;

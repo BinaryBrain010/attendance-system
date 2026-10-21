@@ -41,6 +41,7 @@ const visitorModel = prisma.$extends({
         return await prisma.visitor.findMany({
           where: { isDeleted: null },
           orderBy: [{ visitDate: "desc" }, { timeIn: "desc" }],
+          take: 1000, // hard cap: never return an unbounded "all" list
           include: { referredToEmployee: { select: referredToEmployeeSelect } },
         });
       },

@@ -4,6 +4,7 @@ import { LeaveStatus } from "@prisma/client";
 import { addDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { AppError } from "../../../../core/errors/app.error";
+import { employeeCardSelect, leaveRequestListSelect } from "../../../../core/db/safeSelect";
 
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = "Asia/Karachi";
@@ -348,13 +349,12 @@ const leaveReqModel = prisma.$extends({
 
         return await prisma.leaveRequest.findMany({
           where,
-          include: {
-            employee: true,
-            leaveAllocation: {
-              include: {
-                leaveConfig: true,
-              },
-            },
+          // Blob-safe: exclude leaveRequest.image + employee.image/faceDescriptor/previousUpdates so a
+          // single base64 attachment/photo can't overflow the list payload (napi string crash).
+          select: {
+            ...leaveRequestListSelect,
+            employee: { select: employeeCardSelect },
+            leaveAllocation: { include: { leaveConfig: true } },
           } as any,
         });
       },
@@ -388,13 +388,10 @@ const leaveReqModel = prisma.$extends({
             take: pageSize,
             skip: skip,
             orderBy: { createdAt: 'desc' },
-            include: {
-              employee: true,
-              leaveAllocation: {
-                include: {
-                  leaveConfig: true,
-                },
-              },
+            select: {
+              ...leaveRequestListSelect,
+              employee: { select: employeeCardSelect },
+              leaveAllocation: { include: { leaveConfig: true } },
             } as any,
           }),
           prisma.leaveRequest.count({ where }),

@@ -155,6 +155,27 @@ async function orphanCase(): Promise<{ failures: string[] }> {
   return { failures };
 }
 
+const MAX_BYTES = 1024 * 1024; // 1MB per page-of-25 (blob columns must never ride along in lists)
+async function sizeCheck(persona: { slug: string; features: string[] }, endpoints: R[]) {
+  const existing = await prisma.user.findFirst({ where: { username: persona.slug } });
+  if (existing) await purge(existing.id);
+  const hash = await bcrypt.hash(QA_PASSWORD, 4);
+  const u = await prisma.user.create({ data: { username: persona.slug, password: hash, createdAt: new Date() } });
+  await prisma.featurePermission.create({ data: { parentType: "User", parentId: u.id, permissions: { allowedFeatures: persona.features } as any, createdAt: new Date() } });
+  const token = (await login(persona.slug, QA_PASSWORD, "Admin", true)).token;
+  const over: { endpoint: string; bytes: number }[] = [];
+  if (token) {
+    for (const ep of endpoints) {
+      const v = { page: 1, pageSize: 25 };
+      const res = ep.method === "GET" ? await http("GET", `${ep.path}?${toQuery(v)}`, { token }) : await http("POST", ep.path, { token, body: v });
+      const bytes = Buffer.byteLength(res.text || "", "utf8");
+      if (bytes > MAX_BYTES) over.push({ endpoint: `${ep.method} ${ep.path}`, bytes });
+    }
+  }
+  await purge(u.id);
+  return over;
+}
+
 async function run() {
   const endpoints = listEndpoints();
   let totalFail = 0;
@@ -172,6 +193,12 @@ async function run() {
   console.log(`\n  [orphan relations] failures: ${orphan.failures.length}`);
   for (const f of orphan.failures) console.log(`    FAIL ${f}`);
   if (!orphan.failures.length) console.log("    users/leave lists + user detail survive orphan/null-employee relations.");
+
+  const over = await sizeCheck(PERSONAS[0], endpoints);
+  totalFail += over.length;
+  console.log(`\n  [payload size] lists over 1MB for a page of 25: ${over.length}`);
+  for (const o of over) console.log(`    BLOAT ${o.endpoint}  ${(o.bytes / 1048576).toFixed(2)}MB`);
+  if (!over.length) console.log("    no list page exceeds 1MB.");
 
   process.exit(totalFail ? 1 : 0);
 }

@@ -1,3 +1,4 @@
+import { userCardSelect } from "../../../../core/db/safeSelect";
 import bcrypt from "bcrypt";
 import prisma from "../../../../core/models/base.model";
 import { createRole } from "../types/role";
@@ -154,9 +155,7 @@ const roleModel = prisma.$extends({
                           not: excludedId,
                         },
                     },
-                    include: {
-                        user: true,
-                    },
+                    include: { user: { select: userCardSelect } },
                 },
                 groupRoles: {
                   where: {

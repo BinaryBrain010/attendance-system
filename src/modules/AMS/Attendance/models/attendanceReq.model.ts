@@ -38,8 +38,12 @@ const attendanceRequestModel = prisma.$extends({
 
       async gpFindMany(this: any): Promise<any[]> {
         const data = await prisma.$queryRaw`
-          SELECT 
-            ar.*,
+          SELECT
+            ar.id, ar."employeeId", ar."attendanceId", ar.reason, ar.status, ar.location,
+            ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
+            ar."proposedLocation", ar."proposedDate", ar."requestedBy", ar."approvedBy",
+            ar."createdAt", ar."updatedAt", ar."isDeleted", ar."createdById", ar."updatedById", ar."deletedById",
+            (ar.image IS NOT NULL) AS "hasImage",
             e.id AS "employeeId",
             e.code AS "employeeCode",
             e."name" AS "employeeName",
@@ -57,6 +61,7 @@ const attendanceRequestModel = prisma.$extends({
           LEFT JOIN "User" au ON ar."approvedBy" = au.id
           WHERE ar."isDeleted" IS NULL
           ORDER BY ar."createdAt" DESC
+          LIMIT 500
         ` as any[];
 
         // Resolve usernames for admin user
@@ -77,8 +82,12 @@ const attendanceRequestModel = prisma.$extends({
 
       async gpFindById(this: any, id: string): Promise<any> {
         const data = await prisma.$queryRaw`
-          SELECT 
-            ar.*,
+          SELECT
+            ar.id, ar."employeeId", ar."attendanceId", ar.reason, ar.status, ar.location,
+            ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
+            ar."proposedLocation", ar."proposedDate", ar."requestedBy", ar."approvedBy",
+            ar."createdAt", ar."updatedAt", ar."isDeleted", ar."createdById", ar."updatedById", ar."deletedById",
+            (ar.image IS NOT NULL) AS "hasImage",
             e.id AS "employeeId",
             e.code AS "employeeCode",
             e."name" AS "employeeName",
@@ -119,8 +128,12 @@ const attendanceRequestModel = prisma.$extends({
         const skip = (page - 1) * pageSize;
 
         const data = await prisma.$queryRaw`
-          SELECT 
-            ar.*,
+          SELECT
+            ar.id, ar."employeeId", ar."attendanceId", ar.reason, ar.status, ar.location,
+            ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
+            ar."proposedLocation", ar."proposedDate", ar."requestedBy", ar."approvedBy",
+            ar."createdAt", ar."updatedAt", ar."isDeleted", ar."createdById", ar."updatedById", ar."deletedById",
+            (ar.image IS NOT NULL) AS "hasImage",
             e.id AS "employeeId",
             e.code AS "employeeCode",
             e."name" AS "employeeName",
@@ -170,8 +183,12 @@ const attendanceRequestModel = prisma.$extends({
         const skip = (page - 1) * pageSize;
 
         const data = await prisma.$queryRaw`
-          SELECT 
-            ar.*,
+          SELECT
+            ar.id, ar."employeeId", ar."attendanceId", ar.reason, ar.status, ar.location,
+            ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
+            ar."proposedLocation", ar."proposedDate", ar."requestedBy", ar."approvedBy",
+            ar."createdAt", ar."updatedAt", ar."isDeleted", ar."createdById", ar."updatedById", ar."deletedById",
+            (ar.image IS NOT NULL) AS "hasImage",
             e.id AS "employeeId",
             e.code AS "employeeCode",
             e."name" AS "employeeName",
@@ -292,8 +309,12 @@ const attendanceRequestModel = prisma.$extends({
         employeeId: string
       ): Promise<any[]> {
         const data = await prisma.$queryRaw`
-          SELECT 
-            ar.*,
+          SELECT
+            ar.id, ar."employeeId", ar."attendanceId", ar.reason, ar.status, ar.location,
+            ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
+            ar."proposedLocation", ar."proposedDate", ar."requestedBy", ar."approvedBy",
+            ar."createdAt", ar."updatedAt", ar."isDeleted", ar."createdById", ar."updatedById", ar."deletedById",
+            (ar.image IS NOT NULL) AS "hasImage",
             e.id AS "employeeId",
             e.code AS "employeeCode",
             e."name" AS "employeeName",

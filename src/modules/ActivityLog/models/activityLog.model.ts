@@ -77,14 +77,18 @@ const activityLogModel = prisma.$extends({
           whereClause += ` AND al."impersonatorId" IS NULL`;
         }
 
+        // Blob-safe + bounded: exclude the large `metadata` JSON and hard-cap the rows (no unbounded
+        // "all" path). metadata is fetched on demand via getById for the detail view.
         const data = await prisma.$queryRawUnsafe(`
           SELECT
-            al.*,
+            al.id, al."userId", al.action, al."entityType", al."entityId", al.description,
+            al."ipAddress", al."impersonatorId", al."createdAt",
             u.username AS "userName"
           FROM "ActivityLog" al
           LEFT JOIN "User" u ON al."userId" = u.id
           ${whereClause}
           ORDER BY al."createdAt" DESC
+          LIMIT 1000
         `, ...params) as any[];
 
         // Resolve admin username
