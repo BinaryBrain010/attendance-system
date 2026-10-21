@@ -47,6 +47,7 @@ const lineItem = z.object({
 });
 const returnLineItem = z.object({ productId: idStr.optional(), description: shortStr(500).optional(), quantity: qty });
 const items = (schema: z.ZodTypeAny) => z.array(schema).max(500);
+const mentions = z.array(idStr).max(50); // @mention: explicit User ids (2e)
 
 // ---- schemas ----
 export const schemas = {
@@ -75,6 +76,7 @@ export const schemas = {
       estimatedValue: money.optional(), productId: idStr.optional(), requirement: longStr.optional(),
       agentId: idStr.nullable().optional(), dateReceived: dt.optional(), lastContactAt: dt.optional(),
       nextFollowUpAt: dt.optional(), visitorId: idStr.optional(), company: Company.optional(), leadNo: shortStr(64).optional(),
+      mentions: mentions.optional(),
     }),
     update: z.object({
       id: idStr, customerName: name.optional(), phone: shortStr(40).optional(), city: shortStr(120).optional(),
@@ -82,6 +84,7 @@ export const schemas = {
       channel: Channel.optional(), priority: LeadPriority.optional(), estimatedValue: money.optional(),
       productId: idStr.optional(), requirement: longStr.optional(), agentId: idStr.nullable().optional(),
       lastContactAt: dt.optional(), nextFollowUpAt: dt.optional(), company: Company.optional(),
+      mentions: mentions.optional(),
     }), // NOTE: no `stage` — stage changes go through /transition only
     transition: z.object({ id: idStr, to: LeadStage, reason: longStr.optional() }),
   },
@@ -90,6 +93,7 @@ export const schemas = {
     create: z.object({
       leadId: idStr, type: ActivityType, outcome: shortStr(500).optional(), occurredAt: dt.optional(),
       nextFollowUpAt: dt.optional(), agentId: idStr.optional(), notes: longStr.optional(),
+      mentions: mentions.optional(),
     }),
     update: z.object({ id: idStr, type: ActivityType.optional(), outcome: shortStr(500).optional(), nextFollowUpAt: dt.optional(), notes: longStr.optional() }),
     byLead: z.object({ leadId: idStr }),

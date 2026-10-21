@@ -93,6 +93,10 @@ class LeadController extends BaseController<LeadService> {
     });
   }
 
+  async mentionables(req: Request, res: Response) {
+    await this.handleRequest(() => this.service.mentionables((req as any).userId), res, { successMessage: "Mentionable users retrieved!" });
+  }
+
   async fromVisitor(req: Request, res: Response) {
     const { visitorId } = req.body;
     await this.handleRequest(() => this.service.fromVisitor((req as any).userId, visitorId), res, {

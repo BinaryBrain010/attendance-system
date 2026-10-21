@@ -122,6 +122,7 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /crmReport/customer360": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer 360 profile; gated on lead read" },
   "POST /lead/transition": { feature: "crm.lead.transition.*", kind: "update", access: "feature", note: "server-enforced stage change" },
   "POST /lead/transfer": { feature: "crm.lead.transfer.*", kind: "update", access: "feature", note: "transfer lead to another agent in the team (reason required)" },
+  "POST /lead/mentionables": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "users the caller may @mention (team, or everyone for managers)" },
   "POST /lead/assign": { feature: "crm.lead.assign.*", kind: "update", access: "feature", note: "reassign agent" },
   "POST /lead/fromVisitor": { feature: "crm.lead.create.*", kind: "create", access: "feature", note: "Visitor -> Lead" },
   "POST /lead/import": { feature: "crm.lead.import.*", kind: "import", access: "feature", note: "lead register CSV import (dry-run default)" },

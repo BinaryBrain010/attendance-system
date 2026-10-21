@@ -1354,6 +1354,11 @@
     "feature": "crm.lead.transfer.*",
     "kind": "update"
   },
+  "POST /lead/mentionables": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
   "POST /lead/create": {
     "access": "feature",
     "feature": "crm.lead.create.*",

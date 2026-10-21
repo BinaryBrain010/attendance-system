@@ -57,8 +57,11 @@ gated by the export permission).
       required (400); timeline "Lead transferred" (ActivityLog) + LEAD_TRANSFER notif to both agents.
       Admin: Transfer button + dialog on lead detail. Seed adds crm.lead.transfer.*. Test:
       npm run qa:leadtransfer (6/6). NOTE for prod: run seedLeadAssignFeature.ts.)
-- [ ] 2e. @mentions in lead and activity notes (team members; everyone for managers). Mentioned user
-      gets a notification linking to the lead.
+- [x] 2e. @mentions in lead and activity notes (team members; everyone for managers). Mentioned user
+      gets a notification linking to the lead. (Mentions sent as explicit User-id array; backend
+      authorizes — team members, or everyone for ALL-scope managers — and sends a MENTION notification
+      linking to the lead. POST /lead/mentionables feeds the picker. Admin: MentionBox (@ autocomplete)
+      in the lead Notes + all activity-note fields. Test: npm run qa:leadmention (5/5). CRM 188/0.)
 - [ ] 2f. Agent detail page redesign: header (name, code, login, status, team, scope). KPIs: target vs
       achieved progress bar, pipeline value, won value, conversion rate, due today + overdue
       follow-ups. Tabs: Leads, Quotations, Orders, Returns, Activity, Team, History — real tables +

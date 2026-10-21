@@ -3,6 +3,7 @@ import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/
 import { getFeatureSet, holds, isGod } from "../../shared/access";
 import { notify } from "../../../Work/shared/workHelpers";
 import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
+import { notifyMentions } from "../../shared/mentions";
 import { NotFoundError, AppError, ForbiddenError, ValidationError } from "../../../../core/errors/app.error";
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
@@ -127,6 +128,7 @@ class LeadService {
   }
 
   async create(userId: string, data: any) {
+    const mentionIds: string[] | undefined = data.mentions; delete data.mentions; // not a Lead column
     const scope = await resolveScope(userId, "lead");
     const canAssign = await this.canAssign(userId);
     let unassigned = false;
@@ -152,10 +154,12 @@ class LeadService {
         await notify(managers.map((m) => m.userId), "LEAD_UNASSIGNED", `Unassigned lead: ${lead.customerName}`, "A lead was created without an agent. Please assign it.", "Lead", lead.id);
       } catch { /* best-effort */ }
     }
+    if (lead?.id) await notifyMentions(userId, mentionIds, lead.id, lead.customerName || "a lead", data.notes);
     return created;
   }
 
   async update(userId: string, id: string, data: any) {
+    const mentionIds: string[] | undefined = data.mentions; delete data.mentions; // not a Lead column
     const scope = await resolveScope(userId, "lead");
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
@@ -167,7 +171,9 @@ class LeadService {
     }
     if (Object.prototype.hasOwnProperty.call(data, "stage")) delete data.stage; // stage only via /transition
     if (Object.prototype.hasOwnProperty.call(data, "phone")) data.phoneNormalized = normalizePhone(data.phone);
-    return prisma.lead.gpUpdate(id, data);
+    const updated = await prisma.lead.gpUpdate(id, data);
+    await notifyMentions(userId, mentionIds, id, existing.customerName || "a lead", data.notes);
+    return updated;
   }
 
   async remove(userId: string, id: string) {
@@ -193,6 +199,28 @@ class LeadService {
     assertRowInScope(scope, existing, "Lead");
     const target = resolveAssignment(scope, agentId);
     return prisma.lead.update({ where: { id }, data: { agentId: target, updatedBy: userId } });
+  }
+
+  /** Users the caller may @mention (for the mention picker): everyone for a manager (ALL scope),
+   *  otherwise their own team's members. Returns [{ userId, name, username }], excluding self. */
+  async mentionables(userId: string) {
+    const scope = await resolveScope(userId, "lead");
+    const sel = { id: true, username: true, employee: { select: { name: true, surname: true } } } as const;
+    let users: any[] = [];
+    if (isGod(userId) || scope.mode === "ALL") {
+      users = await prisma.user.findMany({ where: { isDeleted: null }, select: sel, take: 1000 });
+    } else if (scope.agentId) {
+      const me = await prisma.salesAgent.findUnique({ where: { id: scope.agentId }, select: { id: true, teamLeadId: true } });
+      const teamLead = me?.teamLeadId ?? me?.id;
+      if (teamLead) {
+        const team = await prisma.salesAgent.findMany({ where: { isDeleted: null, userId: { not: null }, OR: [{ id: teamLead }, { teamLeadId: teamLead }] }, select: { userId: true } });
+        const ids = team.map((t) => t.userId).filter((x): x is string => !!x);
+        if (ids.length) users = await prisma.user.findMany({ where: { id: { in: ids }, isDeleted: null }, select: sel });
+      }
+    }
+    return users
+      .map((u) => ({ userId: u.id, username: u.username, name: u.employee ? `${u.employee.name || ""} ${u.employee.surname || ""}`.trim() || u.username : u.username }))
+      .filter((u) => u.userId !== userId);
   }
 
   /** The full team an agent belongs to: the team lead + all its members (regardless of whether the

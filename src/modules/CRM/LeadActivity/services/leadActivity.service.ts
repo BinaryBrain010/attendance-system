@@ -1,5 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope } from "../../shared/scope";
+import { notifyMentions } from "../../shared/mentions";
 import { NotFoundError } from "../../../../core/errors/app.error";
 
 /** LeadActivity is scoped through its parent lead (same agent-scope as the lead itself). */
@@ -26,6 +27,8 @@ class LeadActivityService {
     });
     // logging a touch advances the lead's last-contact (and next follow-up if set)
     await prisma.lead.update({ where: { id: lead.id }, data: { lastContactAt: occurredAt, ...(nextFollowUpAt ? { nextFollowUpAt } : {}) } });
+    // @mentions in the activity note -> notify the (authorized) mentioned users, linking to the lead.
+    await notifyMentions(userId, data.mentions, lead.id, lead.customerName || "a lead", data.notes);
     return act;
   }
 
