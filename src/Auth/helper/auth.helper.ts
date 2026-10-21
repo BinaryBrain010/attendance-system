@@ -11,16 +11,19 @@ class AuthHelper {
   }
 
   static getUserIdFromHeader(req: Request) {
+    // Soft identity lookup: returns the userId when a valid token is present, else null. The actual
+    // 401 enforcement is the auth middleware — a missing/invalid token here is normal (e.g. the login
+    // route itself), so it must NOT be logged at error level (it was flooding the pm2 error log).
     if (req.headers && req.headers.authorization) {
       const authorization = req.headers.authorization.split(" ")[1];
       try {
         const decoded: any = jwt.verify(authorization, secretKey);
         return decoded.userId;
       } catch (e) {
-        console.error("error");
+        /* invalid/expired token — caller handles the unauthenticated case */
       }
     }
-    console.error("Authorization header missing");
+    return null;
   }
 
   /** The impersonatorId claim, if this request is an impersonation token; null otherwise. Used on the

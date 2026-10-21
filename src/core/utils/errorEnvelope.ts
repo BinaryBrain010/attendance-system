@@ -8,6 +8,7 @@ import { Response } from "express";
 import { randomUUID } from "crypto";
 import logger from "../logger/logger";
 import { AppError } from "../errors/app.error";
+import { getActorId } from "../context/requestContext";
 
 export interface Classified { statusCode: number; message: string; ref?: string }
 
@@ -39,10 +40,12 @@ export function classifyError(error: any): Classified {
 
 export function sendError(res: Response, error: any, ctx: { method?: string; path?: string; requestId?: string } = {}) {
   const c = classifyError(error);
+  const userId = getActorId();
   if (c.statusCode >= 500) {
-    logger.error(`[500] ref=${c.ref} ${ctx.method || ""} ${ctx.path || ""}`.trim(), {
+    logger.error(`[500] ref=${c.ref} ${ctx.method || ""} ${ctx.path || ""} user=${userId || "-"}`.trim(), {
       ref: c.ref,
       requestId: ctx.requestId,
+      userId,
       message: error?.message,
       code: error?.code,
       name: error?.name,

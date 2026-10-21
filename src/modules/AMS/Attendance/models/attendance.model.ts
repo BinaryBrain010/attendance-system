@@ -463,9 +463,10 @@ const attendanceModel = prisma.$extends({
                     leaveType: leaveType || 'CASUAL',
                   };
 
-                  await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+                  // Idempotent: links to an existing leave for this date instead of duplicating.
+                  await leaveReqModel.leaveRequest.gpEnsureForDate(leaveRequestData);
                 } catch (error) {
-                  console.error('Error creating leave request during attendance update:', error);
+                  console.warn('Leave link skipped during attendance update:', (error as any)?.message || error);
                 }
               }
 
@@ -534,9 +535,10 @@ const attendanceModel = prisma.$extends({
               };
 
               // Create the leave request (this will automatically link to leave allocation if configured)
-              await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+              // Idempotent: links to an existing leave for this date instead of duplicating.
+              await leaveReqModel.leaveRequest.gpEnsureForDate(leaveRequestData);
             } catch (error) {
-              console.error('Error creating leave request during attendance marking:', error);
+              console.warn('Leave link skipped during attendance marking:', (error as any)?.message || error);
               // Don't fail the attendance marking if leave request creation fails
             }
           }
@@ -684,9 +686,10 @@ const attendanceModel = prisma.$extends({
                   leaveType: leaveType || 'CASUAL',
                 };
 
-                await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+                // Idempotent: links to an existing leave for this date instead of duplicating.
+                await leaveReqModel.leaveRequest.gpEnsureForDate(leaveRequestData);
               } catch (error) {
-                console.error(`Error creating leave request for employee ${employeeId}:`, error);
+                console.warn(`Leave link skipped for employee ${employeeId}:`, (error as any)?.message || error);
               }
             }
           } catch (error: any) {
@@ -1321,9 +1324,10 @@ ORDER BY
               leaveType: leaveType || 'CASUAL',
             };
 
-            await leaveReqModel.leaveRequest.gpCreate(leaveRequestData);
+            // Idempotent: links to an existing leave for this date instead of duplicating.
+            await leaveReqModel.leaveRequest.gpEnsureForDate(leaveRequestData);
           } catch (error) {
-            console.error('Error creating leave request during attendance update:', error);
+            console.warn('Leave link skipped during attendance update:', (error as any)?.message || error);
           }
         }
 

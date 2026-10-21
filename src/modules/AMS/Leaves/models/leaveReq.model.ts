@@ -78,7 +78,10 @@ const leaveReqModel = prisma.$extends({
         });
 
         if (overlap) {
-          throw new Error("A leave request already exists for the selected dates.");
+          // Business rule, not a crash: 409 so the client sees a clean conflict and the error log
+          // records it at warn level (no stack). The attendance "mark as leave" path avoids this
+          // throw entirely by going through gpEnsureForDate (links to the existing request).
+          throw new AppError(409, "A leave request already exists for the selected dates.");
         }
 
           // If leaveType is provided and it's not CASUAL, try to find the leave allocation
@@ -131,6 +134,32 @@ const leaveReqModel = prisma.$extends({
         }
 
         return createdItems.length === 1 ? createdItems[0] : createdItems;
+      },
+
+      // Find an overlapping PENDING/APPROVED leave for an employee on a date range (or null).
+      async gpFindOverlap(this: any, employeeId: string, startDate: Date, endDate: Date) {
+        if (!employeeId) return null;
+        return prisma.leaveRequest.findFirst({
+          where: {
+            employeeId,
+            isDeleted: null,
+            status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
+            startDate: { lte: endDate },
+            endDate: { gte: startDate },
+          },
+          select: { id: true, status: true, startDate: true, endDate: true },
+        });
+      },
+
+      // Idempotent create for the "mark attendance as leave" path: if an overlapping request
+      // already exists, LINK to it (return it) instead of creating a duplicate — which would throw
+      // the "already exists" business rule and spam the error log. Genuine failures still surface.
+      async gpEnsureForDate(this: any, data: any) {
+        const start = new Date(data.startDate);
+        const end = new Date(data.endDate);
+        const existing = await leaveReqModel.leaveRequest.gpFindOverlap(data.employeeId, start, end);
+        if (existing) return existing;
+        return leaveReqModel.leaveRequest.gpCreate(data);
       },
 
       async gpUpdateStatus(requestId: string, status: LeaveStatus): Promise<void> {
