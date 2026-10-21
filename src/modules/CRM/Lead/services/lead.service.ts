@@ -1,5 +1,6 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
+import { getFeatureSet, holds, isGod } from "../../shared/access";
 import { NotFoundError, AppError } from "../../../../core/errors/app.error";
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
@@ -115,9 +116,19 @@ class LeadService {
     return withComputed(lead);
   }
 
+  /** crm.lead.assign (2c): only holders may choose the agent a lead is assigned to. Everyone else's
+   *  lead goes to their own agent (requested agentId ignored), enforced here on the backend. */
+  private async canAssign(userId: string): Promise<boolean> {
+    if (isGod(userId)) return true;
+    return holds(await getFeatureSet(userId), "crm.lead.assign.*");
+  }
+
   async create(userId: string, data: any) {
     const scope = await resolveScope(userId, "lead");
-    data.agentId = resolveAssignment(scope, data.agentId);
+    // Without crm.lead.assign the caller cannot pick an agent — the lead goes to their OWN agent
+    // (scope.agentId); any requested agentId is ignored. No agent profile -> owned by createdBy (null).
+    const requested = (await this.canAssign(userId)) ? data.agentId : (scope.agentId ?? null);
+    data.agentId = resolveAssignment(scope, requested);
     if (data.phone !== undefined) data.phoneNormalized = normalizePhone(data.phone);
     return prisma.lead.gpCreate(data);
   }
@@ -127,7 +138,11 @@ class LeadService {
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
     assertRowInScope(scope, existing, "Lead");
-    if (Object.prototype.hasOwnProperty.call(data, "agentId")) data.agentId = resolveAssignment(scope, data.agentId);
+    if (Object.prototype.hasOwnProperty.call(data, "agentId")) {
+      // Reassigning requires crm.lead.assign; otherwise the field is ignored (keeps current agent).
+      if (await this.canAssign(userId)) data.agentId = resolveAssignment(scope, data.agentId);
+      else delete data.agentId;
+    }
     if (Object.prototype.hasOwnProperty.call(data, "stage")) delete data.stage; // stage only via /transition
     if (Object.prototype.hasOwnProperty.call(data, "phone")) data.phoneNormalized = normalizePhone(data.phone);
     return prisma.lead.gpUpdate(id, data);

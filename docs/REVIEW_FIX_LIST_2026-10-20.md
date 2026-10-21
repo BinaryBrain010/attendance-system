@@ -40,8 +40,12 @@ gated by the export permission).
       "More details". (Shared LeadQuickActions component. Detail page + board cards. Flat list rows
       open the detail where the actions live; the shared MUI table was NOT rewritten for a per-row
       popover — board is the per-lead quick-action surface. Reuses addActivity/transition endpoints.)
-- [ ] 2c. New permission `crm.lead.assign`. Without it, the Agent field is hidden on New/Edit lead and
+- [x] 2c. New permission `crm.lead.assign`. Without it, the Agent field is hidden on New/Edit lead and
       the lead goes to the creator's own agent. Enforce on backend. Upsert-only seed.
+      (Backend lead.service create/update: without crm.lead.assign the requested agentId is ignored and
+      the lead is forced to the caller's own agent; /lead/assign already gated. seedLeadAssignFeature.ts
+      (upsert-only). Admin leadform already hides the Agent field without the permission. Verified with
+      QA agents; crm harness 188/0. NOTE for prod: run seedLeadAssignFeature.ts.)
 - [ ] 2d. New permission `crm.lead.transfer`: "Transfer" to another agent in the same team (all-scope
       managers pick anyone). Requires a reason, goes on the timeline, notifies both agents.
 - [ ] 2e. @mentions in lead and activity notes (team members; everyone for managers). Mentioned user
