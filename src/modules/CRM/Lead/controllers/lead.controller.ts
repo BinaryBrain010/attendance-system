@@ -85,6 +85,14 @@ class LeadController extends BaseController<LeadService> {
     });
   }
 
+  async transfer(req: Request, res: Response) {
+    const { id, agentId, reason } = req.body;
+    // The transfer itself logs the timeline entry (with the reason) inside the service.
+    await this.handleRequest(() => this.service.transfer((req as any).userId, id, agentId, reason), res, {
+      successMessage: "Lead transferred successfully!",
+    });
+  }
+
   async fromVisitor(req: Request, res: Response) {
     const { visitorId } = req.body;
     await this.handleRequest(() => this.service.fromVisitor((req as any).userId, visitorId), res, {

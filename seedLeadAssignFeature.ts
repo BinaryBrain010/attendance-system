@@ -1,7 +1,9 @@
 /**
- * Phase 2c seed (LOCAL ONLY, UPSERT-ONLY): registers the crm.lead.assign AppFeature (choose which
- * agent a lead is assigned to). Nothing is deleted or overwritten beyond the one feature row; safe to
- * re-run. Also rewrites qa/_livefeatures.json so the featureMap generator sees it.
+ * Phase 2c/2d seed (LOCAL ONLY, UPSERT-ONLY): registers the CRM lead permission features
+ *   - crm.lead.assign  (choose which agent a lead is assigned to)
+ *   - crm.lead.transfer (hand a lead to another agent in the team; reason required)
+ * Nothing is deleted or overwritten beyond these feature rows; safe to re-run. Also rewrites
+ * qa/_livefeatures.json so the featureMap generator sees them.
  *   npx ts-node seedLeadAssignFeature.ts
  */
 import fs from "fs";
@@ -18,6 +20,7 @@ if (!["localhost", "127.0.0.1", "[::1]"].includes(host) && !process.argv.include
 type F = [name: string, parent: string | null, label: string];
 const FEATURES: F[] = [
   ["crm.lead.assign.*", "crm.lead.*", "Assign lead to an agent"],
+  ["crm.lead.transfer.*", "crm.lead.*", "Transfer lead to another agent"],
 ];
 
 async function main() {

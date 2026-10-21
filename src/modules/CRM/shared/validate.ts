@@ -62,6 +62,7 @@ export const schemas = {
   fromQuotation: z.object({ quotationId: idStr }),
   fromOrder: z.object({ orderId: idStr, reason: longStr.min(1) }),
   leadAssign: z.object({ id: idStr, agentId: idStr.nullable().optional() }),
+  leadTransfer: z.object({ id: idStr, agentId: idStr, reason: longStr.min(1) }),
   byProduct: z.object({ productId: idStr }),
   byCategory: z.object({ categoryId: idStr }),
   bundleAddItem: z.object({ bundleId: idStr, productId: idStr, quantity: qty }),

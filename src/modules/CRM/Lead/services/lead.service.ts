@@ -2,7 +2,8 @@ import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
 import { getFeatureSet, holds, isGod } from "../../shared/access";
 import { notify } from "../../../Work/shared/workHelpers";
-import { NotFoundError, AppError } from "../../../../core/errors/app.error";
+import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
+import { NotFoundError, AppError, ForbiddenError, ValidationError } from "../../../../core/errors/app.error";
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
 import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
@@ -24,6 +25,7 @@ const ACTIVITY_TITLE: Record<string, string> = {
 const ACTION_TITLE: Record<string, string> = {
   CREATE: "Lead created", UPDATE: "Lead updated", STATUS_CHANGE: "Stage changed",
   DELETE: "Lead deleted", RESTORE: "Lead restored", ASSIGN: "Agent assigned", PERMISSION_CHANGE: "Permissions changed",
+  TRANSFER: "Lead transferred",
 };
 // Fields that are derived/noise and should not appear under "Show changes" (lastContactAt +
 // nextFollowUpAt are driven by logging an activity and already shown in the entry headline).
@@ -191,6 +193,54 @@ class LeadService {
     assertRowInScope(scope, existing, "Lead");
     const target = resolveAssignment(scope, agentId);
     return prisma.lead.update({ where: { id }, data: { agentId: target, updatedBy: userId } });
+  }
+
+  /** The full team an agent belongs to: the team lead + all its members (regardless of whether the
+   *  given agent is the lead or a member). Used to constrain transfers to "the same team". */
+  private async teamAgentIds(agentId: string): Promise<string[]> {
+    const me = await prisma.salesAgent.findUnique({ where: { id: agentId }, select: { id: true, teamLeadId: true } });
+    if (!me) return [];
+    const leadId = me.teamLeadId ?? me.id; // the team's lead id
+    const team = await prisma.salesAgent.findMany({ where: { isDeleted: null, OR: [{ id: leadId }, { teamLeadId: leadId }] }, select: { id: true } });
+    return team.map((a) => a.id);
+  }
+
+  /**
+   * 2d — Transfer a lead to another agent. Requires crm.lead.transfer (route-gated) + a reason. An
+   * ALL-scope manager may transfer to anyone; everyone else only within their own team. The transfer
+   * is recorded on the timeline (ActivityLog TRANSFER) and both the previous and new agent's users are
+   * notified.
+   */
+  async transfer(userId: string, id: string, toAgentId: string, reason: string) {
+    if (!reason || !reason.trim()) throw new ValidationError("A reason is required to transfer a lead.");
+    const scope = await resolveScope(userId, "lead");
+    const lead = await prisma.lead.findUnique({ where: { id } });
+    if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
+    assertRowInScope(scope, lead, "Lead");
+
+    const toAgent = await prisma.salesAgent.findFirst({ where: { id: toAgentId, isDeleted: null }, select: { id: true, userId: true, agentCode: true, isActive: true } });
+    if (!toAgent) throw new NotFoundError("Target agent");
+    if (toAgent.id === lead.agentId) throw new ValidationError("The lead is already assigned to that agent.");
+
+    // Authorization: ALL scope -> anyone; otherwise the target must be in the caller's own team.
+    if (scope.mode !== "ALL") {
+      if (!scope.agentId) throw new ForbiddenError("Your account isn't linked to a sales agent, so you can't transfer leads.");
+      const team = await this.teamAgentIds(scope.agentId);
+      if (!team.includes(toAgentId)) throw new ForbiddenError("You can only transfer leads to an agent in your own team.");
+    }
+
+    const fromAgentId = lead.agentId;
+    const updated = await prisma.lead.update({ where: { id }, data: { agentId: toAgentId, updatedBy: userId } });
+
+    // Timeline entry (reason) — correlates with the agentId audit change into one "Lead transferred" row.
+    try {
+      const fromAgent = fromAgentId ? await prisma.salesAgent.findUnique({ where: { id: fromAgentId }, select: { userId: true, agentCode: true } }) : null;
+      await logActivity({ userId, action: "TRANSFER", entityType: "Lead", entityId: id, description: `Transferred ${fromAgent?.agentCode ? `from ${fromAgent.agentCode} ` : ""}to ${toAgent.agentCode}: ${reason.trim()}` } as any);
+      // Notify both the previous and the new agent's users.
+      await notify([fromAgent?.userId, toAgent.userId], "LEAD_TRANSFER", `Lead transferred: ${lead.customerName}`, reason.trim(), "Lead", id);
+    } catch { /* best-effort */ }
+
+    return updated;
   }
 
   /** Server-enforced stage change. Reason required for LOST / ON_HOLD. */

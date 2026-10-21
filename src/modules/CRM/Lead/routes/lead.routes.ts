@@ -28,6 +28,7 @@ class LeadRoutes {
     this.router.post("/restore", validate(schemas.idOnly), this.controller.restore.bind(this.controller));
     this.router.post("/transition", validate(schemas.lead.transition), this.controller.transition.bind(this.controller));
     this.router.post("/assign", validate(schemas.leadAssign), this.controller.assign.bind(this.controller));
+    this.router.post("/transfer", validate(schemas.leadTransfer), this.controller.transfer.bind(this.controller));
     this.router.post("/fromVisitor", validate(schemas.fromVisitor), this.controller.fromVisitor.bind(this.controller));
     this.router.post("/timeline", validate(schemas.idOnly), this.controller.timeline.bind(this.controller));
   }

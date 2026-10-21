@@ -1349,6 +1349,11 @@
     "feature": "crm.lead.assign.*",
     "kind": "update"
   },
+  "POST /lead/transfer": {
+    "access": "feature",
+    "feature": "crm.lead.transfer.*",
+    "kind": "update"
+  },
   "POST /lead/create": {
     "access": "feature",
     "feature": "crm.lead.create.*",

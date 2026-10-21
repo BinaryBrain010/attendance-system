@@ -51,8 +51,12 @@ gated by the export permission).
       Edge case (addition): a user without crm.lead.assign AND without a SalesAgent profile (front
       desk) creates the lead UNASSIGNED (never blocked) and ALL-scope managers get a LEAD_UNASSIGNED
       notification. Persistent test: npm run qa:leadassign (5/5).
-- [ ] 2d. New permission `crm.lead.transfer`: "Transfer" to another agent in the same team (all-scope
+- [x] 2d. New permission `crm.lead.transfer`: "Transfer" to another agent in the same team (all-scope
       managers pick anyone). Requires a reason, goes on the timeline, notifies both agents.
+      (POST /lead/transfer gated by crm.lead.transfer.*; team = lead + members via teamLeadId; reason
+      required (400); timeline "Lead transferred" (ActivityLog) + LEAD_TRANSFER notif to both agents.
+      Admin: Transfer button + dialog on lead detail. Seed adds crm.lead.transfer.*. Test:
+      npm run qa:leadtransfer (6/6). NOTE for prod: run seedLeadAssignFeature.ts.)
 - [ ] 2e. @mentions in lead and activity notes (team members; everyone for managers). Mentioned user
       gets a notification linking to the lead.
 - [ ] 2f. Agent detail page redesign: header (name, code, login, status, team, scope). KPIs: target vs

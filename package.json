@@ -31,7 +31,8 @@
     "qa:insights": "ts-node qa/insights.ts",
     "qa:listpaging": "ts-node qa/listpaging.ts",
     "qa:blobhardening": "ts-node qa/blobhardening.ts",
-    "qa:leadassign": "ts-node qa/leadAssign.ts"
+    "qa:leadassign": "ts-node qa/leadAssign.ts",
+    "qa:leadtransfer": "ts-node qa/leadTransfer.ts"
   },
   "author": "ahad",
   "license": "ISC",
