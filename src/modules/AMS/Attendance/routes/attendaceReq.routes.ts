@@ -126,7 +126,10 @@ class AttendanceReqRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/get', this.controller.getAttendanceRequests.bind(this.controller));
-    
+
+    // Aggregate stats (status counts + monthly) via SQL — replaces downloading all rows to count them.
+    this.router.post('/stats', this.controller.getAttendanceRequestStats.bind(this.controller));
+
     /**
      * @swagger
      * /attendanceReq/getEmployee:

@@ -91,6 +91,12 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /auditLog/export": { feature: "audit.read.*", kind: "export", access: "feature", note: "admin audit log Excel export" },
   "POST /auditLog/entity": { feature: "-", kind: "read", access: "token", note: "per-record History tab; service enforces record-read" },
   "POST /auditLog/actors": { feature: "-", kind: "read", access: "token", note: "resolve actor ids -> names for footers/columns" },
+  // Uncapped get-all endpoints (return every row) are EXPORT-only and must not back any UI screen —
+  // the admin uses the paginated POST /get + POST /attendanceReq/stats instead. Gate them on export.
+  "GET /attendanceReq/get": { feature: "attendanceReq.export.*", kind: "read", access: "feature", note: "bulk get-all; export only (UI uses paginated POST /get + /stats)" },
+  "POST /attendanceReq/stats": { feature: "attendanceReq.read.*", kind: "read", access: "feature", note: "aggregate status/monthly counts (SQL)" },
+  "GET /activityLog/get": { feature: "activityLog.export.*", kind: "read", access: "feature", note: "bulk get-all; export only (UI uses paginated POST /get)" },
+  "GET /visitor/getAll": { feature: "visitor.export.*", kind: "read", access: "feature", note: "bulk get-all; export only (UI uses paginated GET /visitor/get)" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

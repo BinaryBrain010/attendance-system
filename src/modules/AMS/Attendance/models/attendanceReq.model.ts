@@ -31,6 +31,18 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
   }
 }
 
+// Build the shared WHERE clause for attendance-request list/stats from optional server-side filters
+// (status, employeeId, created-date range). Always excludes soft-deleted rows. Values are bound
+// parameters (Prisma.sql), so this is injection-safe.
+function buildArFilter(f: any): Prisma.Sql {
+  const conds: Prisma.Sql[] = [Prisma.sql`ar."isDeleted" IS NULL`];
+  if (f?.status) conds.push(Prisma.sql`ar.status::text = ${String(f.status)}`);
+  if (f?.employeeId) conds.push(Prisma.sql`ar."employeeId" = ${String(f.employeeId)}`);
+  if (f?.from) conds.push(Prisma.sql`ar."createdAt" >= ${new Date(f.from)}`);
+  if (f?.to) conds.push(Prisma.sql`ar."createdAt" <= ${new Date(f.to)}`);
+  return Prisma.join(conds, " AND ");
+}
+
 
 const attendanceRequestModel = prisma.$extends({
   model: {
@@ -131,10 +143,12 @@ const attendanceRequestModel = prisma.$extends({
         return item;
       },
 
-      async gpPgFindMany(this: any, page: number, pageSize: number): Promise<any> {
-        const skip = (page - 1) * pageSize;
+      async gpPgFindMany(this: any, page: number, pageSize: number, filters?: any): Promise<any> {
+        const size = Math.min(Math.max(1, Number(pageSize) || 10), 100); // hard max take 100
+        const skip = (Math.max(1, Number(page) || 1) - 1) * size;
+        const where = buildArFilter(filters);
 
-        const data = await prisma.$queryRaw`
+        const data = await prisma.$queryRaw(Prisma.sql`
           SELECT
             ar.id, ar."employeeId", ar."attendanceId", ar.reason, ar.status, ar.location,
             ar."proposedStatus", ar."proposedCheckIn", ar."proposedCheckOut", ar."proposedComment",
@@ -156,17 +170,17 @@ const attendanceRequestModel = prisma.$extends({
           LEFT JOIN "Employee" e ON ar."employeeId" = e.id
           LEFT JOIN "User" ru ON ar."requestedBy" = ru.id
           LEFT JOIN "User" au ON ar."approvedBy" = au.id
-          WHERE ar."isDeleted" IS NULL
+          WHERE ${where}
           ORDER BY ar."createdAt" DESC
-          LIMIT ${pageSize}
+          LIMIT ${size}
           OFFSET ${skip}
-        ` as any[];
+        `) as any[];
 
-        const totalSizeResult = await prisma.$queryRaw`
+        const totalSizeResult = await prisma.$queryRaw(Prisma.sql`
           SELECT COUNT(*)::int AS count
           FROM "AttendanceRequest" ar
-          WHERE ar."isDeleted" IS NULL
-        ` as any[];
+          WHERE ${where}
+        `) as any[];
 
         const totalSize = totalSizeResult[0]?.count || 0;
 
@@ -184,6 +198,38 @@ const attendanceRequestModel = prisma.$extends({
         );
 
         return { data: resolvedData, totalSize };
+      },
+
+      // Server-side aggregate stats (status counts + current-year monthly distribution) computed by
+      // SQL GROUP BY — replaces the old pattern of downloading every row to the client to count them.
+      async gpStats(this: any, filters?: any): Promise<any> {
+        const where = buildArFilter(filters);
+        const statusRows = await prisma.$queryRaw(Prisma.sql`
+          SELECT ar.status::text AS status, COUNT(*)::int AS count
+          FROM "AttendanceRequest" ar
+          WHERE ${where}
+          GROUP BY ar.status
+        `) as Array<{ status: string; count: number }>;
+        const byStatus: Record<string, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0 };
+        let total = 0;
+        for (const r of statusRows) { byStatus[r.status] = r.count; total += r.count; }
+
+        const monthRows = await prisma.$queryRaw(Prisma.sql`
+          SELECT EXTRACT(MONTH FROM ar."createdAt")::int AS month, COUNT(*)::int AS count
+          FROM "AttendanceRequest" ar
+          WHERE ${where} AND EXTRACT(YEAR FROM ar."createdAt") = EXTRACT(YEAR FROM NOW())
+          GROUP BY 1 ORDER BY 1
+        `) as Array<{ month: number; count: number }>;
+        const monthly = Array(12).fill(0);
+        for (const m of monthRows) if (m.month >= 1 && m.month <= 12) monthly[m.month - 1] = m.count;
+
+        return {
+          total,
+          pending: byStatus.PENDING || 0,
+          approved: byStatus.APPROVED || 0,
+          rejected: byStatus.REJECTED || 0,
+          monthly,
+        };
       },
 
       async gpPgFindDeletedMany(this: any, page: number, pageSize: number): Promise<any> {

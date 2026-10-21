@@ -12,9 +12,15 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   }
 
   async getAttendanceRequests(req: Request, res: Response) {
-    const { page, pageSize } = req.body;
-    const operation = () => this.service.getAttendanceRequests(page, pageSize);
+    const { page, pageSize, status, employeeId, from, to } = req.body;
+    const operation = () => this.service.getAttendanceRequests(page, pageSize, { status, employeeId, from, to });
     await this.handleRequest(operation, res, { successMessage: "Attendance requests retrieved successfully!" });
+  }
+
+  async getAttendanceRequestStats(req: Request, res: Response) {
+    const { status, employeeId, from, to } = req.body || {};
+    const operation = () => this.service.getAttendanceRequestStats({ status, employeeId, from, to });
+    await this.handleRequest(operation, res, { successMessage: "Attendance request stats retrieved successfully!" });
   }
 
   async createAttendanceRequest(req: Request, res: Response) {

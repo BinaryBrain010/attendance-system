@@ -358,6 +358,7 @@ export const features: AppFeature[] = [
 { name: "attendanceReq.delete.*", parentFeatureId: "attendanceReq.*", label: "Delete" },
 { name: "attendanceReq.restore.*", parentFeatureId: "attendanceReq.*", label: "Restore" },
 { name: "attendanceReq.approve.*", parentFeatureId: "attendanceReq.*", label: "Approve (admin UI feature string)" },
+{ name: "attendanceReq.export.*", parentFeatureId: "attendanceReq.*", label: "Export (bulk get-all)" },
 { name: "attendance.request.approve.*", parentFeatureId: "attendanceReq.*", label: "Approve/Reject Attendance Requests" },
 
 //leave
@@ -438,6 +439,7 @@ export const features: AppFeature[] = [
 { name: "activityLog.*", label: "Activity Log (Nav)" },
 { name: "activityLog.read.*", parentFeatureId: "activityLog.*", label: "Read Activity Logs" },
 { name: "activityLog.read.own.*", parentFeatureId: "activityLog.read.*", label: "Read Own Activity Logs" },
+{ name: "activityLog.export.*", parentFeatureId: "activityLog.*", label: "Export (bulk get-all)" },
 
 // faceRegistration - Hidden for now
 // { name: "faceRegistration.*", label: "Face Registration (Nav)" },

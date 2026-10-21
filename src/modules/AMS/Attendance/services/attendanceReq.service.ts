@@ -55,12 +55,20 @@ class LeaveReqService {
     return await attendanceRequestModel.attendanceRequest.gpFindMany();
   }
 
-  // Get paginated leave requests
+  // Get paginated leave requests (with optional server-side filters: status, employeeId, from, to)
   async getAttendanceRequests(
     page: number,
-    pageSize: number
+    pageSize: number,
+    filters?: { status?: string; employeeId?: string; from?: string; to?: string }
   ): Promise<paginatedData> {
-    return await attendanceRequestModel.attendanceRequest.gpPgFindMany(page, pageSize);
+    return await attendanceRequestModel.attendanceRequest.gpPgFindMany(page, pageSize, filters);
+  }
+
+  // Aggregate stats (status counts + current-year monthly) — SQL GROUP BY, no row download.
+  async getAttendanceRequestStats(
+    filters?: { status?: string; employeeId?: string; from?: string; to?: string }
+  ): Promise<any> {
+    return await attendanceRequestModel.attendanceRequest.gpStats(filters);
   }
 
   // Create new leave request(s)
