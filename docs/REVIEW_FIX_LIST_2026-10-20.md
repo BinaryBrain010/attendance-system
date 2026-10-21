@@ -62,10 +62,14 @@ gated by the export permission).
       authorizes — team members, or everyone for ALL-scope managers — and sends a MENTION notification
       linking to the lead. POST /lead/mentionables feeds the picker. Admin: MentionBox (@ autocomplete)
       in the lead Notes + all activity-note fields. Test: npm run qa:leadmention (5/5). CRM 188/0.)
-- [ ] 2f. Agent detail page redesign: header (name, code, login, status, team, scope). KPIs: target vs
+- [x] 2f. Agent detail page redesign: header (name, code, login, status, team, scope). KPIs: target vs
       achieved progress bar, pipeline value, won value, conversion rate, due today + overdue
       follow-ups. Tabs: Leads, Quotations, Orders, Returns, Activity, Team, History — real tables +
       links. History shows names, not raw ids.
+      (Backend: salesAgent stats extended with conversionRate + dueToday + overdue (all SQL); new
+      paginated POST /salesAgent/activity (lead names resolved). Admin: redesigned agents/detail with
+      header, 6 KPI cards + target progress bar, and 7 server-paginated tabs reusing the lead/quote/
+      order/return list endpoints filtered by agentId; History = AuditHistory (names). CRM 188/0.)
 
 ## Phase 3 — Access Control
 - [ ] 3a. Users/Roles/Groups tables with server-computed, sortable counts; null-safe mapper.

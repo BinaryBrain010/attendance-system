@@ -18,6 +18,7 @@ class SalesAgentRoutes {
     this.router.post("/get", validate(schemas.readList), this.controller.get.bind(this.controller));
     this.router.post("/getById", validate(schemas.idOnly), this.controller.getById.bind(this.controller));
     this.router.post("/stats", validate(schemas.idOnly), this.controller.stats.bind(this.controller));
+    this.router.post("/activity", validate(schemas.idPaged), this.controller.activity.bind(this.controller));
     this.router.get("/me", this.controller.me.bind(this.controller));
     this.router.get("/total", this.controller.total.bind(this.controller));
     this.router.post("/create", validate(schemas.agent.create), this.controller.create.bind(this.controller));

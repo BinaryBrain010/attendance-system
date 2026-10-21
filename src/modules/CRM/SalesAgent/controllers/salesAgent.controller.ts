@@ -20,6 +20,10 @@ class SalesAgentController extends BaseController<SalesAgentService> {
     const { id } = req.body;
     await this.handleRequest(() => this.service.stats(id), res, { successMessage: "Agent stats retrieved successfully!" });
   }
+  async activity(req: Request, res: Response) {
+    const { id, page, pageSize } = req.body;
+    await this.handleRequest(() => this.service.activity(id, page || 1, pageSize || 20), res, { successMessage: "Agent activity retrieved successfully!" });
+  }
   async me(req: Request, res: Response) {
     await this.handleRequest(() => this.service.me((req as any).userId), res, { successMessage: "Agent profile retrieved successfully!" });
   }

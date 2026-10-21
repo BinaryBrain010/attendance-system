@@ -58,6 +58,7 @@ export const schemas = {
   }).passthrough(),
   // id-only / simple action bodies (guard reads too, so a missing id is 400 not a Prisma 500)
   idOnly: z.object({ id: idStr }),
+  idPaged: z.object({ id: idStr, page: z.coerce.number().int().min(1).optional(), pageSize: z.coerce.number().int().min(1).transform((v) => Math.min(v, 100)).optional() }),
   leadId: z.object({ leadId: idStr }),
   fromVisitor: z.object({ visitorId: idStr }),
   fromQuotation: z.object({ quotationId: idStr }),
