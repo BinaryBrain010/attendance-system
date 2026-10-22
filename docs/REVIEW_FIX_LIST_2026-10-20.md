@@ -154,8 +154,14 @@ gated by the export permission).
       checks (workHelpers.expectedReporters, employee holiday backfill) still treat holidays company-
       wide — per-unit *enforcement* in attendance is intentionally left as a separate, careful change
       (flagged in the deploy package) to avoid a risky cross-cutting edit to attendance calculations.
-- [ ] 5e. Unit detail: today stats strip (total, present, late, absent, on leave, not checked in,
+- [x] 5e. Unit detail: today stats strip (total, present, late, absent, on leave, not checked in,
       checked out), a "Today" tab (who is in/late/missing with times), status filter on employee cards.
+      DONE: backend getUnitAttendanceAndStats now also returns checkedIn/checkedOut/notCheckedIn
+      (distinct-employee presence counts). New UnitTodayTab (default tab on the unit detail): today
+      stats strip (total/present/late/absent/on leave/not checked in/checked out, all backend-computed)
+      + employee cards (LazyPhoto, status badge, check-in/out times) merging the unit roster with
+      today's rows (so unmarked employees show as "Not marked") + a status filter (All/Present/Late/
+      On leave/Not checked in/Checked out).
 - [ ] 5f. Shift page: soft distinct colours per shift + schedule block. Assignments tab = employee
       cards with photos. Assign dialog lists only active employees.
 - [x] 5g. Photo endpoint `GET /employee/:id/photo?size=thumb` with stored thumbnail, cached. Lazy

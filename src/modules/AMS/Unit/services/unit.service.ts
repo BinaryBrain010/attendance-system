@@ -227,6 +227,18 @@ class UnitService {
 
     const totalAttendance = statsData.reduce((sum, item) => sum + item.count, 0);
 
+    // 5e: check-in / check-out presence counts (distinct employees), so the unit "today" strip can
+    // show "not checked in" and "checked out". Most meaningful for a single-day (today) range.
+    const presenceData = await prisma.$queryRawUnsafe(`
+      SELECT
+        COUNT(DISTINCT CASE WHEN a."checkIn" IS NOT NULL THEN a."employeeId" END)::int AS "checkedIn",
+        COUNT(DISTINCT CASE WHEN a."checkOut" IS NOT NULL THEN a."employeeId" END)::int AS "checkedOut"
+      FROM "Attendance" a
+      ${statsWhereClause}
+    `, ...statsParams) as Array<{ checkedIn: number; checkedOut: number }>;
+    const checkedIn = presenceData[0]?.checkedIn || 0;
+    const checkedOut = presenceData[0]?.checkedOut || 0;
+
     return {
       attendance: {
         data: attendanceData,
@@ -238,6 +250,9 @@ class UnitService {
         totalEmployees: employeeIds.length,
         totalAttendance,
         byStatus: statsByStatus,
+        checkedIn,
+        checkedOut,
+        notCheckedIn: Math.max(employeeIds.length - checkedIn, 0),
         dateRange: {
           from: fromDate,
           to: toDate,
