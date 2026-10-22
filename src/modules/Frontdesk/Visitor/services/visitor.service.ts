@@ -12,9 +12,14 @@ const VISITOR_VIEW_ALL = "visitor.viewAll.unit.*";
 class VisitorService {
   private excelUtility = new VisitorExcelUtility();
 
-  /** 6c: unit ids the user may see (null = all units). */
+  /** 6c: unit ids the user may see (null = all units). A user with NO unit assignment (and not a
+   *  viewAll holder) would otherwise be scoped to an empty set — which, once the backfill gives every
+   *  visitor a unit, means an empty page. visitor.read.* already gates access, so we fall back to
+   *  showing all visitors rather than nothing/an error. */
   private async unitScope(userId?: string): Promise<string[] | null> {
-    return await getAccessibleUnitIds(userId, VISITOR_VIEW_ALL);
+    const ids = await getAccessibleUnitIds(userId, VISITOR_VIEW_ALL);
+    if (Array.isArray(ids) && ids.length === 0) return null; // no unit → see all (not empty)
+    return ids;
   }
 
   /** 6c: the unit a new visitor defaults to — the creating user's first unit (else null). */
