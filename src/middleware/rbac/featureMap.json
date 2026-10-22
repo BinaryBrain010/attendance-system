@@ -916,8 +916,8 @@
   },
   "POST /gatePass/cancel": {
     "access": "feature",
-    "feature": "voucher.read.*",
-    "kind": "read"
+    "feature": "gatePass.cancel.*",
+    "kind": "update"
   },
   "POST /gatePass/create": {
     "access": "feature",
@@ -941,8 +941,8 @@
   },
   "POST /gatePass/dispatch": {
     "access": "feature",
-    "feature": "voucher.read.*",
-    "kind": "read"
+    "feature": "gatePass.dispatch.*",
+    "kind": "update"
   },
   "GET /gatePass/get": {
     "access": "feature",
@@ -976,8 +976,8 @@
   },
   "POST /gatePass/reject": {
     "access": "feature",
-    "feature": "voucher.approve.*",
-    "kind": "approve"
+    "feature": "gatePass.reject.*",
+    "kind": "update"
   },
   "GET /gatePass/report": {
     "access": "feature",
@@ -991,8 +991,8 @@
   },
   "POST /gatePass/return": {
     "access": "feature",
-    "feature": "voucher.read.*",
-    "kind": "read"
+    "feature": "gatePass.return.*",
+    "kind": "update"
   },
   "POST /gatePass/status": {
     "access": "feature",

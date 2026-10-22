@@ -97,6 +97,12 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /attendanceReq/stats": { feature: "attendanceReq.read.*", kind: "read", access: "feature", note: "aggregate status/monthly counts (SQL)" },
   "GET /activityLog/get": { feature: "activityLog.export.*", kind: "read", access: "feature", note: "bulk get-all; export only (UI uses paginated POST /get)" },
   "GET /visitor/getAll": { feature: "visitor.export.*", kind: "read", access: "feature", note: "bulk get-all; export only (UI uses paginated GET /visitor/get)" },
+  // Quick Pass workflow actions are gated on their own gatePass.* features (not voucher.*). approve
+  // stays on voucher.post.* (handled by the approve special-case). close is /return with close:true.
+  "POST /gatePass/dispatch": { feature: "gatePass.dispatch.*", kind: "update", access: "feature", note: "dispatch a gate pass" },
+  "POST /gatePass/return": { feature: "gatePass.return.*", kind: "update", access: "feature", note: "return/close a gate pass" },
+  "POST /gatePass/cancel": { feature: "gatePass.cancel.*", kind: "update", access: "feature", note: "cancel a gate pass" },
+  "POST /gatePass/reject": { feature: "gatePass.reject.*", kind: "update", access: "feature", note: "reject a gate pass" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----
