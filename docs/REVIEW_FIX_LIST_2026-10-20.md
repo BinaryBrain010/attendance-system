@@ -225,7 +225,10 @@ gated by the export permission).
       the baseline with sound disabled). Beep is a short WebAudio tone (no asset) wrapped in try/catch
       so a blocked/suspended AudioContext is ignored (autoplay-safe). A speaker toggle in the dropdown
       header mutes/unmutes, persisted in localStorage (notif.sound).
-- [ ] 8c. Rename current "Settings" app (audit + configuration) → "Administration".
+- [x] 8c. Rename current "Settings" app (audit + configuration) → "Administration".
+      DONE: navModel app id 'settings' label "Settings" → "Administration" (id kept stable so saved
+      launcher order/permissions are unaffected). The Quick Pass "Settings" sub-item is unrelated and
+      left as-is.
 - [ ] 8d. New "Me" app: profile (name, photo, linked employee, roles, last login); change password
       (with confirm); logout; logout all devices; preferences (theme, font size small/default/large
       app-wide via CSS vars, notification sound, default landing app, date format) stored per user on
