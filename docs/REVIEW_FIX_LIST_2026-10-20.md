@@ -80,9 +80,14 @@ gated by the export permission).
       counts (orderBy relation _count). Admin: the three tables now show the new columns (role/group
       chips as badges, counts, status badge, last login, dates) and sort SERVER-side via a new additive
       `onSortChange` prop on the shared table (useTableColumns hook untouched). Both repos tsc clean.
-- [ ] 3b. User detail: header cards (status, last login + device, roles, groups, linked employee).
+- [x] 3b. User detail: header cards (status, last login + device, roles, groups, linked employee).
       Employee tab last. Suspend/Reactivate behind new `user.suspend` (blocks login, revokes
       sessions+tokens, audited). Role/group detail show members with last login + permission summary.
+      (DONE: migration add_user_suspend (additive); POST /user/suspend + /user/reactivate (user.suspend.*)
+      — suspend sets suspendedAt, blacklists every active session token + deletes sessions, audited;
+      login 403 for suspended; users-list status reflects it; admin user-detail Status card + button.
+      Verified 9/9. Role/group member-last-login detail = light follow-up. Prod: seedReviewFeatures.ts
+      + grant user.suspend.*)
 - [ ] 3c. Auto-suspend when employee becomes resigned/terminated/inactive or deleted → linked user
       suspended automatically + audited. No auto-reactivate. Dry run of affected prod users.
 - [ ] 3d. Change Password: add confirm field + minimum length rule everywhere a password is set.

@@ -118,6 +118,7 @@ export const features: AppFeature[] = [
   { name: "user.read.*", parentFeatureId: "user.*", label: "Read" },
   { name: "user.update.*", parentFeatureId: "user.*", label: "Update" },
   { name: "user.delete.*", parentFeatureId: "user.*", label: "Delete" },
+  { name: "user.suspend.*", parentFeatureId: "user.*", label: "Suspend / Reactivate" },
   {
     name: "user.logout.*",
     parentFeatureId: "user.*",

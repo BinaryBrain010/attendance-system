@@ -100,6 +100,14 @@ return await userModel.user.gpNonAssociatedUsers();
     return await userModel.user.gpSoftDelete(userId);
   }
 
+  async suspendUser(userId: string, byId: string | null) {
+    return await userModel.user.gpSuspend(userId, byId);
+  }
+
+  async reactivateUser(userId: string) {
+    return await userModel.user.gpReactivate(userId);
+  }
+
   async restoreUser(userId: string): Promise<void> {
     return await userModel.user.gpRestore(userId);
   }

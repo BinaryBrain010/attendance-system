@@ -2294,6 +2294,16 @@
     "feature": "user.delete.*",
     "kind": "delete"
   },
+  "POST /user/suspend": {
+    "access": "feature",
+    "feature": "user.suspend.*",
+    "kind": "update"
+  },
+  "POST /user/reactivate": {
+    "access": "feature",
+    "feature": "user.suspend.*",
+    "kind": "update"
+  },
   "GET /user/get": {
     "access": "feature",
     "feature": "user.read.*",

@@ -130,6 +130,9 @@ model User {
   createdById     String?          @db.VarChar(36)
   updatedById     String?          @db.VarChar(36)
   deletedById     String?          @db.VarChar(36)
+  // Phase 3b: suspension (blocks login + revokes sessions). Null = active.
+  suspendedAt     DateTime?
+  suspendedById   String?          @db.VarChar(36)
 }
 
 model Group {

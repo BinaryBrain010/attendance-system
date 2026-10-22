@@ -103,6 +103,9 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /gatePass/return": { feature: "gatePass.return.*", kind: "update", access: "feature", note: "return/close a gate pass" },
   "POST /gatePass/cancel": { feature: "gatePass.cancel.*", kind: "update", access: "feature", note: "cancel a gate pass" },
   "POST /gatePass/reject": { feature: "gatePass.reject.*", kind: "update", access: "feature", note: "reject a gate pass" },
+  // Phase 3b: suspend/reactivate a user (blocks login + revokes sessions).
+  "POST /user/suspend": { feature: "user.suspend.*", kind: "update", access: "feature", note: "suspend a user" },
+  "POST /user/reactivate": { feature: "user.suspend.*", kind: "update", access: "feature", note: "reactivate a suspended user" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

@@ -314,6 +314,23 @@ class UserController extends BaseController<UserService> {
     });
   }
 
+  async suspendUser(req: Request, res: Response) {
+    const { id } = req.body;
+    const actor = (req as any).userId || null;
+    await this.handleRequest(() => this.service.suspendUser(id, actor), res, {
+      successMessage: "User suspended. Their sessions have been revoked.",
+      logActivity: { action: "SUSPEND", entityType: "User", entityId: id, description: "User suspended" }, req,
+    });
+  }
+
+  async reactivateUser(req: Request, res: Response) {
+    const { id } = req.body;
+    await this.handleRequest(() => this.service.reactivateUser(id), res, {
+      successMessage: "User reactivated.",
+      logActivity: { action: "REACTIVATE", entityType: "User", entityId: id, description: "User reactivated" }, req,
+    });
+  }
+
   async loginUser(req: Request, res: Response) {
     // Validate the body so a malformed payload returns 400 instead of throwing deeper.
     const loginSchema = z.object({
@@ -352,6 +369,12 @@ class UserController extends BaseController<UserService> {
     if (!isPasswordValid) {
       await loginFailed(user.id || null, "bad password");
       return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    // Phase 3b: a suspended account cannot log in (block quietly, audited).
+    if ((user as any).suspendedAt) {
+      await loginFailed(user.id || null, "suspended");
+      return res.status(403).json({ message: "Your account has been suspended. Please contact an administrator." });
     }
 
     // Use "180d" for 6 months (ms package has no "months" - "6M" was parsed as 6 minutes!)

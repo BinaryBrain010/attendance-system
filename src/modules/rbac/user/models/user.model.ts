@@ -234,24 +234,27 @@ const userModel = prisma.$extends({
         if (id === "58c55d6a-910c-46f8-a422-4604bea6cd15") {
           return null;
         }
-        const data: UserData[] = await prisma.$queryRaw(Prisma.sql`SELECT 
+        const data: any[] = await prisma.$queryRaw(Prisma.sql`SELECT
+    "User".id,
     "User".username,
+    "User"."suspendedAt",
+    "User"."createdAt",
     ARRAY(
-        SELECT DISTINCT "R"."name" 
-        FROM "UserRole" AS "UR" 
-        LEFT JOIN "Role" AS "R" 
-        ON "UR"."roleId" = "R".id 
-        WHERE "UR"."userId" = "User".id 
-          AND "UR"."isDeleted" IS NULL 
+        SELECT DISTINCT "R"."name"
+        FROM "UserRole" AS "UR"
+        LEFT JOIN "Role" AS "R"
+        ON "UR"."roleId" = "R".id
+        WHERE "UR"."userId" = "User".id
+          AND "UR"."isDeleted" IS NULL
           AND "R"."isDeleted" IS NULL
     ) AS "userRole",
     ARRAY(
-        SELECT DISTINCT "G"."name" 
-        FROM "UserGroup" AS "UG" 
-        LEFT JOIN "Group" AS "G" 
-        ON "UG"."groupId" = "G".id 
-        WHERE "UG"."userId" = "User".id 
-          AND "UG"."isDeleted" IS NULL 
+        SELECT DISTINCT "G"."name"
+        FROM "UserGroup" AS "UG"
+        LEFT JOIN "Group" AS "G"
+        ON "UG"."groupId" = "G".id
+        WHERE "UG"."userId" = "User".id
+          AND "UG"."isDeleted" IS NULL
           AND "G"."isDeleted" IS NULL
     ) AS "userGroup"
 FROM "User"
@@ -259,14 +262,14 @@ WHERE "User".id = ${id}
   AND "User"."isDeleted" IS NULL;
       `);
 
-        const userData: UserData = {
+        const userData: any = {
           id: data[0].id,
           username: data[0].username,
-          //   defaultCompanyId: data[0].defaultCompanyId,
           password: "",
           userRole: data[0].userRole,
           userGroup: data[0].userGroup,
-          //   companyUser: data[0].companyUser,
+          suspendedAt: data[0].suspendedAt ?? null,
+          createdAt: data[0].createdAt ?? null,
         };
 
         return userData;
@@ -471,6 +474,7 @@ WHERE "User".id = ${id}
             where,
             select: {
               id: true, username: true, createdAt: true, updatedAt: true, employeeId: true,
+              suspendedAt: true,
               employee: { select: { id: true, name: true, surname: true, code: true, status: true } },
               userRoles: { where: { isDeleted: null }, select: { role: { select: { id: true, name: true } } } },
               userGroups: { where: { isDeleted: null }, select: { id: true } },
@@ -503,8 +507,8 @@ WHERE "User".id = ${id}
           roles: (u.userRoles || []).map((r: any) => r.role?.name).filter(Boolean),
           groupsCount: (u.userGroups || []).length,
           lastLogin: lastLogin.get(u.id) ?? null,
-          // User has no suspend state yet (Phase 3b adds user.suspend); everyone listed here is active.
-          status: 'ACTIVE',
+          suspendedAt: u.suspendedAt ?? null,
+          status: u.suspendedAt ? 'SUSPENDED' : 'ACTIVE',
         }));
 
         return { data, totalSize };
@@ -851,6 +855,27 @@ WHERE "User".id = ${id}
 
         const updated = await prisma.user.gpUpdate(id, newData);
         return updated;
+      },
+
+      // Phase 3b: suspend a user — blocks login (suspendedAt), and revokes every active session by
+      // blacklisting its token and deleting the session row. The user.update is audited by the hook.
+      async gpSuspend(this: any, id: string, byId: string | null) {
+        const sessions = await prisma.loggedInUsers.findMany({ where: { userId: id }, select: { token: true, rememberMe: true } });
+        if (sessions.length) {
+          await prisma.blacklistToken.createMany({
+            data: sessions.map((s: any) => ({ token: s.token, rememberMe: s.rememberMe, userId: id, createdAt: new Date() })),
+            skipDuplicates: true,
+          });
+          await prisma.loggedInUsers.deleteMany({ where: { userId: id } });
+        }
+        await prisma.user.update({ where: { id }, data: { suspendedAt: new Date(), suspendedById: byId } as any });
+        return { suspended: true, revokedSessions: sessions.length };
+      },
+
+      // Reactivate (clear suspension). No auto-reactivate anywhere — only this explicit action.
+      async gpReactivate(this: any, id: string) {
+        await prisma.user.update({ where: { id }, data: { suspendedAt: null, suspendedById: null } as any });
+        return { suspended: false };
       },
 
       async gpUpdate(this: any, id: string, data: UserData) {

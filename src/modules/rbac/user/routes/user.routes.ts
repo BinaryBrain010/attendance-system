@@ -526,6 +526,9 @@ class UserRoutes {
      *         $ref: '#/components/responses/404'
      */
     this.router.post('/delete', this.controller.deleteUser.bind(this.controller));
+    // Phase 3b: suspend / reactivate (user.suspend.*) — blocks login + revokes sessions, audited.
+    this.router.post('/suspend', this.controller.suspendUser.bind(this.controller));
+    this.router.post('/reactivate', this.controller.reactivateUser.bind(this.controller));
   }
   
 
