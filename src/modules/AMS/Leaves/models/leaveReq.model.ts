@@ -390,18 +390,34 @@ const leaveReqModel = prisma.$extends({
         });
       },
 
-      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string) {
+      async gpPgFindMany(
+        this: any,
+        page: number,
+        pageSize: number,
+        userId?: string,
+        filters?: { status?: string; from?: string; to?: string; employeeId?: string }
+      ) {
         const skip = (page - 1) * pageSize;
-        
+
         const where: any = {
           isDeleted: null,
         };
+
+        // Server-side filters (status, leave-start-date range, employee). Everything the list page can
+        // filter by is applied here in SQL — the client never downloads unfiltered rows to narrow them.
+        if (filters?.status) where.status = filters.status as LeaveStatus;
+        if (filters?.employeeId) where.employeeId = filters.employeeId;
+        if (filters?.from || filters?.to) {
+          where.startDate = {};
+          if (filters.from) where.startDate.gte = getStartOfDayPakistan(new Date(filters.from));
+          if (filters.to) where.startDate.lte = getEndOfDayPakistan(new Date(filters.to));
+        }
 
         // Apply unit-based access control if userId is provided
         if (userId) {
           const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
           const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
-          
+
           // If null, user has supervisor permission (access all)
           // If empty array, user has no access
           // If array with IDs, filter by those IDs
@@ -409,7 +425,14 @@ const leaveReqModel = prisma.$extends({
             if (accessibleEmployeeIds.length === 0) {
               return { data: [], totalSize: 0 };
             }
-            where.employeeId = { in: accessibleEmployeeIds };
+            // Intersect unit-access with any explicit employeeId filter.
+            if (where.employeeId && typeof where.employeeId === 'string') {
+              where.employeeId = accessibleEmployeeIds.includes(where.employeeId)
+                ? where.employeeId
+                : '__none__';
+            } else {
+              where.employeeId = { in: accessibleEmployeeIds };
+            }
           }
         }
 

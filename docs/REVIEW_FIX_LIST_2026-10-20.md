@@ -126,7 +126,12 @@ gated by the export permission).
       column; inline approve/reject (row menu + confirm) + bulk approve/reject retained; stats strip from
       /stats. (Approve/reject surfaced via the existing inline action menu + confirm dialog rather than a
       separate drawer — same actions + note.)
-- [ ] 5b. Leave requests: default view shows all statuses (remove hidden filter). Same layout+drawer.
+- [x] 5b. Leave requests: default view shows all statuses (remove hidden filter). Same layout+drawer.
+      DONE: removed the DataGrid client-side default PENDING filter (all statuses show by default);
+      replaced getAllLeaveRequests() with server-paginated POST /leave/leave-requests/get carrying
+      status + leave-start-date-range filters (gpPgFindMany now takes filters, intersected with
+      unit-access); single search box wired to /search; LazyPhoto employee column; status + date-range
+      filter bar. No getAll from the screen.
 - [ ] 5c. Detail pages: Leave allocation (per type allocated/used/pending/remaining, taken, adjustment
       history); Leave type (rules, applies-to, usage summary, edit).
 - [ ] 5d. Holidays: month calendar view; click date to add, click holiday to edit. Types public/

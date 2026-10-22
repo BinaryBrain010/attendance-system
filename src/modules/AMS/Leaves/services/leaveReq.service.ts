@@ -33,9 +33,10 @@ class LeaveReqService {
   async getLeaveRequests(
     page: number,
     pageSize: number,
-    userId?: string
+    userId?: string,
+    filters?: { status?: string; from?: string; to?: string; employeeId?: string }
   ): Promise<paginatedData> {
-    return await leaveReqModel.leaveRequest.gpPgFindMany(page, pageSize, userId);
+    return await leaveReqModel.leaveRequest.gpPgFindMany(page, pageSize, userId, filters);
   }
 
 
