@@ -1,7 +1,9 @@
 # Deploy package — Review fix list (Phases 3–9)
 
 Date: 2026-10-22
-Backend HEAD: **063510c**   Admin HEAD: **5b76a92**
+Backend HEAD: **855684c**   Admin HEAD: **5b76a92**
+(pre-deploy checks on 063510c/6889904: gatePass 34/0, CRM 188/0; then `855684c` adds the no-unit
+visitor-scoping fallback below — frontdesk-only, gatePass/CRM unaffected.)
 Base already in prod: backend `a567afd` / admin `dc6bfea` (deployed before Phase 3).
 This package = everything from Phase 3 through Phase 9 + the END deliverables.
 
@@ -36,7 +38,8 @@ Most new routes reuse EXISTING features (holiday.read.*, employee.read.*, leaveC
 visitor.update.*, attendanceReq.read.*) and need no new grants. Grant these NEW ones where wanted:
 - **user.suspend.*** → admin roles (needed to suspend/reactivate users).
 - **visitor.viewAll.unit.*** → head-office / managers who must see visitors from every unit.
-  (Without it, a user sees only their own unit's visitors — by design.)
+  (Without it, a user sees only their own unit's visitors — by design. A user with NO unit assignment
+  falls back to seeing ALL visitors, so the list is never empty/errored; visitor.read.* still gates access.)
 - **attendanceReq.export.*, activityLog.export.*, visitor.export.*** → whoever may export those bulk lists.
 - **crm.lead.assign.*, crm.lead.transfer.*** → CRM managers (if not already granted).
 - Quick Pass workflow (if not already granted from the earlier Quick Pass deploy): gatePass.dispatch.*,
