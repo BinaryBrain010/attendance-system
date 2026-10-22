@@ -88,8 +88,12 @@ gated by the export permission).
       login 403 for suspended; users-list status reflects it; admin user-detail Status card + button.
       Verified 9/9. Role/group member-last-login detail = light follow-up. Prod: seedReviewFeatures.ts
       + grant user.suspend.*)
-- [ ] 3c. Auto-suspend when employee becomes resigned/terminated/inactive or deleted → linked user
+- [x] 3c. Auto-suspend when employee becomes resigned/terminated/inactive or deleted → linked user
       suspended automatically + audited. No auto-reactivate. Dry run of affected prod users.
+      (employee.service: updateEmployee to RESIGNED/FIRE, or deleteEmployee, auto-suspends the linked
+      user (resolved BEFORE delete) via gpSuspend + AUTO_SUSPEND activity log. REJOINED never suspends;
+      no auto-reactivate. dryRunAutoSuspend.ts (read-only, prod-safe) — local shows 48 affected.
+      Verified resign/delete/rejoin.)
 - [ ] 3d. Change Password: add confirm field + minimum length rule everywhere a password is set.
 
 ## Phase 4 — Quick Mark small fixes

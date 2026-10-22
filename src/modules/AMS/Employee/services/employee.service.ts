@@ -5,6 +5,12 @@ import { EmployeeFaceRecognitionData } from "../types/employee";
 import prisma from "../../../../core/models/base.model";
 import { AttendanceStatus, LeaveStatus } from "@prisma/client";
 import { compressImageDataUrl } from "../../../../core/utils/imageCompression";
+import userModel from "../../../rbac/user/models/user.model";
+import { getActorId } from "../../../../core/context/requestContext";
+import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
+
+// Phase 3c: employee states that terminate access. REJOINED stays active (and never auto-reactivates).
+const TERMINAL_EMPLOYEE_STATUSES = new Set(["RESIGNED", "FIRE"]);
 
 class EmployeeService {
   async getAllEmployees(): Promise<Employee[]> {
@@ -83,7 +89,30 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     employeeData: Employee
   ): Promise<any> {
     const compressed = await this.withCompressedImage(employeeData);
-    return await employeeModel.employee.gpUpdate(employeeId, compressed);
+    const result = await employeeModel.employee.gpUpdate(employeeId, compressed);
+    // Phase 3c: when an employee becomes resigned/terminated, auto-suspend their linked user.
+    if ((employeeData as any)?.status && TERMINAL_EMPLOYEE_STATUSES.has(String((employeeData as any).status))) {
+      const u = await this.linkedUser(employeeId);
+      await this.autoSuspendUser(u, `employee status ${(employeeData as any).status}`);
+    }
+    return result;
+  }
+
+  /** The user linked to an employee (active, not already suspended) — null otherwise. */
+  private async linkedUser(employeeId: string): Promise<{ id: string } | null> {
+    const user = await prisma.user.findFirst({ where: { employeeId, isDeleted: null, suspendedAt: null }, select: { id: true } });
+    return user ?? null;
+  }
+
+  /** Suspend a pre-resolved linked user (Phase 3c auto-suspend). Audited; never auto-reactivates. */
+  private async autoSuspendUser(user: { id: string } | null, reason: string): Promise<void> {
+    if (!user) return;
+    try {
+      await userModel.user.gpSuspend(user.id, getActorId());
+      await logActivity({ userId: getActorId(), action: "AUTO_SUSPEND", entityType: "User", entityId: user.id, description: `Auto-suspended: ${reason}` } as any);
+    } catch (e: any) {
+      console.warn("[autoSuspend] failed:", e?.message || e);
+    }
   }
 
   /** Return a copy of the employee payload with its `image` compressed (no-op if absent/unprocessable). */
@@ -93,7 +122,11 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   }
 
   async deleteEmployee(employeeId: string): Promise<void> {
+    // Resolve the linked user BEFORE the soft-delete (which detaches/soft-deletes the user link).
+    const u = await this.linkedUser(employeeId);
     await employeeModel.employee.gpSoftDelete(employeeId);
+    // Phase 3c: a deleted employee's linked user is auto-suspended too.
+    await this.autoSuspendUser(u, "employee deleted");
   }
 
   async restoreEmployee(employeeId: string): Promise<void> {
