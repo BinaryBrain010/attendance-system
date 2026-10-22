@@ -94,7 +94,10 @@ gated by the export permission).
       user (resolved BEFORE delete) via gpSuspend + AUTO_SUSPEND activity log. REJOINED never suspends;
       no auto-reactivate. dryRunAutoSuspend.ts (read-only, prod-safe) — local shows 48 affected.
       Verified resign/delete/rejoin.)
-- [ ] 3d. Change Password: add confirm field + minimum length rule everywhere a password is set.
+- [x] 3d. Change Password: add confirm field + minimum length rule everywhere a password is set.
+      (Backend: /user/changePassword + /user/changeUserPassword reject < 8 chars (400). Admin:
+      profilePassword now always shows the Confirm field + requires match + min 8; userForm (new user)
+      disables submit unless password >= 8 AND matches confirm.)
 
 ## Phase 4 — Quick Mark small fixes
 - [ ] 4a. Remove `/ams` landing page; redirect to employees list.

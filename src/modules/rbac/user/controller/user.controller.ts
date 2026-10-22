@@ -131,6 +131,9 @@ class UserController extends BaseController<UserService> {
 
   async changePassword(req: Request, res: Response) {
     let { password } = req.body;
+    if (!password || String(password).length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters.", statusCode: 400 });
+    }
     const userId = AuthHelper.getUserIdFromHeader(req);
     let operation = () => this.service.changePassword(userId, password);
     let successMessage = "password chnaged successfully!";
@@ -152,6 +155,9 @@ class UserController extends BaseController<UserService> {
 
   async changeUserPassword(req: Request, res: Response) {
     let { userId, password } = req.body;
+    if (!password || String(password).length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters.", statusCode: 400 });
+    }
     const currentUserId = AuthHelper.getUserIdFromHeader(req);
     let operation = () => this.service.changePassword(userId, password);
     await this.service.removeLoggedInUser(userId, "");
