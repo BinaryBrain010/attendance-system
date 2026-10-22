@@ -120,6 +120,23 @@ class UserController extends BaseController<UserService> {
     await this.handleRequest(operation, res, { successMessage });
   }
 
+  // 8d: "Me" app profile (own)
+  async getMyProfile(req: Request, res: Response) {
+    const userId = AuthHelper.getUserIdFromHeader(req);
+    await this.handleRequest(() => this.service.getProfile(userId), res, { successMessage: "Profile retrieved successfully!" });
+  }
+
+  // 8d/8e: own preferences
+  async getMyPreferences(req: Request, res: Response) {
+    const userId = AuthHelper.getUserIdFromHeader(req);
+    await this.handleRequest(() => this.service.getPreferences(userId), res, { successMessage: "Preferences retrieved successfully!" });
+  }
+  async saveMyPreferences(req: Request, res: Response) {
+    const userId = AuthHelper.getUserIdFromHeader(req);
+    const patch = req.body?.preferences ?? req.body ?? {};
+    await this.handleRequest(() => this.service.setPreferences(userId, patch), res, { successMessage: "Preferences saved!" });
+  }
+
   async checkPreviousPassword(req: Request, res: Response) {
     let { password } = req.body;
     const userId = AuthHelper.getUserIdFromHeader(req);

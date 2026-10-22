@@ -229,11 +229,22 @@ gated by the export permission).
       DONE: navModel app id 'settings' label "Settings" → "Administration" (id kept stable so saved
       launcher order/permissions are unaffected). The Quick Pass "Settings" sub-item is unrelated and
       left as-is.
-- [ ] 8d. New "Me" app: profile (name, photo, linked employee, roles, last login); change password
+- [x] 8d. New "Me" app: profile (name, photo, linked employee, roles, last login); change password
       (with confirm); logout; logout all devices; preferences (theme, font size small/default/large
       app-wide via CSS vars, notification sound, default landing app, date format) stored per user on
       backend (additive migration).
-- [ ] 8e. App launcher: drag-drop reorder saved per user on backend + "Reset order".
+      DONE: additive migration add_user_preferences (User.preferences JSONB). New token-access endpoints
+      GET /user/me (profile: username, linked employee, role names, last login from sessions,
+      preferences), GET/POST /user/preferences (own, merge). New "Me" nav app + /admin/me page: profile
+      card (LazyPhoto, employee, roles, last login), change password (reuses ProfilePassword, confirm
+      required), log out, log out of all devices, and a preferences form (theme / font size / default
+      landing app / date format / notification sound). PreferencesProvider applies font size app-wide
+      (root font-size + no-flash head script) and theme on load, and mirrors notification-sound to the
+      bell's localStorage key.
+- [x] 8e. App launcher: drag-drop reorder saved per user on backend + "Reset order".
+      DONE: launcher tiles are draggable; dropping reorders and persists preferences.appOrder (ids) via
+      POST /user/preferences. Order is applied on load (unknown ids ignored, new apps appended). "Reset
+      order" clears the saved order back to default. Shares the 8d preferences storage/migration.
 
 ## Phase 9 — Print and PDF
 - [ ] 9a. Every print/PDF action (gate pass, quotation, invoice, delivery slip, employee print,

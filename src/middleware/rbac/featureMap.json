@@ -2359,6 +2359,21 @@
     "feature": "-",
     "kind": "read"
   },
+  "GET /user/me": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /user/preferences": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /user/preferences": {
+    "access": "token",
+    "feature": "-",
+    "kind": "update"
+  },
   "GET /user/getNonAssociatedUsers": {
     "access": "feature",
     "feature": "user.read.*",

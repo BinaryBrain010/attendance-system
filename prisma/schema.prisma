@@ -133,6 +133,9 @@ model User {
   // Phase 3b: suspension (blocks login + revokes sessions). Null = active.
   suspendedAt     DateTime?
   suspendedById   String?          @db.VarChar(36)
+  // 8d/8e: per-user preferences (theme, font size, notification sound, default landing app, date
+  // format) + app-launcher order. One JSON blob the owner reads/writes.
+  preferences     Json?            @db.JsonB
 }
 
 model Group {

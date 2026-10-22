@@ -114,6 +114,10 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "GET /employee/presentToday": { feature: "employee.read.*", kind: "read", access: "feature", note: "employees currently present" },
   // Phase 6b: host marks a referred visit attended.
   "POST /visitor/attend": { feature: "visitor.update.*", kind: "update", access: "feature", note: "mark a visit attended" },
+  // Phase 8d/8e: "Me" app — own profile + preferences (token access, own data only).
+  "GET /user/me": { feature: "-", kind: "read", access: "token", note: "own profile for the Me app" },
+  "GET /user/preferences": { feature: "-", kind: "read", access: "token", note: "own preferences" },
+  "POST /user/preferences": { feature: "-", kind: "update", access: "token", note: "save own preferences" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

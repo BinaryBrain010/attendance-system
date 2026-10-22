@@ -132,6 +132,17 @@ return await userModel.user.gpNonAssociatedUsers();
     return await userModel.user.getLoggedInUser(userId);
   }
 
+  // 8d/8e
+  async getProfile(userId: string) {
+    return await userModel.user.getProfile(userId);
+  }
+  async getPreferences(userId: string) {
+    return await userModel.user.getPreferences(userId);
+  }
+  async setPreferences(userId: string, patch: Record<string, any>) {
+    return await userModel.user.setPreferences(userId, patch);
+  }
+
   async checkPreviousPassword(userId: string, password: string) {
     return await userModel.user.checkPreviousPassowrd(userId, password);
   }

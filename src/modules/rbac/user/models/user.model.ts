@@ -834,6 +834,47 @@ WHERE "User".id = ${id}
         };
       },
 
+      // 8d: rich profile for the "Me" app — identity, linked employee, role names, last login
+      // (latest session, current one aside) and stored preferences.
+      async getProfile(this: any, id: string) {
+        const user = await prisma.user.findFirst({
+          where: { id, isDeleted: null },
+          include: {
+            employee: { select: { id: true, name: true, surname: true, code: true, designation: true, department: true } },
+            userRoles: { include: { role: { select: { name: true } } } },
+          },
+        }) as any;
+        if (!user) return null;
+        const sessions = await prisma.loggedInUsers.findMany({
+          where: { userId: id },
+          orderBy: { createdAt: "desc" },
+          select: { createdAt: true },
+        });
+        // "last login" = the second-most-recent session start (the most recent is the current one).
+        const lastLogin = sessions.length > 1 ? sessions[1].createdAt : (sessions[0]?.createdAt ?? null);
+        return {
+          id: user.id,
+          username: user.username,
+          employee: user.employee ?? null,
+          roles: (user.userRoles || []).map((ur: any) => ur.role?.name).filter(Boolean),
+          lastLogin,
+          preferences: user.preferences ?? null,
+          suspendedAt: user.suspendedAt ?? null,
+        };
+      },
+
+      // 8d/8e: read / merge the owner's preferences JSON.
+      async getPreferences(this: any, id: string) {
+        const user = await prisma.user.findFirst({ where: { id, isDeleted: null }, select: { preferences: true } }) as any;
+        return user?.preferences ?? {};
+      },
+      async setPreferences(this: any, id: string, patch: Record<string, any>) {
+        const user = await prisma.user.findFirst({ where: { id, isDeleted: null }, select: { preferences: true } }) as any;
+        const merged = { ...((user?.preferences as any) || {}), ...(patch || {}) };
+        await prisma.user.update({ where: { id }, data: { preferences: merged } as any });
+        return merged;
+      },
+
       async checkPreviousPassowrd(this: any, id: string, password: string) {
         const user = await prisma.user.gpFindById(id);
 
