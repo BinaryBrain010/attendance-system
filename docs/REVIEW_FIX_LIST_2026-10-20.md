@@ -106,9 +106,9 @@ gated by the export permission).
 
 ## Phase 4 — Quick Mark small fixes
 - [x] 4a. Remove `/ams` landing page; redirect to employees list.
-- [ ] 4b. Employee detail: linked user (username, roles, last login, status, link), team + team lead,
+- [x] 4b. Employee detail: linked user (username, roles, last login, status, link), team + team lead,
       assigned tasks, linked sales agent, recent daily reports.
-- [ ] 4c. "Update Record Details" dialog: names not ids, friendly labels, formatted dates, clean
+- [x] 4c. "Update Record Details" dialog: names not ids, friendly labels, formatted dates, clean
       old→new table. One shared component.
 - [x] 4d. Attendance page: rename "Add Attendance" → "Mark Attendance".
 - [x] 4e. Employee filter dialog has two close icons — keep one.

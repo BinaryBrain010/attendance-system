@@ -171,6 +171,34 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     return await employeeModel.employee.gpCount();
   }
 
+  /** 4b: employee detail overview — linked user (+roles/last login/status), teams + team lead,
+   *  assigned tasks, linked sales agent, recent daily reports. All server-computed, null-safe. */
+  async getOverview(employeeId: string): Promise<any> {
+    const [linkedUser, teamMemberships, taskAssignees, agent, reports] = await Promise.all([
+      prisma.user.findFirst({ where: { employeeId, isDeleted: null }, select: { id: true, username: true, suspendedAt: true, userRoles: { where: { isDeleted: null }, select: { role: { select: { name: true } } } } } }),
+      prisma.teamMember.findMany({ where: { employeeId, isDeleted: null }, select: { team: { select: { id: true, name: true, lead: { select: { name: true, surname: true } } } } } }),
+      prisma.taskAssignee.findMany({ where: { employeeId }, take: 10, select: { task: { select: { id: true, code: true, title: true, status: true, dueDate: true } } } }),
+      prisma.salesAgent.findFirst({ where: { employeeId, isDeleted: null }, select: { id: true, agentCode: true, scope: true, isActive: true } }),
+      prisma.dailyReport.findMany({ where: { employeeId }, orderBy: { date: "desc" }, take: 5, select: { id: true, date: true, whatIDid: true, hours: true, late: true } }),
+    ]);
+    let lastLogin: Date | null = null;
+    if (linkedUser) {
+      const s = await prisma.loggedInUsers.findFirst({ where: { userId: linkedUser.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+      lastLogin = s?.createdAt ?? null;
+    }
+    return {
+      linkedUser: linkedUser ? {
+        id: linkedUser.id, username: linkedUser.username,
+        roles: (linkedUser.userRoles || []).map((r: any) => r.role?.name).filter(Boolean),
+        status: linkedUser.suspendedAt ? "SUSPENDED" : "ACTIVE", lastLogin,
+      } : null,
+      teams: (teamMemberships || []).map((t: any) => ({ id: t.team?.id, name: t.team?.name, lead: t.team?.lead ? `${t.team.lead.name || ""} ${t.team.lead.surname || ""}`.trim() : null })).filter((t: any) => t.id),
+      tasks: (taskAssignees || []).map((a: any) => a.task).filter(Boolean),
+      salesAgent: agent ?? null,
+      recentReports: reports || [],
+    };
+  }
+
   /** 4g: distinct existing designations + departments (for the Create/Edit Staff comboboxes). */
   async getDistinctFields(): Promise<{ designations: string[]; departments: string[] }> {
     const [desig, dept] = await Promise.all([

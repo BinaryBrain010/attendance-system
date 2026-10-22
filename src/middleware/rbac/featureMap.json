@@ -864,6 +864,11 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "POST /employee/overview": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "GET /employee/total": {
     "access": "feature",
     "feature": "employee.read.*",

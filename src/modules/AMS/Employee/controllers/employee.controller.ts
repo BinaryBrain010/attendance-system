@@ -335,6 +335,12 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Employees for face recognition retrieved successfully!" });
   }
 
+  async getOverview(req: Request, res: Response) {
+    const { id } = req.body;
+    const operation = () => this.service.getOverview(id);
+    await this.handleRequest(operation, res, { successMessage: "Employee overview retrieved successfully!" });
+  }
+
   async getDistinctFields(req: Request, res: Response) {
     const operation = () => this.service.getDistinctFields();
     await this.handleRequest(operation, res, { successMessage: "Distinct fields retrieved successfully!" });
