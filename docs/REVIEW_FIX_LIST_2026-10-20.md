@@ -218,8 +218,13 @@ gated by the export permission).
       failed request no longer sticks or crashes. The success-toast interceptor now treats the workReport
       POST routes (completion/overdue/timeToComplete/workload/compliance/hours) as reads, so no
       "…report ready" toast fires.
-- [ ] 8b. Notification sound on new notifications only (not on page load), toggle-able, respects
+- [x] 8b. Notification sound on new notifications only (not on page load), toggle-able, respects
       autoplay rules.
+      DONE: NotificationBell keeps a baseline unread count (prevUnreadRef) and beeps only when the count
+      RISES during polling — never on first load, and never when opening/marking/reading (those update
+      the baseline with sound disabled). Beep is a short WebAudio tone (no asset) wrapped in try/catch
+      so a blocked/suspended AudioContext is ignored (autoplay-safe). A speaker toggle in the dropdown
+      header mutes/unmutes, persisted in localStorage (notif.sound).
 - [ ] 8c. Rename current "Settings" app (audit + configuration) → "Administration".
 - [ ] 8d. New "Me" app: profile (name, photo, linked employee, roles, last login); change password
       (with confirm); logout; logout all devices; preferences (theme, font size small/default/large
