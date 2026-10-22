@@ -131,7 +131,7 @@ gated by the export permission).
       checked out), a "Today" tab (who is in/late/missing with times), status filter on employee cards.
 - [ ] 5f. Shift page: soft distinct colours per shift + schedule block. Assignments tab = employee
       cards with photos. Assign dialog lists only active employees.
-- [ ] 5g. Photo endpoint `GET /employee/:id/photo?size=thumb` with stored thumbnail, cached. Lazy
+- [x] 5g. Photo endpoint `GET /employee/:id/photo?size=thumb` with stored thumbnail, cached. Lazy
       photos everywhere with initials fallback. (DEFERRED here by design.)
 - [ ] 5h. Mark Attendance: method selector = one row of small tabs; scanner/form shows directly with
       one title (Face Recognition currently appears 3×); remove duplicate Full Page buttons; remove or

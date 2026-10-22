@@ -366,6 +366,7 @@ class EmployeeRoutes {
     this.router.get('/total', this.controller.getTotalEmployees.bind(this.controller));
     this.router.get('/distinctFields', this.controller.getDistinctFields.bind(this.controller));
     this.router.post('/overview', this.controller.getOverview.bind(this.controller));
+    this.router.get('/photo', this.controller.getPhoto.bind(this.controller));
     
     /**
      * @swagger

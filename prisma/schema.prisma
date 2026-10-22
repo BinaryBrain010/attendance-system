@@ -277,6 +277,7 @@ model Employee {
 
   company         Company
   image           String?
+  imageThumb      String?   // Phase 5g: small cached JPEG thumbnail (generated on upload)
   code            String    @unique
   createdAt       DateTime?
   updatedAt       DateTime?

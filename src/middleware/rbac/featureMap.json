@@ -869,6 +869,11 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "GET /employee/photo": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "GET /employee/total": {
     "access": "feature",
     "feature": "employee.read.*",

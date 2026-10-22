@@ -4,7 +4,7 @@ import { paginatedData } from "../../../../types/paginatedData";
 import { EmployeeFaceRecognitionData } from "../types/employee";
 import prisma from "../../../../core/models/base.model";
 import { AttendanceStatus, LeaveStatus } from "@prisma/client";
-import { compressImageDataUrl } from "../../../../core/utils/imageCompression";
+import { compressImageDataUrl, makeThumbnailDataUrl } from "../../../../core/utils/imageCompression";
 import userModel from "../../../rbac/user/models/user.model";
 import { getActorId } from "../../../../core/context/requestContext";
 import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
@@ -115,10 +115,24 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     }
   }
 
-  /** Return a copy of the employee payload with its `image` compressed (no-op if absent/unprocessable). */
-  private async withCompressedImage<T extends { image?: any }>(data: T): Promise<T> {
+  /** Compress `image` + generate `imageThumb` (5g) on save (no-op if absent/unprocessable). */
+  private async withCompressedImage<T extends { image?: any; imageThumb?: any }>(data: T): Promise<T> {
     if (!data || data.image == null) return data;
-    return { ...data, image: await compressImageDataUrl(data.image) };
+    const image = await compressImageDataUrl(data.image);
+    const imageThumb = await makeThumbnailDataUrl(image);
+    return { ...data, image, ...(imageThumb ? { imageThumb } : {}) };
+  }
+
+  /** 5g: serve an employee photo (thumb or full) as decoded bytes for the /employee/photo endpoint. */
+  async getPhoto(id: string, size: "thumb" | "full"): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const emp = await prisma.employee.findUnique({ where: { id }, select: { image: true, imageThumb: true } });
+    if (!emp) return null;
+    const dataUrl = size === "thumb" ? (emp.imageThumb || emp.image) : (emp.image || emp.imageThumb);
+    if (!dataUrl) return null;
+    const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(dataUrl);
+    const contentType = m ? m[1] : "image/jpeg";
+    const base64 = dataUrl.includes(",") ? dataUrl.slice(dataUrl.indexOf(",") + 1) : dataUrl;
+    try { return { buffer: Buffer.from(base64, "base64"), contentType }; } catch { return null; }
   }
 
   async deleteEmployee(employeeId: string): Promise<void> {

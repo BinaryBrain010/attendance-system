@@ -335,6 +335,17 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Employees for face recognition retrieved successfully!" });
   }
 
+  async getPhoto(req: Request, res: Response) {
+    const id = String(req.query.id || "");
+    const size = req.query.size === "thumb" ? "thumb" : "full";
+    if (!id) return res.status(400).json({ success: false, message: "id is required", statusCode: 400 });
+    const photo = await this.service.getPhoto(id, size as "thumb" | "full");
+    if (!photo) return res.status(404).json({ success: false, message: "No photo", statusCode: 404 });
+    res.setHeader("Content-Type", photo.contentType);
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    return res.end(photo.buffer);
+  }
+
   async getOverview(req: Request, res: Response) {
     const { id } = req.body;
     const operation = () => this.service.getOverview(id);
