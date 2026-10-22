@@ -132,8 +132,14 @@ gated by the export permission).
       status + leave-start-date-range filters (gpPgFindMany now takes filters, intersected with
       unit-access); single search box wired to /search; LazyPhoto employee column; status + date-range
       filter bar. No getAll from the screen.
-- [ ] 5c. Detail pages: Leave allocation (per type allocated/used/pending/remaining, taken, adjustment
+- [x] 5c. Detail pages: Leave allocation (per type allocated/used/pending/remaining, taken, adjustment
       history); Leave type (rules, applies-to, usage summary, edit).
+      DONE: LeaveDetailDialogs.tsx — allocation detail (allocated/used/pending/remaining/taken metrics;
+      pending computed from the employee's PENDING requests linked to the allocation; period + note;
+      "Adjustment history" opens the LeaveAllocation audit drawer). Leave-type detail (rules = max days +
+      description; applies-to = all active employees; usage summary via new POST
+      /leave/leave-configurations/usage returning allocations/employees/day totals; Edit). Row-click opens
+      the dialog on both the Allocation and Config lists.
 - [ ] 5d. Holidays: month calendar view; click date to add, click holiday to edit. Types public/
       company/weekly-off; all or selected units; date ranges; yearly recurring. "Mark Sundays" → a
       per-unit weekly-off rule if safe, else propose options first.

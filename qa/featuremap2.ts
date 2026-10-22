@@ -106,6 +106,8 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   // Phase 3b: suspend/reactivate a user (blocks login + revokes sessions).
   "POST /user/suspend": { feature: "user.suspend.*", kind: "update", access: "feature", note: "suspend a user" },
   "POST /user/reactivate": { feature: "user.suspend.*", kind: "update", access: "feature", note: "reactivate a suspended user" },
+  // Phase 5c: leave-type usage summary (read).
+  "POST /leave/leave-configurations/usage": { feature: "leaveConfig.read.*", kind: "read", access: "feature", note: "usage summary for a leave type" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

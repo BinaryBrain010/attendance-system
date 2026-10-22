@@ -1,8 +1,38 @@
 import leaveConfigModel from "../models/leave.model";
 import { LeaveConfiguration } from "../types/leave";
 import { paginatedData } from "../../../../types/paginatedData";
+import prisma from "../../../../core/models/base.model";
 
 class LeaveService {
+  // 5c: usage summary for one leave type (how many allocations/employees use it + day totals).
+  async getLeaveConfigUsage(configId: string): Promise<{
+    allocationsCount: number;
+    employeesCount: number;
+    totalAssigned: number;
+    totalUsed: number;
+    totalRemaining: number;
+  }> {
+    if (!configId) throw new Error("Leave configuration ID is required");
+    const allocations = await prisma.leaveAllocation.findMany({
+      where: { leaveConfigId: configId, isDeleted: null },
+      select: { employeeId: true, assignedDays: true, usedDays: true, remainingDays: true },
+    });
+    const employeeIds = new Set(allocations.map((a) => a.employeeId).filter(Boolean));
+    const totalAssigned = allocations.reduce((s, a) => s + (a.assignedDays || 0), 0);
+    const totalUsed = allocations.reduce((s, a) => s + (a.usedDays || 0), 0);
+    const totalRemaining = allocations.reduce(
+      (s, a) => s + (a.remainingDays ?? ((a.assignedDays || 0) - (a.usedDays || 0))),
+      0
+    );
+    return {
+      allocationsCount: allocations.length,
+      employeesCount: employeeIds.size,
+      totalAssigned,
+      totalUsed,
+      totalRemaining,
+    };
+  }
+
   // Get all leave configurations
   async getAllLeaveConfigurations(): Promise<LeaveConfiguration[]> {
     return await leaveConfigModel.leaveConfiguration.gpFindMany();

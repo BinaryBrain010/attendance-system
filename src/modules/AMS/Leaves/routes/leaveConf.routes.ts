@@ -66,7 +66,10 @@ class LeaveConfigRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/get', this.controller.getLeaveConfigurations.bind(this.controller));
-    
+
+    // 5c: usage summary for a single leave type (allocations/employees count + day totals).
+    this.router.post('/usage', this.controller.getLeaveConfigUsage.bind(this.controller));
+
     /**
      * @swagger
      * /leave/leave-configurations/create:

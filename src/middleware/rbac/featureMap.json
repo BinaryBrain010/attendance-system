@@ -1529,6 +1529,11 @@
     "feature": "leaveConfig.read.*",
     "kind": "read"
   },
+  "POST /leave/leave-configurations/usage": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
+  },
   "GET /leave/leave-configurations/getAll": {
     "access": "feature",
     "feature": "leaveConfig.read.*",

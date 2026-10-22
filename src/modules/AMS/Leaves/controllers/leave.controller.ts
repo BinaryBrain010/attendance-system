@@ -22,6 +22,12 @@ class LeaveController extends BaseController<LeaveService> {
     await this.handleRequest(operation, res, { successMessage });
   }
 
+  async getLeaveConfigUsage(req: Request, res: Response) {
+    const { id } = req.body;
+    const operation = () => this.service.getLeaveConfigUsage(id);
+    await this.handleRequest(operation, res, { successMessage: "Leave configuration usage retrieved successfully!" });
+  }
+
   async createLeaveConfiguration(req: Request, res: Response) {
     const leaveConfigData: LeaveConfiguration | LeaveConfiguration[] = req.body;
     const operation = () =>
