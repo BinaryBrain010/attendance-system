@@ -18,6 +18,16 @@ class HolidayController extends BaseController<HolidayService> {
     await this.handleRequest(operation, res, { successMessage: "Holidays retrieved successfully!" });
   }
 
+  async getHolidaysInRange(req: Request, res: Response) {
+    const from = (req.body?.from || req.query.from) as string;
+    const to = (req.body?.to || req.query.to) as string;
+    if (!from || !to) {
+      return res.status(400).json({ success: false, message: "from and to are required", statusCode: 400 });
+    }
+    const operation = () => this.service.getHolidaysInRange(from, to);
+    await this.handleRequest(operation, res, { successMessage: "Holidays retrieved successfully!" });
+  }
+
   async getDeletedHolidays(req: Request, res: Response) {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;

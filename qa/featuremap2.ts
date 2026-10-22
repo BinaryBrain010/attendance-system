@@ -108,6 +108,8 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /user/reactivate": { feature: "user.suspend.*", kind: "update", access: "feature", note: "reactivate a suspended user" },
   // Phase 5c: leave-type usage summary (read).
   "POST /leave/leave-configurations/usage": { feature: "leaveConfig.read.*", kind: "read", access: "feature", note: "usage summary for a leave type" },
+  // Phase 5d: holidays within a date range (month calendar).
+  "POST /holiday/range": { feature: "holiday.read.*", kind: "read", access: "feature", note: "holidays in a date range (calendar)" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

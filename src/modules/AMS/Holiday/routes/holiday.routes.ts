@@ -66,6 +66,9 @@ class HolidayRoutes {
      */
     this.router.get('/get', this.controller.getHolidays.bind(this.controller));
 
+    // 5d: holidays within a date range (month calendar view).
+    this.router.post('/range', this.controller.getHolidaysInRange.bind(this.controller));
+
     /**
      * @swagger
      * /holiday/getById:

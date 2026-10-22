@@ -725,6 +725,10 @@ enum RecurringRule {
 model Holiday {
   id              String    @id @default(uuid()) @db.VarChar(36)
   date            DateTime
+  endDate         DateTime? // 5d: optional range end (null = single day)
+  type            String    @default("PUBLIC") // PUBLIC | COMPANY | WEEKLY_OFF
+  recurring       Boolean   @default(false) // 5d: repeats yearly
+  unitIds         String[]  @default([]) // 5d: scope units (empty = all units)
   reason          String?
   description     String?
   isActive        Boolean   @default(true)

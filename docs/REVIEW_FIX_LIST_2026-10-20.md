@@ -140,9 +140,20 @@ gated by the export permission).
       description; applies-to = all active employees; usage summary via new POST
       /leave/leave-configurations/usage returning allocations/employees/day totals; Edit). Row-click opens
       the dialog on both the Allocation and Config lists.
-- [ ] 5d. Holidays: month calendar view; click date to add, click holiday to edit. Types public/
+- [x] 5d. Holidays: month calendar view; click date to add, click holiday to edit. Types public/
       company/weekly-off; all or selected units; date ranges; yearly recurring. "Mark Sundays" → a
       per-unit weekly-off rule if safe, else propose options first.
+      DONE: additive migration add_holiday_fields (type default PUBLIC, endDate, recurring, unitIds
+      text[] default '{}'). Month calendar (HolidayCalendar.tsx): click empty day → add prefilled,
+      click a holiday chip → edit; multi-day holidays render across their range; chips coloured by
+      type; Calendar/List toggle. Form gained Type, End date (range), Repeat-yearly, and a Units
+      multi-select (empty = all units). New POST /holiday/range (calendar fetch) + featureMap +
+      override. Mark Sundays now explains it creates WEEKLY_OFF holidays for every Sunday of the year
+      (all units) and points users to the unit-scoped "Weekly off" type for per-unit offs (propose-
+      options path). NOTE: unitIds is stored + surfaced in the UI but the attendance engine's holiday
+      checks (workHelpers.expectedReporters, employee holiday backfill) still treat holidays company-
+      wide — per-unit *enforcement* in attendance is intentionally left as a separate, careful change
+      (flagged in the deploy package) to avoid a risky cross-cutting edit to attendance calculations.
 - [ ] 5e. Unit detail: today stats strip (total, present, late, absent, on leave, not checked in,
       checked out), a "Today" tab (who is in/late/missing with times), status filter on employee cards.
 - [ ] 5f. Shift page: soft distinct colours per shift + schedule block. Assignments tab = employee

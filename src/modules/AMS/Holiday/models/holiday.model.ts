@@ -157,12 +157,36 @@ const holidayModel = prisma.$extends({
         });
       },
 
+      // 5d: holidays within a date range (for the month calendar). Active, not deleted. A row with
+      // an endDate spanning into the range is included.
+      async gpFindRange(this: any, from: Date, to: Date) {
+        return await prisma.holiday.findMany({
+          where: {
+            isDeleted: null,
+            OR: [
+              { date: { gte: from, lte: to } },
+              { endDate: { gte: from, lte: to } },
+              { AND: [{ date: { lte: from } }, { endDate: { gte: to } }] },
+            ],
+          },
+          orderBy: { date: 'asc' },
+        });
+      },
+
       async gpCreate(this: any, holidayData: any) {
         const { createdByUserId, ...remainingData } = holidayData;
-        
+
         // Normalize date to start of day
         const holidayDate = new Date(remainingData.date);
         holidayDate.setHours(0, 0, 0, 0);
+        // 5d: normalize optional range end
+        if (remainingData.endDate) {
+          const ed = new Date(remainingData.endDate);
+          ed.setHours(0, 0, 0, 0);
+          remainingData.endDate = ed;
+        } else {
+          remainingData.endDate = null;
+        }
 
         const data = await prisma.holiday.create({
           data: {
@@ -221,6 +245,16 @@ const holidayModel = prisma.$extends({
           const holidayDate = new Date(remainingData.date);
           holidayDate.setHours(0, 0, 0, 0);
           updateData.date = holidayDate;
+        }
+        // 5d: normalize optional range end
+        if (remainingData.endDate !== undefined) {
+          if (remainingData.endDate) {
+            const ed = new Date(remainingData.endDate);
+            ed.setHours(0, 0, 0, 0);
+            updateData.endDate = ed;
+          } else {
+            updateData.endDate = null;
+          }
         }
 
         // Update the holiday

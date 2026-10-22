@@ -1184,6 +1184,11 @@
     "feature": "holiday.read.*",
     "kind": "read"
   },
+  "POST /holiday/range": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
+  },
   "GET /holiday/getAll": {
     "access": "feature",
     "feature": "holiday.read.*",

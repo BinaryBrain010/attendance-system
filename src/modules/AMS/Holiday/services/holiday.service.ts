@@ -11,6 +11,13 @@ class HolidayService {
     return await holidayModel.holiday.gpPgFindMany(page, pageSize);
   }
 
+  // 5d: holidays within a date range (month calendar).
+  async getHolidaysInRange(from: string, to: string): Promise<Holiday[]> {
+    const f = new Date(from); f.setHours(0, 0, 0, 0);
+    const t = new Date(to); t.setHours(23, 59, 59, 999);
+    return await holidayModel.holiday.gpFindRange(f, t);
+  }
+
   async getDeletedHolidays(page: number, pageSize: number): Promise<paginatedData> {
     return await holidayModel.holiday.gpPgFindDeletedMany(page, pageSize);
   }
