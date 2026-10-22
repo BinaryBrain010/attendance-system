@@ -269,8 +269,13 @@ gated by the export permission).
 ## Round 2 (R1–R8) — 2026-10-23
 - [ ] R1. Attendance requests + leave requests: row → side drawer (full photo, employee, unit, type,
       reason, requested time, current attendance for that day, history; approve/reject with note inside).
-- [ ] R2. Wire PdfActions (View + Download) everywhere (quotation, invoice, delivery slip, employee
+- [x] R2. Wire PdfActions (View + Download) everywhere (quotation, invoice, delivery slip, employee
       print, attendance PDF, work report PDF, CRM report PDFs); remove raw-blob/window.print buttons.
+      DONE: PdfActions wired on quotation detail, order detail (invoice + delivery slip), CRM reports
+      (PDF; Excel kept), work reports (PDF; Excel kept), employee header print (POST /employee/getCard),
+      and the gate-pass list row + attendance export now go through the shared viewPdf/downloadPdf utils
+      (authed blob, ?disposition, proper filename) — no remaining raw-blob/window.open or window.print
+      PDF buttons. (Quick Pass reports export is CSV, left as-is.)
 - [ ] R3. Holidays per unit: attendance respects Holiday.unitIds (empty = all) + qa coverage. If too
       risky, hide the unit selector and explain.
 - [ ] R4. Unit scoping: employee + attendance lists filter by accessible units unless viewAll; no-unit
@@ -281,4 +286,7 @@ gated by the export permission).
       save last-used filters per user in preferences.
 - [ ] R7. Notification bell dropdown (latest 10, mark one/all read, click opens record, View all page
       with pagination); verify VISITOR/MENTION/TRANSFER/ASSIGN types.
-- [ ] R8. Image cleanup --apply: batches of 20, progress log, resumable (skip compressed), end summary.
+- [x] R8. Image cleanup --apply: batches of 20, progress log, resumable (skip compressed), end summary.
+      DONE: dryRunImageCompressAndRedact.ts --apply now processes in batches of 20 with a per-batch
+      progress line, skips already-compressed+thumbnailed rows (resumable), and prints an end summary
+      (done/skipped/failed/MB saved/elapsed). Not run against prod.
