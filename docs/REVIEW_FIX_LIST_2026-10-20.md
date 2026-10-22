@@ -211,8 +211,13 @@ gated by the export permission).
       options now carry code/sku (shown inline when present) and the full name wraps.
 
 ## Phase 8 — Work, notifications, personal settings
-- [ ] 8a. Work > Reports crashes ("Something went wrong") after "Completion report ready". Fix + remove
+- [x] 8a. Work > Reports crashes ("Something went wrong") after "Completion report ready". Fix + remove
       that toast.
+      DONE: every report render now null-guards its arrays/scalars ((data.byTeam||[]).map, data.overall?.done)
+      so a missing/empty field shows a "No data" state instead of throwing; the fetch has a .catch so a
+      failed request no longer sticks or crashes. The success-toast interceptor now treats the workReport
+      POST routes (completion/overdue/timeToComplete/workload/compliance/hours) as reads, so no
+      "…report ready" toast fires.
 - [ ] 8b. Notification sound on new notifications only (not on page load), toggle-able, respects
       autoplay rules.
 - [ ] 8c. Rename current "Settings" app (audit + configuration) → "Administration".
