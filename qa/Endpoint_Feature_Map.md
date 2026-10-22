@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-513 routes walked from the live routers. Real DB users counted: 176.
+529 routes walked from the live routers. Real DB users counted: 180.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,9 +11,9 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 10 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 16. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 19. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 176) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 180) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -21,7 +21,7 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | GET | /access/getUserGroup | read | token | `-` | - | - | internal permission check |
 | GET | /access/getUserRole | read | token | `-` | - | - | internal permission check |
 | GET | /activityLog/count | read | feature | `activityLog.read.*` | yes | 3 |  |
-| GET | /activityLog/get | read | feature | `activityLog.read.*` | yes | 3 |  |
+| GET | /activityLog/get | read | feature | `activityLog.export.*` | yes | 3 | bulk get-all; export only (UI uses paginated POST /get) |
 | POST | /activityLog/get | read | feature | `activityLog.read.*` | yes | 3 |  |
 | POST | /activityLog/getByEntity | read | feature | `activityLog.read.*` | yes | 3 |  |
 | POST | /activityLog/getById | read | feature | `activityLog.read.*` | yes | 3 |  |
@@ -69,12 +69,13 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /attendanceReq/create | self | self | `attendanceReq.create.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /attendanceReq/delete | delete | feature | `attendanceReq.delete.*` | yes | 4 |  |
 | GET | /attendanceReq/deleted | read | feature | `attendanceReq.read.*` | yes | 4 |  |
-| GET | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| GET | /attendanceReq/get | read | feature | `attendanceReq.export.*` | yes | 4 | bulk get-all; export only (UI uses paginated POST /get + /stats) |
 | POST | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 4 |  |
 | POST | /attendanceReq/getById | read | feature | `attendanceReq.read.*` | yes | 4 |  |
 | POST | /attendanceReq/getEmployee | self | self | `attendanceReq.read.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /attendanceReq/restore | restore | feature | `attendanceReq.restore.*` | yes | 4 |  |
 | POST | /attendanceReq/search | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| POST | /attendanceReq/stats | read | feature | `attendanceReq.read.*` | yes | 4 | aggregate status/monthly counts (SQL) |
 | GET | /attendanceReq/total | read | feature | `attendanceReq.read.*` | yes | 4 |  |
 | PUT | /attendanceReq/update | update | feature | `attendanceReq.update.*` | yes | 4 |  |
 | POST | /attendanceReq/updateStatus | approve | feature | `attendance.request.approve.*` | yes | 22 | covers approve and reject |
@@ -170,6 +171,7 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /dailyReport/submit | create | feature | `work.report.submit.*` | yes | 1 | own daily report |
 | POST | /employee/create | create | feature | `employee.create.*` | yes | 22 |  |
 | POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 22 |  |
+| GET | /employee/distinctFields | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/files | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/filesDel | update | feature | `employee.update.*` | yes | 22 |  |
 | GET | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
@@ -183,6 +185,9 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | GET | /employee/getFaceRecognitionData | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getHistoryById | history | feature | `employee.viewPreviousUpdate.*` | yes | 22 |  |
 | POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
+| POST | /employee/overview | read | feature | `employee.read.*` | yes | 22 |  |
+| GET | /employee/photo | read | feature | `employee.read.*` | yes | 22 |  |
+| GET | /employee/presentToday | read | feature | `employee.read.*` | yes | 22 | employees currently present |
 | POST | /employee/restore | restore | feature | `employee.restore.*` | yes | 22 |  |
 | POST | /employee/search | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/stats | read | feature | `employee.read.*` | yes | 22 |  |
@@ -197,22 +202,22 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /featurePermission/restore | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
 | PUT | /featurePermission/update | update | dynamic | `(dynamic) {parentType}.update.*` | - | - | parentType in body: user/role/group.update.* |
 | POST | /gatePass/approve | approve | feature | `voucher.post.*` | yes | 3 | feature QuickPass checks before approve |
-| POST | /gatePass/cancel | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/cancel | update | feature | `gatePass.cancel.*` | yes | 1 | cancel a gate pass |
 | POST | /gatePass/create | create | feature | `voucher.create.*` | yes | 3 |  |
 | POST | /gatePass/customerId | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/date | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/delete | delete | feature | `voucher.delete.*` | yes | 3 |  |
-| POST | /gatePass/dispatch | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/dispatch | update | feature | `gatePass.dispatch.*` | yes | 1 | dispatch a gate pass |
 | GET | /gatePass/get | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/get | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/getById | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/getDeleted | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/itemId | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/pdf | export | feature | `voucher.pdf.*` | yes | 3 |  |
-| POST | /gatePass/reject | approve | feature | `voucher.approve.*` | NO | 3 |  |
+| POST | /gatePass/reject | update | feature | `gatePass.reject.*` | yes | 1 | reject a gate pass |
 | GET | /gatePass/report | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/restore | restore | feature | `voucher.restore.*` | yes | 3 |  |
-| POST | /gatePass/return | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/return | update | feature | `gatePass.return.*` | yes | 1 | return/close a gate pass |
 | POST | /gatePass/status | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/statusHistory | read | feature | `voucher.read.*` | yes | 3 |  |
 | GET | /gatePass/total | read | feature | `voucher.read.*` | yes | 3 |  |
@@ -252,24 +257,25 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | GET | /holiday/getById | read | feature | `holiday.read.*` | yes | 3 |  |
 | POST | /holiday/getHistoryById | history | feature | `holiday.viewPreviousUpdate.*` | yes | 3 |  |
 | POST | /holiday/markSundays | create | feature | `holiday.markSundays.*` | yes | 3 |  |
+| POST | /holiday/range | read | feature | `holiday.read.*` | yes | 3 | holidays in a date range (calendar) |
 | POST | /holiday/restore | restore | feature | `holiday.restore.*` | yes | 3 |  |
 | POST | /holiday/search | read | feature | `holiday.read.*` | yes | 3 |  |
 | GET | /holiday/total | read | feature | `holiday.read.*` | yes | 3 |  |
 | PUT | /holiday/update | update | feature | `holiday.update.*` | yes | 3 |  |
 | GET | /insights/catalog | read | feature | `analytics.read.*` | yes | 38 |  |
-| POST | /insights/customWidget/delete | write | feature | `analytics.customWidget.*` | NO | 38 |  |
+| POST | /insights/customWidget/delete | write | feature | `analytics.customWidget.*` | yes | 38 |  |
 | GET | /insights/customWidget/list | read | feature | `analytics.read.*` | yes | 38 |  |
 | GET | /insights/customWidget/meta | read | feature | `analytics.read.*` | yes | 38 |  |
-| POST | /insights/customWidget/preview | write | feature | `analytics.customWidget.*` | NO | 38 |  |
-| POST | /insights/customWidget/save | write | feature | `analytics.customWidget.*` | NO | 38 |  |
-| POST | /insights/dashboard/create | write | feature | `analytics.dashboard.*` | NO | 38 |  |
-| POST | /insights/dashboard/delete | write | feature | `analytics.dashboard.*` | NO | 38 |  |
-| POST | /insights/dashboard/duplicate | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/customWidget/preview | write | feature | `analytics.customWidget.*` | yes | 38 |  |
+| POST | /insights/customWidget/save | write | feature | `analytics.customWidget.*` | yes | 38 |  |
+| POST | /insights/dashboard/create | write | feature | `analytics.dashboard.*` | yes | 38 |  |
+| POST | /insights/dashboard/delete | write | feature | `analytics.dashboard.*` | yes | 38 |  |
+| POST | /insights/dashboard/duplicate | write | feature | `analytics.dashboard.*` | yes | 38 |  |
 | POST | /insights/dashboard/get | read | feature | `analytics.read.*` | yes | 38 |  |
 | GET | /insights/dashboard/list | read | feature | `analytics.read.*` | yes | 38 |  |
-| POST | /insights/dashboard/setHome | write | feature | `analytics.dashboard.*` | NO | 38 |  |
-| POST | /insights/dashboard/share | write | feature | `analytics.dashboard.*` | NO | 38 |  |
-| POST | /insights/dashboard/update | write | feature | `analytics.dashboard.*` | NO | 38 |  |
+| POST | /insights/dashboard/setHome | write | feature | `analytics.dashboard.*` | yes | 38 |  |
+| POST | /insights/dashboard/share | write | feature | `analytics.dashboard.*` | yes | 38 |  |
+| POST | /insights/dashboard/update | write | feature | `analytics.dashboard.*` | yes | 38 |  |
 | POST | /insights/widget/data | read | feature | `analytics.read.*` | yes | 38 |  |
 | POST | /item/create | create | feature | `item.create.*` | yes | 3 |  |
 | POST | /item/delete | delete | feature | `item.delete.*` | yes | 3 |  |
@@ -291,9 +297,11 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/import | import | feature | `crm.lead.import.*` | yes | 1 | lead register CSV import (dry-run default) |
+| POST | /lead/mentionables | read | feature | `crm.lead.read.own.*` | yes | 3 | users the caller may @mention (team, or everyone for managers) |
 | POST | /lead/restore | restore | feature | `crm.lead.restore.*` | yes | 1 |  |
 | POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
+| POST | /lead/transfer | update | feature | `crm.lead.transfer.*` | yes | 1 | transfer lead to another agent in the team (reason required) |
 | POST | /lead/transition | update | feature | `crm.lead.transition.*` | yes | 3 | server-enforced stage change |
 | PUT | /lead/update | update | feature | `crm.lead.update.*` | yes | 3 |  |
 | POST | /leadActivity/byLead | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
@@ -322,6 +330,7 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /leave/leave-configurations/search | read | feature | `leaveConfig.read.*` | yes | 4 |  |
 | GET | /leave/leave-configurations/total | read | feature | `leaveConfig.read.*` | yes | 4 |  |
 | PUT | /leave/leave-configurations/update | update | feature | `leaveConfig.update.*` | yes | 4 |  |
+| POST | /leave/leave-configurations/usage | read | feature | `leaveConfig.read.*` | yes | 4 | usage summary for a leave type |
 | POST | /leave/leave-requests/create | self | self | `leaveReq.create.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /leave/leave-requests/delete | delete | feature | `leaveReq.delete.*` | yes | 4 |  |
 | GET | /leave/leave-requests/deleted | read | feature | `leaveReq.read.*` | yes | 4 |  |
@@ -362,6 +371,7 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /role/search | read | feature | `role.read.*` | yes | 2 |  |
 | GET | /role/total | read | feature | `role.read.*` | yes | 2 |  |
 | PUT | /role/update | update | feature | `role.update.*` | yes | 2 |  |
+| POST | /salesAgent/activity | read | feature | `crm.agent.read.*` | yes | 3 |  |
 | POST | /salesAgent/create | create | feature | `crm.agent.create.*` | yes | 1 |  |
 | POST | /salesAgent/delete | delete | feature | `crm.agent.delete.*` | yes | 1 |  |
 | POST | /salesAgent/get | read | feature | `crm.agent.read.*` | yes | 3 |  |
@@ -479,8 +489,13 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /user/impersonate | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/impersonate/exit | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/linkEmployee | read | feature | `user.read.*` | yes | 2 |  |
+| GET | /user/me | read | token | `-` | - | - | own profile for the Me app |
+| GET | /user/preferences | read | token | `-` | - | - | own preferences |
+| POST | /user/preferences | update | token | `-` | - | - | save own preferences |
+| POST | /user/reactivate | update | feature | `user.suspend.*` | yes | 2 | reactivate a suspended user |
 | POST | /user/restore | restore | feature | `user.delete.*` | yes | 2 | restore mapped to delete feature |
 | POST | /user/search | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/suspend | update | feature | `user.suspend.*` | yes | 2 | suspend a user |
 | GET | /user/total | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/unlinkedEmployees | read | feature | `user.read.*` | yes | 2 |  |
 | PUT | /user/update | update | feature | `user.update.*` | yes | 2 |  |
@@ -498,6 +513,7 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /userRole/getByUserId | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /userRole/restore | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
 | PUT | /userRole/update | update | feature | `user.update.*` | yes | 2 | assigning roles/groups to a user |
+| POST | /visitor/attend | update | feature | `visitor.update.*` | yes | 1 | mark a visit attended |
 | POST | /visitor/checkout | update | feature | `visitor.checkout.*` | yes | 1 |  |
 | POST | /visitor/create | create | feature | `visitor.create.*` | yes | 1 |  |
 | POST | /visitor/delete | delete | feature | `visitor.delete.*` | yes | 1 |  |
@@ -505,7 +521,7 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /visitor/excel | export | feature | `visitor.export.*` | yes | 1 |  |
 | POST | /visitor/filtered | read | feature | `visitor.read.*` | yes | 1 |  |
 | GET | /visitor/get | read | feature | `visitor.read.*` | yes | 1 |  |
-| GET | /visitor/getAll | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/getAll | read | feature | `visitor.export.*` | yes | 1 | bulk get-all; export only (UI uses paginated GET /visitor/get) |
 | GET | /visitor/getById | read | feature | `visitor.read.*` | yes | 1 |  |
 | POST | /visitor/getHistoryById | history | feature | `visitor.viewPreviousUpdate.*` | yes | 1 |  |
 | POST | /visitor/import | import | feature | `visitor.import.*` | yes | 1 |  |
@@ -528,16 +544,3 @@ Proposed features not yet registered: 10 (all mapped features exist in the DB). 
 | POST | /workReport/overdue | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /workReport/timeToComplete | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /workReport/workload | read | feature | `work.task.read.own.*` | yes | 1 | scope from read.{own,team,all}.* leaf (cumulative) |
-
-## Not-yet-registered proposed features
-
-- `voucher.approve.*` (POST /gatePass/reject)
-- `analytics.customWidget.*` (POST /insights/customWidget/delete)
-- `analytics.customWidget.*` (POST /insights/customWidget/preview)
-- `analytics.customWidget.*` (POST /insights/customWidget/save)
-- `analytics.dashboard.*` (POST /insights/dashboard/create)
-- `analytics.dashboard.*` (POST /insights/dashboard/delete)
-- `analytics.dashboard.*` (POST /insights/dashboard/duplicate)
-- `analytics.dashboard.*` (POST /insights/dashboard/setHome)
-- `analytics.dashboard.*` (POST /insights/dashboard/share)
-- `analytics.dashboard.*` (POST /insights/dashboard/update)

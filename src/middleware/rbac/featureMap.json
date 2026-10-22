@@ -279,11 +279,6 @@
     "feature": "attendanceReq.read.*",
     "kind": "read"
   },
-  "POST /attendanceReq/stats": {
-    "access": "feature",
-    "feature": "attendanceReq.read.*",
-    "kind": "read"
-  },
   "POST /attendanceReq/getById": {
     "access": "feature",
     "feature": "attendanceReq.read.*",
@@ -300,6 +295,11 @@
     "kind": "restore"
   },
   "POST /attendanceReq/search": {
+    "access": "feature",
+    "feature": "attendanceReq.read.*",
+    "kind": "read"
+  },
+  "POST /attendanceReq/stats": {
     "access": "feature",
     "feature": "attendanceReq.read.*",
     "kind": "read"
@@ -779,6 +779,11 @@
     "feature": "employee.delete.*",
     "kind": "delete"
   },
+  "GET /employee/distinctFields": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "POST /employee/files": {
     "access": "feature",
     "feature": "employee.read.*",
@@ -844,6 +849,21 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "POST /employee/overview": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "GET /employee/photo": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "GET /employee/presentToday": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "POST /employee/restore": {
     "access": "feature",
     "feature": "employee.restore.*",
@@ -855,26 +875,6 @@
     "kind": "read"
   },
   "POST /employee/stats": {
-    "access": "feature",
-    "feature": "employee.read.*",
-    "kind": "read"
-  },
-  "GET /employee/distinctFields": {
-    "access": "feature",
-    "feature": "employee.read.*",
-    "kind": "read"
-  },
-  "GET /employee/presentToday": {
-    "access": "feature",
-    "feature": "employee.read.*",
-    "kind": "read"
-  },
-  "POST /employee/overview": {
-    "access": "feature",
-    "feature": "employee.read.*",
-    "kind": "read"
-  },
-  "GET /employee/photo": {
     "access": "feature",
     "feature": "employee.read.*",
     "kind": "read"
@@ -1189,11 +1189,6 @@
     "feature": "holiday.read.*",
     "kind": "read"
   },
-  "POST /holiday/range": {
-    "access": "feature",
-    "feature": "holiday.read.*",
-    "kind": "read"
-  },
   "GET /holiday/getAll": {
     "access": "feature",
     "feature": "holiday.read.*",
@@ -1213,6 +1208,11 @@
     "access": "feature",
     "feature": "holiday.markSundays.*",
     "kind": "create"
+  },
+  "POST /holiday/range": {
+    "access": "feature",
+    "feature": "holiday.read.*",
+    "kind": "read"
   },
   "POST /holiday/restore": {
     "access": "feature",
@@ -1374,16 +1374,6 @@
     "feature": "crm.lead.assign.*",
     "kind": "update"
   },
-  "POST /lead/transfer": {
-    "access": "feature",
-    "feature": "crm.lead.transfer.*",
-    "kind": "update"
-  },
-  "POST /lead/mentionables": {
-    "access": "feature",
-    "feature": "crm.lead.read.own.*",
-    "kind": "read"
-  },
   "POST /lead/create": {
     "access": "feature",
     "feature": "crm.lead.create.*",
@@ -1419,6 +1409,11 @@
     "feature": "crm.lead.import.*",
     "kind": "import"
   },
+  "POST /lead/mentionables": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
   "POST /lead/restore": {
     "access": "feature",
     "feature": "crm.lead.restore.*",
@@ -1433,6 +1428,11 @@
     "access": "feature",
     "feature": "crm.lead.read.own.*",
     "kind": "read"
+  },
+  "POST /lead/transfer": {
+    "access": "feature",
+    "feature": "crm.lead.transfer.*",
+    "kind": "update"
   },
   "POST /lead/transition": {
     "access": "feature",
@@ -1539,11 +1539,6 @@
     "feature": "leaveConfig.read.*",
     "kind": "read"
   },
-  "POST /leave/leave-configurations/usage": {
-    "access": "feature",
-    "feature": "leaveConfig.read.*",
-    "kind": "read"
-  },
   "GET /leave/leave-configurations/getAll": {
     "access": "feature",
     "feature": "leaveConfig.read.*",
@@ -1578,6 +1573,11 @@
     "access": "feature",
     "feature": "leaveConfig.update.*",
     "kind": "update"
+  },
+  "POST /leave/leave-configurations/usage": {
+    "access": "feature",
+    "feature": "leaveConfig.read.*",
+    "kind": "read"
   },
   "POST /leave/leave-requests/create": {
     "access": "self",
@@ -1779,6 +1779,11 @@
     "feature": "role.update.*",
     "kind": "update"
   },
+  "POST /salesAgent/activity": {
+    "access": "feature",
+    "feature": "crm.agent.read.*",
+    "kind": "read"
+  },
   "POST /salesAgent/create": {
     "access": "feature",
     "feature": "crm.agent.create.*",
@@ -1820,11 +1825,6 @@
     "kind": "read"
   },
   "POST /salesAgent/stats": {
-    "access": "feature",
-    "feature": "crm.agent.read.*",
-    "kind": "read"
-  },
-  "POST /salesAgent/activity": {
     "access": "feature",
     "feature": "crm.agent.read.*",
     "kind": "read"
@@ -2324,16 +2324,6 @@
     "feature": "user.delete.*",
     "kind": "delete"
   },
-  "POST /user/suspend": {
-    "access": "feature",
-    "feature": "user.suspend.*",
-    "kind": "update"
-  },
-  "POST /user/reactivate": {
-    "access": "feature",
-    "feature": "user.suspend.*",
-    "kind": "update"
-  },
   "GET /user/get": {
     "access": "feature",
     "feature": "user.read.*",
@@ -2359,21 +2349,6 @@
     "feature": "-",
     "kind": "read"
   },
-  "GET /user/me": {
-    "access": "token",
-    "feature": "-",
-    "kind": "read"
-  },
-  "GET /user/preferences": {
-    "access": "token",
-    "feature": "-",
-    "kind": "read"
-  },
-  "POST /user/preferences": {
-    "access": "token",
-    "feature": "-",
-    "kind": "update"
-  },
   "GET /user/getNonAssociatedUsers": {
     "access": "feature",
     "feature": "user.read.*",
@@ -2394,6 +2369,26 @@
     "feature": "user.read.*",
     "kind": "read"
   },
+  "GET /user/me": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /user/preferences": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "POST /user/preferences": {
+    "access": "token",
+    "feature": "-",
+    "kind": "update"
+  },
+  "POST /user/reactivate": {
+    "access": "feature",
+    "feature": "user.suspend.*",
+    "kind": "update"
+  },
   "POST /user/restore": {
     "access": "feature",
     "feature": "user.delete.*",
@@ -2403,6 +2398,11 @@
     "access": "feature",
     "feature": "user.read.*",
     "kind": "read"
+  },
+  "POST /user/suspend": {
+    "access": "feature",
+    "feature": "user.suspend.*",
+    "kind": "update"
   },
   "GET /user/total": {
     "access": "feature",
@@ -2489,14 +2489,14 @@
     "feature": "user.update.*",
     "kind": "update"
   },
-  "POST /visitor/checkout": {
-    "access": "feature",
-    "feature": "visitor.checkout.*",
-    "kind": "update"
-  },
   "POST /visitor/attend": {
     "access": "feature",
     "feature": "visitor.update.*",
+    "kind": "update"
+  },
+  "POST /visitor/checkout": {
+    "access": "feature",
+    "feature": "visitor.checkout.*",
     "kind": "update"
   },
   "POST /visitor/create": {
