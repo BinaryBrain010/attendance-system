@@ -204,8 +204,11 @@ gated by the export permission).
       reports 3704 visitors → "HEAD OFFICE".
 
 ## Phase 7 — Quick Pass
-- [ ] 7a. Items table picker too narrow: widen column, show name+code in full (wrap), dropdown wider
+- [x] 7a. Items table picker too narrow: widen column, show name+code in full (wrap), dropdown wider
       than the cell.
+      DONE: Item column widened 260→340px; Combobox gained additive `wrapOptions` (labels/sub wrap
+      instead of truncating) and `menuClassName` (dropdown min-w-[420px], wider than the cell). Item
+      options now carry code/sku (shown inline when present) and the full name wraps.
 
 ## Phase 8 — Work, notifications, personal settings
 - [ ] 8a. Work > Reports crashes ("Something went wrong") after "Completion report ready". Fix + remove
