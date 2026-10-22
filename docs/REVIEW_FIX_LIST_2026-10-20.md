@@ -162,8 +162,13 @@ gated by the export permission).
       + employee cards (LazyPhoto, status badge, check-in/out times) merging the unit roster with
       today's rows (so unmarked employees show as "Not marked") + a status filter (All/Present/Late/
       On leave/Not checked in/Checked out).
-- [ ] 5f. Shift page: soft distinct colours per shift + schedule block. Assignments tab = employee
+- [x] 5f. Shift page: soft distinct colours per shift + schedule block. Assignments tab = employee
       cards with photos. Assign dialog lists only active employees.
+      DONE: soft deterministic per-shift colour (shiftColor helper) shown as a dot on the shifts list
+      and the detail header badge; schedule blocks already carry soft type colours (WORK emerald /
+      BREAK amber / CUSTOM slate). Assignment rows now show LazyPhoto avatars. Assign dialog filters to
+      active employees (excludes resigned/fired/terminated/inactive/suspended) — gpFindFilterMany now
+      also selects `status` so the client can filter (it already dropped RESIGNED/FIRE server-side).
 - [x] 5g. Photo endpoint `GET /employee/:id/photo?size=thumb` with stored thumbnail, cached. Lazy
       photos everywhere with initials fallback. (DEFERRED here by design.)
 - [ ] 5h. Mark Attendance: method selector = one row of small tabs; scanner/form shows directly with

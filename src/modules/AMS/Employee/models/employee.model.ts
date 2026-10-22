@@ -105,6 +105,7 @@ const employeeModel = prisma.$extends({
             code: true,
             surname: true,
             name: true,
+            status: true, // 5f: lets callers (e.g. shift assign dialog) filter to active employees
           },
         });
 
