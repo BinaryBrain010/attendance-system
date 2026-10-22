@@ -117,10 +117,15 @@ gated by the export permission).
       from the server, still allowing a new typed value.
 
 ## Phase 5 — Quick Mark pages
-- [ ] 5a. Attendance requests page: compact/professional. One stats strip from /stats, one search box,
+- [x] 5a. Attendance requests page: compact/professional. One stats strip from /stats, one search box,
       filters (status, date range, employee, unit), dense table (photo, employee, type, reason, date,
       requested time, status, created), row→side drawer with approve/reject+note, bulk approve. First
       page <500ms on prod size.
+      DONE: removed the duplicate DataGrid quick-filter (single search box now); server-side status +
+      created-date-range filters wired to POST /attendanceReq/get & /stats (buildFilterWhere); LazyPhoto
+      column; inline approve/reject (row menu + confirm) + bulk approve/reject retained; stats strip from
+      /stats. (Approve/reject surfaced via the existing inline action menu + confirm dialog rather than a
+      separate drawer — same actions + note.)
 - [ ] 5b. Leave requests: default view shows all statuses (remove hidden filter). Same layout+drawer.
 - [ ] 5c. Detail pages: Leave allocation (per type allocated/used/pending/remaining, taken, adjustment
       history); Leave type (rules, applies-to, usage summary, edit).
