@@ -364,6 +364,7 @@ class EmployeeRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.get('/total', this.controller.getTotalEmployees.bind(this.controller));
+    this.router.get('/distinctFields', this.controller.getDistinctFields.bind(this.controller));
     
     /**
      * @swagger

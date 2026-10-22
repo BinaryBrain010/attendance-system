@@ -171,6 +171,18 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     return await employeeModel.employee.gpCount();
   }
 
+  /** 4g: distinct existing designations + departments (for the Create/Edit Staff comboboxes). */
+  async getDistinctFields(): Promise<{ designations: string[]; departments: string[] }> {
+    const [desig, dept] = await Promise.all([
+      prisma.employee.findMany({ where: { isDeleted: null, designation: { not: "" } }, select: { designation: true }, distinct: ["designation"], orderBy: { designation: "asc" } }),
+      prisma.employee.findMany({ where: { isDeleted: null, department: { not: "" } }, select: { department: true }, distinct: ["department"], orderBy: { department: "asc" } }),
+    ]);
+    return {
+      designations: desig.map((d) => d.designation).filter((x): x is string => !!x),
+      departments: dept.map((d) => d.department).filter((x): x is string => !!x),
+    };
+  }
+
   async getEmployeesForFaceRecognition(): Promise<EmployeeFaceRecognitionData[]> {
     const employees = await employeeModel.employee.gpFindMany({
       

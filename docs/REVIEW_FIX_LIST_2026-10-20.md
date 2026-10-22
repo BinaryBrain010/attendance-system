@@ -105,15 +105,15 @@ gated by the export permission).
       re-entrancy guard so a slow run can't overlap the next tick (runs once per tick).
 
 ## Phase 4 — Quick Mark small fixes
-- [ ] 4a. Remove `/ams` landing page; redirect to employees list.
+- [x] 4a. Remove `/ams` landing page; redirect to employees list.
 - [ ] 4b. Employee detail: linked user (username, roles, last login, status, link), team + team lead,
       assigned tasks, linked sales agent, recent daily reports.
 - [ ] 4c. "Update Record Details" dialog: names not ids, friendly labels, formatted dates, clean
       old→new table. One shared component.
-- [ ] 4d. Attendance page: rename "Add Attendance" → "Mark Attendance".
-- [ ] 4e. Employee filter dialog has two close icons — keep one.
-- [ ] 4f. Date pickers inside dialogs open behind the dialog — fix globally.
-- [ ] 4g. Create/Edit Staff: Designation + Department become comboboxes of existing distinct values
+- [x] 4d. Attendance page: rename "Add Attendance" → "Mark Attendance".
+- [x] 4e. Employee filter dialog has two close icons — keep one.
+- [x] 4f. Date pickers inside dialogs open behind the dialog — fix globally.
+- [x] 4g. Create/Edit Staff: Designation + Department become comboboxes of existing distinct values
       from the server, still allowing a new typed value.
 
 ## Phase 5 — Quick Mark pages

@@ -859,6 +859,11 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "GET /employee/distinctFields": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "GET /employee/total": {
     "access": "feature",
     "feature": "employee.read.*",
