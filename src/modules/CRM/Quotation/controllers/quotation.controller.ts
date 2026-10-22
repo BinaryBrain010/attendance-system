@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import QuotationService from "../services/quotation.service";
 import { QuotationPDF } from "../../../../pdf/quotation";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 import { canSeeCost, stripCost } from "../../shared/cost";
 
 class QuotationController extends BaseController<QuotationService> {
@@ -95,7 +96,7 @@ class QuotationController extends BaseController<QuotationService> {
       const q = await this.service.forPdf(uid, String(id));
       const doc = this.pdf.generate(q);
       doc.getBuffer((buffer: Buffer) => {
-        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${q.quotationNo}-v${q.version}.pdf"` });
+        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `${q.quotationNo}-v${q.version}.pdf`) });
         res.end(buffer);
       });
     } catch (err: any) {

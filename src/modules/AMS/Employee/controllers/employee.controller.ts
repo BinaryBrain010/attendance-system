@@ -5,6 +5,7 @@ import { Employee } from "../types/employee";
 import path from "path";
 import { EmployeePDF } from "../../../../pdf/employee";
 import { EmployeeExcelUtility } from "../../../../excel/employee";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 class EmployeeController extends BaseController<EmployeeService> {
   protected service = new EmployeeService();
   private pdfUtility: EmployeePDF = new EmployeePDF();
@@ -107,9 +108,7 @@ class EmployeeController extends BaseController<EmployeeService> {
           if (buffer) {
             res.writeHead(200, {
               "Content-Type": "application/pdf",
-              "Content-Disposition": `attachment; filename=${encodeURIComponent(
-                data.name
-              )}.pdf`,
+              "Content-Disposition": pdfContentDisposition(req, `Employee-${data.code || data.name}_${new Date().toISOString().slice(0, 10)}.pdf`),
               "Content-Length": buffer.length,
             });
             res.end(buffer);

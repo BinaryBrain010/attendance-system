@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import BaseController from "../../../../core/controllers/base.controller";
 import WorkReportService from "../services/workReport.service";
 import { ReportPDF } from "../../../../pdf/report";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 
 const pdf = new ReportPDF();
 const uid = (req: Request) => (req as any).userId as string;
@@ -57,7 +58,7 @@ class WorkReportController extends BaseController<WorkReportService> {
       if (format === "pdf") {
         const doc = pdf.generate(title, columns, rows);
         return doc.getBuffer((buf: Buffer) => {
-          res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="work_${report}.pdf"` });
+          res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `work_${report}_${new Date().toISOString().slice(0, 10)}.pdf`) });
           res.end(buf);
         });
       }

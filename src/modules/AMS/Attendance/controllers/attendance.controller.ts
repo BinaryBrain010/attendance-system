@@ -6,6 +6,7 @@ import AttendanceService from "../services/attendnace.service";
 import { logActivityFromRequest } from "../../../ActivityLog/helper/activityLog.helper";
 import { AttendanceExcelUtility } from "../../../../excel/attendance";
 import { AttendancePDF } from "../../../../pdf/attendance";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 
 class AttendanceController extends BaseController<AttendanceService> {
   protected service = new AttendanceService();
@@ -131,7 +132,7 @@ class AttendanceController extends BaseController<AttendanceService> {
           if (buffer) {
             res.writeHead(200, {
               "Content-Type": "application/pdf",
-              "Content-Disposition": `attachment; filename=Attendance-Report-${currentDate}.pdf`,
+              "Content-Disposition": pdfContentDisposition(req, `Attendance-Report-${currentDate}.pdf`),
               "Content-Length": buffer.length,
             });
             res.end(buffer);

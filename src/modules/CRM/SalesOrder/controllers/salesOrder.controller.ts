@@ -3,6 +3,7 @@ import BaseController from "../../../../core/controllers/base.controller";
 import SalesOrderService from "../services/salesOrder.service";
 import { canSeeCost, stripCost } from "../../shared/cost";
 import { OrderPDF } from "../../../../pdf/order";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 
 class SalesOrderController extends BaseController<SalesOrderService> {
   protected service = new SalesOrderService();
@@ -16,7 +17,7 @@ class SalesOrderController extends BaseController<SalesOrderService> {
       if (!o) return res.status(404).json({ success: false, message: "Order not found or out of scope" });
       const doc = kind === "invoice" ? this.pdf.invoice(o) : this.pdf.deliverySlip(o);
       doc.getBuffer((buffer: Buffer) => {
-        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${o.orderNo}-${kind}.pdf"` });
+        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `${o.orderNo}-${kind}.pdf`) });
         res.end(buffer);
       });
     } catch (err: any) {

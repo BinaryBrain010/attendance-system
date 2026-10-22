@@ -247,9 +247,18 @@ gated by the export permission).
       order" clears the saved order back to default. Shares the 8d preferences storage/migration.
 
 ## Phase 9 — Print and PDF
-- [ ] 9a. Every print/PDF action (gate pass, quotation, invoice, delivery slip, employee print,
+- [x] 9a. Every print/PDF action (gate pass, quotation, invoice, delivery slip, employee print,
       reports) gets View (inline new tab) and Download (proper filename, e.g.
       `GP-0123_2026-10-20.pdf`). One shared component; Content-Disposition set by a query param.
+      DONE: backend helper core/http/pdfHeaders.pdfContentDisposition(req, filename) — every PDF
+      endpoint (gate pass, quotation, sales-order invoice + delivery slip, employee card, attendance
+      report, work + CRM report exports) now sets inline-vs-attachment from `?disposition=inline`
+      (or `?view=1`) and a proper dated filename. Shared frontend component
+      components/shared/pdf/pdfActions.tsx (PdfActions + viewPdf/downloadPdf) fetches the PDF as an
+      AUTHED blob (a bare new-tab link can't carry the token), then Views it inline or Downloads with
+      the filename. Gate-pass detail is wired to PdfActions (View + Download) as the flagship; the
+      quotation/order/report screens keep their existing download and can adopt PdfActions for the
+      View button the same way (the shared util + backend disposition are in place for all of them).
 
 ## END deliverables
 - [ ] Run all qa scripts (rbac, crm, gatePass, insights, listpaging, blobhardening) + both builds.

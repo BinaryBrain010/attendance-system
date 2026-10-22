@@ -4,6 +4,7 @@ import BaseController from "../../../../core/controllers/base.controller";
 import ReportService from "../services/report.service";
 import { ReportPDF } from "../../../../pdf/report";
 import { canSeeCost, stripCost } from "../../shared/cost";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 import { ForbiddenError } from "../../../../core/errors/app.error";
 import { logEvent } from "../../../../core/audit/event";
 
@@ -55,7 +56,7 @@ class ReportController extends BaseController<ReportService> {
       if (format === "pdf") {
         const doc = pdf.generate(title, columns, rows, subtitle);
         return doc.getBuffer((buf: Buffer) => {
-          res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="crm_${report}.pdf"` });
+          res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `crm_${report}_${new Date().toISOString().slice(0, 10)}.pdf`) });
           res.end(buf);
         });
       }

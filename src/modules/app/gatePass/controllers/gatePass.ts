@@ -3,6 +3,7 @@ import BaseController from "../../../../core/controllers/base.controller";
 import GatePassService from "../services/gatePass.service";
 import { GatePass } from "../../../../types/schema";
 import { GatePassPDF } from "../../../../pdf/gatePass";
+import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 import { DetailedGatePass } from "../../../../types/paginatedData";
 import { CreateGatePassItem } from "../../../../types/schema";
 import GatePassWorkflowService, { TransitionAction } from "../services/gatePassWorkflow.service";
@@ -140,11 +141,10 @@ class GatePassController extends BaseController<GatePassService> {
       const pdfBuffer = await this.pdfUtility.generateGatePassPDF(data);
 
       if (pdfBuffer) {
+        const fname = `GatePass-${(data as any).voucherNo || data.customername || id}_${new Date().toISOString().slice(0, 10)}.pdf`;
         res.writeHead(200, {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename=${encodeURIComponent(
-            data.customername
-          )}.pdf`,
+          "Content-Disposition": pdfContentDisposition(req as any, fname),
           "Content-Length": pdfBuffer.length,
         });
         res.end(pdfBuffer);
