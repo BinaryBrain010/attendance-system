@@ -92,6 +92,26 @@ async function createUserForEmployee(employeeId: string, name: string, surname: 
 const employeeModel = prisma.$extends({
   model: {
     employee: {
+      // 6a: employees present right now — have a check-in today with no check-out yet.
+      async gpFindPresentToday(this: any) {
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        const rows: any[] = await prisma.$queryRawUnsafe(
+          `SELECT DISTINCT e.id, e.code, e.name, e.surname, e.designation, e.department
+           FROM "Employee" e
+           JOIN "Attendance" a ON a."employeeId" = e.id
+           WHERE e."isDeleted" IS NULL
+             AND a."isDeleted" IS NULL
+             AND a.date >= $1 AND a.date <= $2
+             AND a."checkIn" IS NOT NULL
+             AND a."checkOut" IS NULL
+           ORDER BY e.name ASC`,
+          start,
+          end
+        );
+        return rows;
+      },
+
       async gpFindFilterMany(this: any) {
         const data = await this.findMany({
           where: {

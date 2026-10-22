@@ -357,6 +357,11 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Distinct fields retrieved successfully!" });
   }
 
+  async getPresentToday(req: Request, res: Response) {
+    const operation = () => this.service.getPresentTodayEmployees();
+    await this.handleRequest(operation, res, { successMessage: "Present employees retrieved successfully!" });
+  }
+
   async getHistoryById(req: Request, res: Response) {
     const { id, filter, date } = req.body;
     

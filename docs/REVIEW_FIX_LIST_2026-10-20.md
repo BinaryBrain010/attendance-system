@@ -182,12 +182,26 @@ gated by the export permission).
       the content is full width, so the page fits one screen at 1080p.
 
 ## Phase 6 — Frontdesk
-- [ ] 6a. "Referred To" suggests only employees present today (checked in, not out). Free text allowed.
-- [ ] 6b. Referred employee notified at once (bell + sound), can mark visit "Attended" with a note.
+- [x] 6a. "Referred To" suggests only employees present today (checked in, not out). Free text allowed.
+      DONE: new GET /employee/presentToday (checked in today, no check-out). The visitor form's
+      "Referred To" autocomplete now suggests from that list (filtered client-side as you type); the
+      free-text referredToText fallback is unchanged.
+- [x] 6b. Referred employee notified at once (bell + sound), can mark visit "Attended" with a note.
       Store referredAt, attendedAt, attendedBy; show wait time; add "Waiting" filter.
-- [ ] 6c. Frontdesk per unit: visitor belongs to a unit (default user's unit). Unit column + filter.
+      DONE: migration add_visitor_referral_unit (referredAt/attendedAt/attendedBy/attendedNote). On
+      create with a referred host, referredAt is stamped and the host's linked user gets a "VISITOR"
+      notification (bell; sound is 8b). New POST /visitor/attend sets attendedAt/attendedBy/note. The
+      list shows a Visit cell: "Waiting Xm" + an Attend button for unattended referrals, or
+      "Attended · <wait>". A "Waiting" view toggle (referred + not attended) added.
+- [x] 6c. Frontdesk per unit: visitor belongs to a unit (default user's unit). Unit column + filter.
       Users see only their unit unless `visitor.viewAll.unit` (backend-enforced). Additive migration;
       backfill existing visitors to head-office unit with a dry run first.
+      DONE: Visitor.unitId added (same migration). Create defaults unitId to the creating user's unit.
+      List/search/present/filtered are backend-scoped to the user's accessible units unless they hold
+      visitor.viewAll.unit.* (new helper getAccessibleUnitIds; feature added to seedReviewFeatures).
+      Admin shows a Unit column (name mapped from the units list) + a Unit filter in the filter dialog.
+      Backfill: dryRunVisitorBackfill.ts (read-only; --apply --allow-remote to write) — local dry run
+      reports 3704 visitors → "HEAD OFFICE".
 
 ## Phase 7 — Quick Pass
 - [ ] 7a. Items table picker too narrow: widen column, show name+code in full (wrap), dropdown wider

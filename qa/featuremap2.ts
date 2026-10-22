@@ -110,6 +110,10 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /leave/leave-configurations/usage": { feature: "leaveConfig.read.*", kind: "read", access: "feature", note: "usage summary for a leave type" },
   // Phase 5d: holidays within a date range (month calendar).
   "POST /holiday/range": { feature: "holiday.read.*", kind: "read", access: "feature", note: "holidays in a date range (calendar)" },
+  // Phase 6a: employees present now (checked in, not out) for the "Referred To" suggestions.
+  "GET /employee/presentToday": { feature: "employee.read.*", kind: "read", access: "feature", note: "employees currently present" },
+  // Phase 6b: host marks a referred visit attended.
+  "POST /visitor/attend": { feature: "visitor.update.*", kind: "update", access: "feature", note: "mark a visit attended" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

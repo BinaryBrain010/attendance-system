@@ -2,16 +2,42 @@ import visitorModel from "../models/visitor.model";
 import { Visitor } from "../types/visitor";
 import { paginatedData } from "../../../../types/paginatedData";
 import { VisitorExcelUtility } from "../../../../excel/visitor";
+import prisma from "../../../../core/models/base.model";
+import { getAccessibleUnitIds } from "../../../AMS/Unit/helper/unitAccess.helper";
+import { notify } from "../../../Work/shared/workHelpers";
+
+// 6c: holders of this feature see visitors from every unit; everyone else is scoped to their units.
+const VISITOR_VIEW_ALL = "visitor.viewAll.unit.*";
 
 class VisitorService {
   private excelUtility = new VisitorExcelUtility();
+
+  /** 6c: unit ids the user may see (null = all units). */
+  private async unitScope(userId?: string): Promise<string[] | null> {
+    return await getAccessibleUnitIds(userId, VISITOR_VIEW_ALL);
+  }
+
+  /** 6c: the unit a new visitor defaults to — the creating user's first unit (else null). */
+  private async defaultUnitForUser(userId?: string): Promise<string | null> {
+    if (!userId) return null;
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId, isDeleted: null }, select: { employeeId: true } });
+      if (!user?.employeeId) return null;
+      const ue = await prisma.unitEmployee.findFirst({
+        where: { employeeId: user.employeeId, isDeleted: null },
+        select: { unitId: true },
+      });
+      return ue?.unitId ?? null;
+    } catch { return null; }
+  }
 
   async getAllVisitors(): Promise<Visitor[]> {
     return await visitorModel.visitor.gpFindMany();
   }
 
-  async getVisitors(page: number, pageSize: number): Promise<paginatedData> {
-    return await visitorModel.visitor.gpPgFindMany(page, pageSize);
+  async getVisitors(page: number, pageSize: number, userId?: string): Promise<paginatedData> {
+    const unitIds = await this.unitScope(userId);
+    return await visitorModel.visitor.gpPgFindMany(page, pageSize, unitIds);
   }
 
   async getDeletedVisitors(page: number, pageSize: number): Promise<paginatedData> {
@@ -24,7 +50,39 @@ class VisitorService {
         visitorData.map((v) => visitorModel.visitor.gpCreate(v))
       );
     }
-    return await visitorModel.visitor.gpCreate(visitorData);
+    const vd: any = visitorData;
+    // 6c: default the owning unit to the creating user's unit when not provided.
+    if (!vd.unitId) {
+      vd.unitId = await this.defaultUnitForUser(vd.createdByUserId);
+    }
+    const created: any = await visitorModel.visitor.gpCreate(vd);
+    // 6b: notify the referred host (bell). Sound/animation is handled on the client.
+    if (created?.referredToEmployeeId) {
+      try {
+        const hostUser = await prisma.user.findFirst({
+          where: { employeeId: created.referredToEmployeeId, isDeleted: null },
+          select: { id: true },
+        });
+        if (hostUser?.id) {
+          await notify(
+            [hostUser.id],
+            "VISITOR",
+            "A visitor is here to see you",
+            `${created.name}${created.company ? ` (${created.company})` : ""} is waiting at the front desk.`,
+            "Visitor",
+            created.id
+          );
+        }
+      } catch (e) {
+        console.error("Failed to notify referred host of visitor:", e);
+      }
+    }
+    return created;
+  }
+
+  /** 6b: host marks the visit attended. */
+  async attendVisitor(visitorId: string, userId?: string, note?: string): Promise<Visitor> {
+    return await visitorModel.visitor.gpAttend(visitorId, userId, note);
   }
 
   async updateVisitor(visitorId: string, visitorData: Visitor): Promise<Visitor> {
@@ -58,9 +116,11 @@ class VisitorService {
   async searchVisitors(
     searchTerm: string | string[],
     page: number,
-    pageSize: number
+    pageSize: number,
+    userId?: string
   ): Promise<paginatedData> {
-    return await visitorModel.visitor.gpSearch(searchTerm, page, pageSize);
+    const unitIds = await this.unitScope(userId);
+    return await visitorModel.visitor.gpSearch(searchTerm, page, pageSize, unitIds);
   }
 
   async getStats(from?: string, to?: string): Promise<any> {
@@ -80,15 +140,18 @@ class VisitorService {
   }
 
   async getFiltered(
-    opts: { from?: string; to?: string; outcome?: string; purchased?: boolean },
+    opts: { from?: string; to?: string; outcome?: string; purchased?: boolean; waiting?: boolean; unitId?: string },
     page: number,
-    pageSize: number
+    pageSize: number,
+    userId?: string
   ): Promise<paginatedData> {
-    return await visitorModel.visitor.gpFilterPaginated(opts, page, pageSize);
+    const unitIds = await this.unitScope(userId);
+    return await visitorModel.visitor.gpFilterPaginated(opts, page, pageSize, unitIds);
   }
 
-  async getPresent(page: number, pageSize: number): Promise<paginatedData> {
-    return await visitorModel.visitor.gpPresent(page, pageSize);
+  async getPresent(page: number, pageSize: number, userId?: string): Promise<paginatedData> {
+    const unitIds = await this.unitScope(userId);
+    return await visitorModel.visitor.gpPresent(page, pageSize, unitIds);
   }
 
   async getHistoryById(visitorId: string, filter?: boolean, date?: string): Promise<any> {

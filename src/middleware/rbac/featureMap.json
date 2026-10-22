@@ -864,6 +864,11 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "GET /employee/presentToday": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "POST /employee/overview": {
     "access": "feature",
     "feature": "employee.read.*",
@@ -2472,6 +2477,11 @@
   "POST /visitor/checkout": {
     "access": "feature",
     "feature": "visitor.checkout.*",
+    "kind": "update"
+  },
+  "POST /visitor/attend": {
+    "access": "feature",
+    "feature": "visitor.update.*",
     "kind": "update"
   },
   "POST /visitor/create": {

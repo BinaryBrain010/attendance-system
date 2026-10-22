@@ -27,6 +27,8 @@ const FEATURES: F[] = [
   ["crm.lead.transfer.*", "crm.lead.*", "Transfer lead to another agent"],
   // Access control (3b)
   ["user.suspend.*", "user.*", "Suspend / Reactivate user"],
+  // Frontdesk per-unit visibility (6c): holders see visitors from all units; others see only theirs.
+  ["visitor.viewAll.unit.*", "visitor.*", "See visitors from all units (not just own unit)"],
 ];
 
 async function main() {

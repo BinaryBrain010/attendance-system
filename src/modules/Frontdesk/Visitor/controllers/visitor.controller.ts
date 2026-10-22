@@ -19,7 +19,8 @@ class VisitorController extends BaseController<VisitorService> {
   async getVisitors(req: Request, res: Response) {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const operation = () => this.service.getVisitors(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getVisitors(page, pageSize, userId);
     await this.handleRequest(operation, res, { successMessage: "Visitors retrieved successfully!" });
   }
 
@@ -149,8 +150,29 @@ class VisitorController extends BaseController<VisitorService> {
     if (!searchTerm) {
       return res.status(400).json({ message: "Search term is required" });
     }
-    const operation = () => this.service.searchVisitors(searchTerm, page || 1, pageSize || 10);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.searchVisitors(searchTerm, page || 1, pageSize || 10, userId);
     await this.handleRequest(operation, res, { successMessage: "Visitors search completed successfully!" });
+  }
+
+  async attendVisitor(req: Request, res: Response) {
+    const { id, note } = req.body;
+    if (!id) {
+      return res.status(400).json({ message: "Visitor ID is required" });
+    }
+    const userId = this.actingUserId(req, req.body.attendedBy);
+    const operation = () => this.service.attendVisitor(id, userId, note);
+    await this.handleRequest(operation, res, {
+      successMessage: "Visit marked as attended!",
+      logActivity: {
+        action: "UPDATE",
+        entityType: "Visitor",
+        entityId: id,
+        description: "Visit marked attended",
+        metadata: { visitorId: id, note },
+      },
+      req,
+    });
   }
 
   async getStats(req: Request, res: Response) {
@@ -184,16 +206,18 @@ class VisitorController extends BaseController<VisitorService> {
   }
 
   async getFiltered(req: Request, res: Response) {
-    const { from, to, outcome, purchased, page, pageSize } = req.body;
+    const { from, to, outcome, purchased, waiting, unitId, page, pageSize } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
     const operation = () =>
-      this.service.getFiltered({ from, to, outcome, purchased }, page || 1, pageSize || 10);
+      this.service.getFiltered({ from, to, outcome, purchased, waiting, unitId }, page || 1, pageSize || 10, userId);
     await this.handleRequest(operation, res, { successMessage: "Filtered visitors retrieved successfully!" });
   }
 
   async getPresent(req: Request, res: Response) {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const operation = () => this.service.getPresent(page, pageSize);
+    const userId = (req as Request & { userId?: string }).userId;
+    const operation = () => this.service.getPresent(page, pageSize, userId);
     await this.handleRequest(operation, res, { successMessage: "Present visitors retrieved successfully!" });
   }
 

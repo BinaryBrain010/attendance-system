@@ -893,6 +893,13 @@ model Visitor {
   visitDate            DateTime
   timeIn               DateTime?
   timeOut              DateTime?
+  // 6b: referral notification + attend tracking
+  referredAt           DateTime? // when the visitor was referred to the host
+  attendedAt           DateTime? // when the host marked the visit attended
+  attendedBy           String?        @db.VarChar(36) // userId who attended
+  attendedNote         String?
+  // 6c: owning unit (empty = legacy/head office). Scopes who can see the visitor.
+  unitId               String?        @db.VarChar(36)
   // Visit outcome / purchase tracking
   outcome              VisitorOutcome @default(ENQUIRY)
   purchased            Boolean        @default(false)

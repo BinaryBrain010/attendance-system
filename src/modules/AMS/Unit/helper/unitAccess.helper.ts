@@ -11,6 +11,42 @@ import unitEmployeeModel from "../models/unitEmployee.model";
  * @param permissionType - "employee" for employee.read.all.* or "attendance" for attendance.read.all.*
  * @returns Array of employee IDs or null if supervisor
  */
+/**
+ * Units a user can access (for records scoped by unit, e.g. Frontdesk visitors).
+ * Returns null when the user holds `viewAllPermission` (see all units), otherwise the unit IDs the
+ * user belongs to or manages. Empty array = no unit access.
+ */
+export async function getAccessibleUnitIds(
+  userId: string | undefined,
+  viewAllPermission: string
+): Promise<string[] | null> {
+  if (!userId) return [];
+  try {
+    const hasViewAll = await accessModel.user.checkUserPermission(userId, viewAllPermission);
+    if (hasViewAll) return null;
+    const user = await prisma.user.findUnique({
+      where: { id: userId, isDeleted: null },
+      select: { employeeId: true },
+    });
+    if (!user || !user.employeeId) return [];
+    const unitEmployees = await (unitEmployeeModel as any).unitEmployee.getUnitsByEmployeeId(user.employeeId);
+    const managedUnits = await prisma.unit.findMany({
+      where: { attendanceManagerId: user.employeeId, isDeleted: null },
+      select: { id: true },
+    });
+    const ids = [
+      ...new Set([
+        ...unitEmployees.map((ue: any) => ue.unitId),
+        ...managedUnits.map((u: any) => u.id),
+      ]),
+    ];
+    return ids as string[];
+  } catch (error) {
+    console.error("Error getting accessible unit IDs:", error);
+    return [];
+  }
+}
+
 export async function getAccessibleEmployeeIds(
   userId: string | undefined,
   permissionType: "employee" | "attendance"

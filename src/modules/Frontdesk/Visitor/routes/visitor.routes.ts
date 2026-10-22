@@ -195,6 +195,9 @@ class VisitorRoutes {
      */
     this.router.post("/checkout", this.controller.checkOutVisitor.bind(this.controller));
 
+    // 6b: host marks a referred visit as attended.
+    this.router.post("/attend", this.controller.attendVisitor.bind(this.controller));
+
     /**
      * @swagger
      * /visitor/delete:

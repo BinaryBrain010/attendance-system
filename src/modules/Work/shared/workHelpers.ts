@@ -12,7 +12,9 @@ export async function nextTaskCode(): Promise<string> {
 export type NotifType =
   | "ASSIGNED" | "DUE_SOON" | "OVERDUE" | "COMMENT" | "REPORT_MISSING"
   // CRM (leads): unassigned-lead alert to managers, lead transfer, @mention.
-  | "LEAD_UNASSIGNED" | "LEAD_TRANSFER" | "MENTION";
+  | "LEAD_UNASSIGNED" | "LEAD_TRANSFER" | "MENTION"
+  // Frontdesk (6b): a visitor was referred to this employee.
+  | "VISITOR";
 
 /** Create a notification for each recipient User id (deduped, skips empties). */
 export async function notify(userIds: (string | null | undefined)[], type: NotifType, title: string, body?: string, entityType?: string, entityId?: string): Promise<void> {

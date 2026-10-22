@@ -51,6 +51,12 @@ class EmployeeService {
     return await employeeModel.employee.gpFindFilterMany();
   }
 
+  // 6a: employees currently present (checked in today, not yet checked out) — the source for the
+  // Frontdesk "Referred To" suggestions.
+  async getPresentTodayEmployees(): Promise<any[]> {
+    return await employeeModel.employee.gpFindPresentToday();
+  }
+
   async getEmployeeByUserId(userId:string){
 return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   }

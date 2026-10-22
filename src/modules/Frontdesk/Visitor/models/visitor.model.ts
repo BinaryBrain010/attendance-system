@@ -34,6 +34,16 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
   }
 }
 
+// 6c: narrow a where-clause to the units a user may see. `unitIds === null` means "all units"
+// (privileged, visitor.viewAll.unit); an array restricts to those units. Legacy rows with a null
+// unit stay visible to everyone until the backfill assigns them a unit.
+function scopeUnit(where: any, unitIds: string[] | null | undefined): any {
+  if (unitIds === null || unitIds === undefined) return where;
+  const unitCond = { OR: [{ unitId: { in: unitIds } }, { unitId: null }] };
+  if (where.AND) return { ...where, AND: [...where.AND, unitCond] };
+  return { AND: [where, unitCond] };
+}
+
 const visitorModel = prisma.$extends({
   model: {
     visitor: {
@@ -64,17 +74,18 @@ const visitorModel = prisma.$extends({
         return visitor;
       },
 
-      async gpPgFindMany(this: any, page: number, pageSize: number) {
+      async gpPgFindMany(this: any, page: number, pageSize: number, unitIds?: string[] | null) {
         const skip = (page - 1) * pageSize;
+        const where = scopeUnit({ isDeleted: null }, unitIds);
         const [data, total] = await Promise.all([
           prisma.visitor.findMany({
-            where: { isDeleted: null },
+            where,
             orderBy: [{ visitDate: "desc" }, { timeIn: "desc" }],
             skip,
             take: pageSize,
             include: { referredToEmployee: { select: referredToEmployeeSelect } },
           }),
-          prisma.visitor.count({ where: { isDeleted: null } }),
+          prisma.visitor.count({ where }),
         ]);
 
         return {
@@ -112,7 +123,8 @@ const visitorModel = prisma.$extends({
         this: any,
         searchTerm: string | string[],
         page: number,
-        pageSize: number
+        pageSize: number,
+        unitIds?: string[] | null
       ) {
         const searchTerms = Array.isArray(searchTerm) ? searchTerm : [searchTerm];
         const searchConditions = searchTerms.map((term) => ({
@@ -128,7 +140,7 @@ const visitorModel = prisma.$extends({
         }));
 
         const skip = (page - 1) * pageSize;
-        const where = { AND: [{ isDeleted: null }, { OR: searchConditions }] };
+        const where = scopeUnit({ AND: [{ isDeleted: null }, { OR: searchConditions }] }, unitIds);
         const [data, total] = await Promise.all([
           prisma.visitor.findMany({
             where: where as any,
@@ -200,6 +212,8 @@ const visitorModel = prisma.$extends({
             visitDate: rest.visitDate ? new Date(rest.visitDate) : new Date(),
             timeIn: rest.timeIn ? new Date(rest.timeIn) : null,
             timeOut: rest.timeOut ? new Date(rest.timeOut) : null,
+            // 6b: stamp the referral time when referred to a specific host, so wait time can be shown.
+            referredAt: rest.referredToEmployeeId ? new Date() : (rest.referredAt ?? null),
             createdBy: createdByUserId || null,
             createdAt: new Date(),
           },
@@ -207,6 +221,23 @@ const visitorModel = prisma.$extends({
         });
 
         return data;
+      },
+
+      /** 6b: host marks the visit attended (records who + when + an optional note). */
+      async gpAttend(this: any, id: string, attendedByUserId?: string, note?: string) {
+        const visitor = await prisma.visitor.findUnique({ where: { id, isDeleted: null } });
+        if (!visitor) throw new Error(`Visitor with ID ${id} not found.`);
+        return await prisma.visitor.update({
+          where: { id },
+          data: {
+            attendedAt: new Date(),
+            attendedBy: attendedByUserId || null,
+            attendedNote: note ?? null,
+            updatedAt: new Date(),
+            updatedBy: attendedByUserId || null,
+          },
+          include: { referredToEmployee: { select: referredToEmployeeSelect } },
+        });
       },
 
       async gpUpdate(this: any, updateId: string, data: any) {
@@ -522,27 +553,35 @@ const visitorModel = prisma.$extends({
       /** Paginated list filtered by date range / outcome / purchased (for the filter dialog). */
       async gpFilterPaginated(
         this: any,
-        opts: { from?: string | Date; to?: string | Date; outcome?: string; purchased?: boolean },
+        opts: { from?: string | Date; to?: string | Date; outcome?: string; purchased?: boolean; waiting?: boolean; unitId?: string },
         page: number,
-        pageSize: number
+        pageSize: number,
+        unitIds?: string[] | null
       ) {
-        const where: any = { isDeleted: null };
+        const base: any = { isDeleted: null };
+        if (opts.unitId) base.unitId = opts.unitId; // 6c: explicit unit filter (within the user's scope)
         if (opts.from || opts.to) {
-          where.visitDate = {};
+          base.visitDate = {};
           if (opts.from) {
             const f = new Date(opts.from);
             f.setHours(0, 0, 0, 0);
-            where.visitDate.gte = f;
+            base.visitDate.gte = f;
           }
           if (opts.to) {
             const t = new Date(opts.to);
             t.setHours(23, 59, 59, 999);
-            where.visitDate.lte = t;
+            base.visitDate.lte = t;
           }
         }
-        if (opts.outcome) where.outcome = opts.outcome;
-        if (typeof opts.purchased === "boolean") where.purchased = opts.purchased;
+        if (opts.outcome) base.outcome = opts.outcome;
+        if (typeof opts.purchased === "boolean") base.purchased = opts.purchased;
+        // 6b: "Waiting" = referred to a host but not yet attended.
+        if (opts.waiting) {
+          base.referredToEmployeeId = { not: null };
+          base.attendedAt = null;
+        }
 
+        const where = scopeUnit(base, unitIds);
         const skip = (page - 1) * pageSize;
         const [data, total] = await Promise.all([
           prisma.visitor.findMany({
@@ -568,18 +607,18 @@ const visitorModel = prisma.$extends({
        * Visitors currently on-site: checked in today (timeIn set) with no check-out yet.
        * Scoped to today so historical records without a check-out don't appear as "present".
        */
-      async gpPresent(this: any, page: number, pageSize: number) {
+      async gpPresent(this: any, page: number, pageSize: number, unitIds?: string[] | null) {
         const skip = (page - 1) * pageSize;
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
-        const where: any = {
+        const where: any = scopeUnit({
           isDeleted: null,
           timeIn: { not: null },
           timeOut: null,
           visitDate: { gte: todayStart, lte: todayEnd },
-        };
+        }, unitIds);
         const [data, total] = await Promise.all([
           prisma.visitor.findMany({
             where,
