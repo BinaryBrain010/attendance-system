@@ -59,21 +59,33 @@ async function imagePass() {
     console.log(`[cleanup] DRY RUN — would compress ${candidates.length} photo(s) and backfill thumbnails. Re-run with --apply to write.`);
     return;
   }
-  let done = 0, saved = 0, failed = 0;
-  for (const c of candidates) {
-    try {
-      const emp = await prisma.employee.findUnique({ where: { id: c.id }, select: { image: true } }) as any;
-      if (!emp?.image) continue;
-      const before = emp.image.length;
-      const compressed = await compressImageDataUrl(emp.image);
-      const thumb = await makeThumbnailDataUrl(emp.image);
-      const nextImage = typeof compressed === "string" && compressed.length ? compressed : emp.image;
-      await prisma.employee.update({ where: { id: c.id }, data: { image: nextImage, imageThumb: thumb } as any });
-      saved += Math.max(0, before - nextImage.length);
-      done++;
-    } catch (e) { failed++; console.error(`[cleanup] image failed for ${c.id}:`, (e as any)?.message || e); }
+  // R8: apply in batches of BATCH with a progress log. Resumable by design — once a photo is
+  // compressed (shrinks under the threshold) and its thumbnail is set it drops out of `candidates`
+  // on the next run, so re-running simply continues where it left off and skips finished rows.
+  const BATCH = 20;
+  let done = 0, saved = 0, failed = 0, skipped = 0;
+  const started = Date.now();
+  for (let i = 0; i < candidates.length; i += BATCH) {
+    const batch = candidates.slice(i, i + BATCH);
+    for (const c of batch) {
+      try {
+        const emp = await prisma.employee.findUnique({ where: { id: c.id }, select: { image: true, imageThumb: true } }) as any;
+        if (!emp?.image) { skipped++; continue; }
+        // Skip ones already small AND thumbnailed (finished in a prior run).
+        if (emp.image.length <= IMAGE_THRESHOLD && emp.imageThumb) { skipped++; continue; }
+        const before = emp.image.length;
+        const compressed = await compressImageDataUrl(emp.image);
+        const thumb = await makeThumbnailDataUrl(emp.image);
+        const nextImage = typeof compressed === "string" && compressed.length ? compressed : emp.image;
+        await prisma.employee.update({ where: { id: c.id }, data: { image: nextImage, imageThumb: thumb } as any });
+        saved += Math.max(0, before - nextImage.length);
+        done++;
+      } catch (e) { failed++; console.error(`[cleanup] image failed for ${c.id}:`, (e as any)?.message || e); }
+    }
+    const processed = Math.min(i + BATCH, candidates.length);
+    console.log(`[cleanup]   batch ${Math.floor(i / BATCH) + 1}/${Math.ceil(candidates.length / BATCH)} — ${processed}/${candidates.length} processed (done=${done}, skipped=${skipped}, failed=${failed})`);
   }
-  console.log(`[cleanup] APPLIED — compressed/thumbnailed ${done} photo(s), ~${(saved / 1048576).toFixed(1)} MB saved, ${failed} failed.`);
+  console.log(`[cleanup] IMAGE SUMMARY — compressed/thumbnailed ${done}, skipped ${skipped}, failed ${failed}, ~${(saved / 1048576).toFixed(1)} MB saved in ${((Date.now() - started) / 1000).toFixed(1)}s.`);
 }
 
 async function redactPass() {
