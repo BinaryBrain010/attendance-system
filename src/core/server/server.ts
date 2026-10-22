@@ -303,6 +303,12 @@ class App {
     this.helper.initializeRoutes(this.app, true, routes);
     this.helper.initializeRoutes(this.app, false, openRoutes);
 
+    // Unknown route -> JSON 404 (never Express's default HTML page), so the client always parses JSON.
+    this.app.use((req: Request, res: Response) => {
+      if (res.headersSent) return;
+      res.status(404).json({ success: false, message: "Not found", statusCode: 404 });
+    });
+
     // Error handling middleware should be placed after all other middleware and routes
     this.app.use(this.handleErrors.bind(this));
   }

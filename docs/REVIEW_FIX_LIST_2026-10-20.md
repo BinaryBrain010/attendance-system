@@ -98,6 +98,11 @@ gated by the export permission).
       (Backend: /user/changePassword + /user/changeUserPassword reject < 8 chars (400). Admin:
       profilePassword now always shows the Confirm field + requires match + min 8; userForm (new user)
       disables submit unless password >= 8 AND matches confirm.)
+- [x] 3e (added). JSON 404 for unknown routes (no Express HTML). Admin error handler never shows HTML/
+      non-JSON: 404 -> "Please refresh the page", 5xx/network -> "Something went wrong", 400/409 -> the
+      server JSON message only (HTML rejected). MentionBox already fails silently (SILENT + catch).
+- [x] 3f (added). "Absent marking skipped" flood: attendance cron logs moved to logger.debug + a
+      re-entrancy guard so a slow run can't overlap the next tick (runs once per tick).
 
 ## Phase 4 — Quick Mark small fixes
 - [ ] 4a. Remove `/ams` landing page; redirect to employees list.

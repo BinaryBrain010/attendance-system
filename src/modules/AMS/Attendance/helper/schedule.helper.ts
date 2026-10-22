@@ -12,6 +12,7 @@ import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import AttendanceService from "../services/attendnace.service";
 import { getCurrentTimeInPST } from "../../../../helper/date.helper";
 import { runAsSystem } from "../../../../core/context/requestContext";
+import logger from "../../../../core/logger/logger";
 
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
@@ -46,8 +47,13 @@ class AttendanceSchedulerHelper {
     );
   }
 
+  // Re-entrancy guard: never let two ticks (or a slow run spilling past the next tick) overlap —
+  // the job must run once per tick.
+  private _running = false;
   private async cleanup() {
-    await this.absentMarking();
+    if (this._running) { logger.debug("[attendance cron] previous run still in progress; skipping this tick"); return; }
+    this._running = true;
+    try { await this.absentMarking(); } finally { this._running = false; }
   }
 
   private async absentMarking() {
@@ -65,7 +71,7 @@ class AttendanceSchedulerHelper {
 
       if (!absentsMarked) {
         if (hour === configHour && minutes >= configMinute) {
-          console.log(
+          logger.debug(
             `Running absent marking at configured time (${configHour}:${String(configMinute).padStart(2, '0')}). Now: ${now}...`
           );
 
@@ -138,12 +144,12 @@ class AttendanceSchedulerHelper {
             );
           }
         } else {
-          console.log(
+          logger.debug(
             `Absent marking skipped. Current time is outside configured absent marking time (${configHour}:${String(configMinute).padStart(2, '0')}). Now: ${now}`
           );
         }
       } else {
-        console.log("Skipping because the status is:", absentsMarked);
+        logger.debug(`Absent marking skipped: today's attendance already processed (${absentsMarked}).`);
       }
     } catch (error) {
       const isTodaySunday = isSunday(now);
