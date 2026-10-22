@@ -171,9 +171,15 @@ gated by the export permission).
       also selects `status` so the client can filter (it already dropped RESIGNED/FIRE server-side).
 - [x] 5g. Photo endpoint `GET /employee/:id/photo?size=thumb` with stored thumbnail, cached. Lazy
       photos everywhere with initials fallback. (DEFERRED here by design.)
-- [ ] 5h. Mark Attendance: method selector = one row of small tabs; scanner/form shows directly with
+- [x] 5h. Mark Attendance: method selector = one row of small tabs; scanner/form shows directly with
       one title (Face Recognition currently appears 3×); remove duplicate Full Page buttons; remove or
       collapse Recent Activity panel; fits one screen at 1080p.
+      DONE: method selector is now a single compact row of small tab buttons (was big gradient cards in
+      a scroll). Removed the "Main Action Area" card header (duplicate title) so the active method
+      renders directly — the Face Recognition title now shows once (the scanner's own card header).
+      Removed the wrapper "Full Page" button in the face tab (the scanner keeps its single "Open Full
+      Page" link). Recent Activity collapsed into a <details> panel (was a permanent side column) and
+      the content is full width, so the page fits one screen at 1080p.
 
 ## Phase 6 — Frontdesk
 - [ ] 6a. "Referred To" suggests only employees present today (checked in, not out). Free text allowed.
