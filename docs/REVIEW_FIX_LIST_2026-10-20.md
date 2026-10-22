@@ -265,3 +265,20 @@ gated by the export permission).
 - [ ] Full list of new migrations, permissions and seed scripts for prod.
 - [ ] Auto-suspend dry run (Phase 3c) + visitor backfill dry run (Phase 6c).
 - [ ] Dry-run script for compressing existing prod images + redacting old ActivityLog metadata.
+
+## Round 2 (R1–R8) — 2026-10-23
+- [ ] R1. Attendance requests + leave requests: row → side drawer (full photo, employee, unit, type,
+      reason, requested time, current attendance for that day, history; approve/reject with note inside).
+- [ ] R2. Wire PdfActions (View + Download) everywhere (quotation, invoice, delivery slip, employee
+      print, attendance PDF, work report PDF, CRM report PDFs); remove raw-blob/window.print buttons.
+- [ ] R3. Holidays per unit: attendance respects Holiday.unitIds (empty = all) + qa coverage. If too
+      risky, hide the unit selector and explain.
+- [ ] R4. Unit scoping: employee + attendance lists filter by accessible units unless viewAll; no-unit
+      fallback = see all. qa:rbac → 310/0.
+- [ ] R5. My Day "internal error" for a 0-lead/0-followup/no-team/no-target agent + user linked to no
+      agent. Fix crash + qa case.
+- [ ] R6. Lead list server-side filters (stage, agent, channel, priority, follow-up due, created date);
+      save last-used filters per user in preferences.
+- [ ] R7. Notification bell dropdown (latest 10, mark one/all read, click opens record, View all page
+      with pagination); verify VISITOR/MENTION/TRANSFER/ASSIGN types.
+- [ ] R8. Image cleanup --apply: batches of 20, progress log, resumable (skip compressed), end summary.
