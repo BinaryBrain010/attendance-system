@@ -73,6 +73,15 @@ function filterWhere(f: LeadFilters = {}): Record<string, any> {
     if (f.from) w.dateReceived.gte = new Date(f.from);
     if (f.to) w.dateReceived.lte = new Date(f.to);
   }
+  // A6: follow-up due, filtered in SQL (not in-memory on one page). OVERDUE = before today,
+  // DUE_TODAY = today, THIS_WEEK = today..+7 days. All require a nextFollowUpAt (null excluded).
+  if (f.followUp) {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
+    if (f.followUp === "OVERDUE") w.nextFollowUpAt = { lt: start };
+    else if (f.followUp === "DUE_TODAY") w.nextFollowUpAt = { gte: start, lte: endToday };
+    else if (f.followUp === "THIS_WEEK") { const wk = new Date(start); wk.setDate(wk.getDate() + 7); w.nextFollowUpAt = { gte: start, lte: wk }; }
+  }
   return w;
 }
 
@@ -101,9 +110,8 @@ class LeadService {
       prisma.lead.findMany({ where, skip, take: pageSize, orderBy: { dateReceived: "desc" } }),
       prisma.lead.count({ where }),
     ]);
-    let rows = data.map(withComputed);
-    // follow-up status is computed, so filter it in memory when requested
-    if (filters.followUp) rows = rows.filter((r) => r.followUpStatus === filters.followUp);
+    const rows = data.map(withComputed);
+    // A6: follow-up filtering now happens in SQL (filterWhere), so pagination counts are correct.
     return { data: rows, totalSize, scope: scope.mode };
   }
 
