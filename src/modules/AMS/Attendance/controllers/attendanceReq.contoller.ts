@@ -114,7 +114,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   }
 
   async updateAttendanceRequestStatus(req: Request, res: Response) {
-    const { id, status } = req.body;
+    const { id, status, note } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
     // Check if user has permission to approve attendance requests
@@ -136,7 +136,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
       });
     }
 
-    const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId);
+    const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId, note);
     await this.handleRequest(operation, res, {
       successMessage: "Attendance request status updated successfully!",
       logActivity: {

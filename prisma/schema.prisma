@@ -357,6 +357,7 @@ model LeaveRequest {
   leaveType         String?          @default("CASUAL") @db.VarChar(50)
   image             String?
   location          String?
+  reviewNote        String?          // A1: approver's note when approving/rejecting
   createdAt         DateTime?        @default(now())
   updatedAt         DateTime?        @updatedAt
   isDeleted         DateTime?
@@ -383,6 +384,7 @@ model AttendanceRequest {
   proposedDate     DateTime?
   requestedBy      String?     @db.VarChar(36)
   approvedBy       String?     @db.VarChar(36)
+  reviewNote       String?     // A1: approver's note when approving/rejecting
   createdAt        DateTime?   @default(now())
   updatedAt        DateTime?   @updatedAt
   isDeleted        DateTime?

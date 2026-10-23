@@ -287,7 +287,7 @@ const attendanceRequestModel = prisma.$extends({
         return { data: resolvedData, totalSize };
       },
 
-      async gpUpdateStatus(requestId: string, status: LeaveStatus, approvedBy?: string): Promise<void> {
+      async gpUpdateStatus(requestId: string, status: LeaveStatus, approvedBy?: string, note?: string): Promise<void> {
         const attendanceRequest = await prisma.attendanceRequest.findUnique({
           where: { id: requestId },
         }) as any;
@@ -310,6 +310,7 @@ const attendanceRequestModel = prisma.$extends({
           data: {
             status,
             approvedBy: status === LeaveStatus.APPROVED ? (approvedBy || null) : null,
+            reviewNote: note ?? null, // A1
           },
         });
 

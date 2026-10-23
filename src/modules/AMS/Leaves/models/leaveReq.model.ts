@@ -164,7 +164,7 @@ const leaveReqModel = prisma.$extends({
         return leaveReqModel.leaveRequest.gpCreate(data);
       },
 
-      async gpUpdateStatus(requestId: string, status: LeaveStatus): Promise<void> {
+      async gpUpdateStatus(requestId: string, status: LeaveStatus, note?: string): Promise<void> {
         const currentRequest = await prisma.leaveRequest.findUnique({
           where: { id: requestId },
         }) as any;
@@ -190,7 +190,7 @@ const leaveReqModel = prisma.$extends({
         // Update the leave request status
         const leaveRequest = await prisma.leaveRequest.update({
           where: { id: requestId },
-          data: { status },
+          data: { status, reviewNote: note ?? null } as any, // A1 approver note
         });
 
         // If approved and has leaveAllocationId (configured leave), update the allocation

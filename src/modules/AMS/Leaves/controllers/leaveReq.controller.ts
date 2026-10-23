@@ -138,9 +138,9 @@ class LeaveReqController extends BaseController<LeaveReqService> {
   }
 
   async updateLeaveRequestStatus(req: Request, res: Response) {
-    const { id, status } = req.body;
+    const { id, status, note } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
-    const operation = () => this.service.updateLeaveRequestStatus(id, status);
+    const operation = () => this.service.updateLeaveRequestStatus(id, status, note);
     await this.handleRequest(operation, res, { 
       successMessage: "Leave request status updated successfully!",
       logActivity: {
