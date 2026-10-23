@@ -108,7 +108,7 @@ async function main() {
     createdLeaveIds.push(lr.id);
     let blocked = false;
     try {
-      await (leaveReqModel as any).leaveRequest.gpUpdateStatus(lr.id, LeaveStatus.APPROVED, uMgr.id);
+      await (leaveReqModel as any).leaveRequest.gpUpdateStatus(lr.id, LeaveStatus.APPROVED, undefined, uMgr.id);
     } catch (e: any) {
       blocked = e?.statusCode === 403 || /outside your units/i.test(e?.message || "");
     }
@@ -117,7 +117,7 @@ async function main() {
     check("unit-B leave stays PENDING after blocked approve", stillPending?.status === "PENDING");
     let viewOk = true;
     try {
-      await (leaveReqModel as any).leaveRequest.gpUpdateStatus(lr.id, LeaveStatus.REJECTED, uView.id);
+      await (leaveReqModel as any).leaveRequest.gpUpdateStatus(lr.id, LeaveStatus.REJECTED, undefined, uView.id);
     } catch { viewOk = false; }
     const afterView = await prisma.leaveRequest.findUnique({ where: { id: lr.id }, select: { status: true } });
     check("viewAll holder CAN reject unit-B leave", viewOk && afterView?.status === "REJECTED");
