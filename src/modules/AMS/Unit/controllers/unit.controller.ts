@@ -8,14 +8,14 @@ class UnitController extends BaseController<UnitService> {
 
   async getAllUnits(req: Request, res: Response) {
     const light = req.query.light === 'true' || req.query.light === '1';
-    const operation = () => this.service.getAllUnits(light);
+    const operation = () => this.service.getAllUnits(light, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Units retrieved successfully!" });
   }
 
   async getUnits(req: Request, res: Response) {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const operation = () => this.service.getUnits(page, pageSize);
+    const operation = () => this.service.getUnits(page, pageSize, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Units retrieved successfully!" });
   }
 
@@ -109,7 +109,7 @@ class UnitController extends BaseController<UnitService> {
     if (!id) {
       return res.status(400).json({ message: "Unit ID is required" });
     }
-    const operation = () => this.service.getUnitById(id as string);
+    const operation = () => this.service.getUnitById(id as string, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Unit retrieved successfully!" });
   }
 

@@ -9,6 +9,7 @@
  */
 import { resolveScope } from "../../CRM/shared/scope";
 import { resolveWorkScope } from "../../Work/shared/workScope";
+import { getAccessibleEmployeeIds } from "../../AMS/Unit/helper/unitAccess.helper";
 import { GOD_ID, holdsRead } from "./gating";
 
 export type Entity =
@@ -54,8 +55,14 @@ export async function entityScope(userId: string, entity: Entity, feats: Set<str
       const s = await resolveWorkScope(userId, "report");
       return { visible: s.mode !== "NONE", where: s.reportWhere, mode: s.mode };
     }
-    case "attendance":
-      return holdsRead(feats, "attendance") ? { visible: true, where: {}, mode: "org" } : NONE;
+    case "attendance": {
+      if (!holdsRead(feats, "attendance")) return NONE;
+      // HOTFIX unit scoping: analytics attendance widgets are restricted to the caller's accessible
+      // units (ams.viewAll.unit -> scope null -> org-wide). No unit -> own record only.
+      const ids = await getAccessibleEmployeeIds(userId);
+      if (ids === null) return { visible: true, where: {}, mode: "org" };
+      return { visible: true, where: { employeeId: { in: ids.length > 0 ? ids : ["__none__"] } }, mode: "unit" };
+    }
     case "visitor":
       return holdsRead(feats, "visitor") ? { visible: true, where: {}, mode: "org" } : NONE;
     case "gatePass":

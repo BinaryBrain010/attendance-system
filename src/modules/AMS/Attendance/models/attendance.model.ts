@@ -1106,18 +1106,20 @@ ORDER BY
         return data;
       },
 
-      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string, unitIds?: string[]) {
+      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string, _unitIds?: string[]) {
         const skip = (page - 1) * pageSize;
 
-        // A4: scope by the caller's token unitIds (empty = see all). A non-empty set restricts to
-        // those units' members (+ attendance managers); an empty unit still scopes (0 rows).
+        // HOTFIX: scope to the caller's accessible units (ams.viewAll.unit bypasses; no unit = self
+        // only). null = see all; otherwise restrict to the resolved employee ids.
         let employeeFilter = '';
-        if (unitIds && unitIds.length > 0) {
-          const { getEmployeeIdsInUnits } = await import('../../Unit/helper/unitAccess.helper');
-          const scopedIds = await getEmployeeIdsInUnits(unitIds);
-          const safe = scopedIds.length > 0 ? scopedIds : ['__none__'];
-          const idsString = safe.map(id => `'${id.replace(/'/g, "''")}'`).join(',');
-          employeeFilter = `AND a."employeeId" IN (${idsString})`;
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const scopedIds = await getAccessibleEmployeeIds(userId);
+          if (scopedIds !== null) {
+            const safe = scopedIds.length > 0 ? scopedIds : ['__none__'];
+            const idsString = safe.map(id => `'${id.replace(/'/g, "''")}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
         }
 
         const data = await prisma.$queryRawUnsafe(`

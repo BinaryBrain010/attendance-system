@@ -28,8 +28,9 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async getEmployeeAttendance(req: Request, res: Response) {
     const { employeeId, from, to } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
     const operation = () =>
-      this.service.getEmployeeAttendance(employeeId, from, to);
+      this.service.getEmployeeAttendance(employeeId, from, to, userId);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
   }
 
@@ -68,19 +69,17 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async downloadExcelAttendance(req: Request, res: Response) {
     const { from, to, employeeId } = req.body;
+    const userId = (req as Request & { userId?: string }).userId;
     let data: any = [];
 
     if (employeeId) {
-        data = await this.service.getEmployeeAttendance(employeeId, from, to);
+        data = await this.service.getEmployeeAttendance(employeeId, from, to, userId);
     } else {
-      // If no employeeId is provided
-      if (from || to) {
-        // If only dates are provided, get attendance for all employees within date range
-        data = await this.service.getDatedAttendance(from, to);
-      } else {
-        // If neither employeeId nor dates are provided, get all attendance records
-        data = await this.service.getAllattendances();
-      }
+      // HOTFIX: scope the export to the caller's units (getDatedAttendance filters by userId). A
+      // no-date export uses a wide window so viewAll gets all and others get only their units.
+      const f = from || new Date("2000-01-01");
+      const t = to || new Date();
+      data = await this.service.getDatedAttendance(f, t, userId);
     }
  
     const result = await this.excelUtility.create(data);
@@ -98,21 +97,17 @@ class AttendanceController extends BaseController<AttendanceService> {
 
   async attendancePdf(req: Request, res: Response) {
     const { from, to, employeeId } = req.body;
-    console.log({ from, to, employeeId });
+    const userId = (req as Request & { userId?: string }).userId;
     try {
       let data: any = [];
-  
+
       if (employeeId) {
-          data = await this.service.getEmployeeAttendance(employeeId, from, to);
+          data = await this.service.getEmployeeAttendance(employeeId, from, to, userId);
       } else {
-        // If no employeeId is provided
-        if (from || to) {
-          // If only dates are provided, get attendance for all employees within date range
-          data = await this.service.getDatedAttendance(from, to);
-        } else {
-          // If neither employeeId nor dates are provided, get all attendance records
-          data = await this.service.getAllattendances();
-        }
+        // HOTFIX: scope the PDF export to the caller's units (wide window when no dates given).
+        const f = from || new Date("2000-01-01");
+        const t = to || new Date();
+        data = await this.service.getDatedAttendance(f, t, userId);
       }
   
 
@@ -186,11 +181,11 @@ class AttendanceController extends BaseController<AttendanceService> {
     const attendanceData: Attendance & { createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string } = req.body;
     const userId = (req as Request & { userId?: string }).userId;
 
-    const operation = () => this.service.markAttendance({ 
-      ...attendanceData, 
+    const operation = () => this.service.markAttendance({
+      ...attendanceData,
       createdByUserId: userId,
-      updatedByUserId: userId 
-    } as any);
+      updatedByUserId: userId
+    } as any, userId);
     await this.handleRequest(operation, res, { 
       successMessage: "Attendance marked successfully!", 
       statusCode: 201,

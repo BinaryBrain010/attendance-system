@@ -93,7 +93,7 @@ class AnalyticsController {
     const year = req.query.year != null ? parseInt(String(req.query.year), 10) : undefined;
     const options = year != null && !isNaN(year) ? { year } : undefined;
     try {
-      const data = await personalAttendanceAnalyticsService.getTopAttendanceUsers(options?.year);
+      const data = await personalAttendanceAnalyticsService.getTopAttendanceUsers(options?.year, userId);
       return ApiResponse.success(res, data, "Top attendance users retrieved successfully.");
     } catch (error) {
       console.error("Error fetching top attendance users:", error);

@@ -332,16 +332,22 @@ export class PersonalAttendanceAnalyticsService {
    * attendance % = (present / total recorded days) * 100, where total = present + late + absent + on_leave + half_day + holidays.
    * So someone with 5 present and 10 absent gets 5/15 ≈ 33.33%, not 100%.
    */
-  async getTopAttendanceUsers(year?: number): Promise<{ employeeId: string; employeeName: string; attendancePercent: number; onTime: number; late: number; absent: number; total: number }[]> {
+  async getTopAttendanceUsers(year?: number, userId?: string): Promise<{ employeeId: string; employeeName: string; attendancePercent: number; onTime: number; late: number; absent: number; total: number }[]> {
     const targetYear = year ?? new Date().getFullYear();
     const yearStart = new Date(targetYear, 0, 1, 0, 0, 0, 0);
     const yearEnd = new Date(targetYear, 11, 31, 23, 59, 59, 999);
+
+    // HOTFIX unit scoping: the leaderboard may only include employees in the caller's accessible
+    // units (ams.viewAll.unit bypasses -> scope null -> all).
+    const { getAccessibleEmployeeIds } = await import("../../Unit/helper/unitAccess.helper");
+    const scope = await getAccessibleEmployeeIds(userId);
 
     const attendanceByEmployee = await prisma.attendance.groupBy({
       by: ["employeeId", "status"],
       where: {
         date: { gte: yearStart, lte: yearEnd },
         isDeleted: null,
+        ...(scope !== null ? { employeeId: { in: scope.length > 0 ? scope : ["__none__"] } } : {}),
       },
       _count: { status: true },
     });

@@ -716,13 +716,12 @@ const employeeModel = prisma.$extends({
           isDeleted: null,
         };
 
-        // A4: scope the list by the caller's token unitIds. Empty/absent unitIds = no unit
-        // restriction → see all (same fallback as visitors). A non-empty set scopes to those units'
-        // members (+ their attendance managers).
-        if (unitIds && unitIds.length > 0) {
-          const { getEmployeeIdsInUnits } = await import('../../Unit/helper/unitAccess.helper');
-          const scopedIds = await getEmployeeIdsInUnits(unitIds);
-          where.id = { in: scopedIds.length > 0 ? scopedIds : ['__none__'] };
+        // HOTFIX: scope to the caller's accessible units (ams.viewAll.unit bypasses; no unit = self
+        // only). `null` = see all; otherwise restrict to the resolved employee ids.
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const scopedIds = await getAccessibleEmployeeIds(userId);
+          if (scopedIds !== null) where.id = { in: scopedIds.length > 0 ? scopedIds : ['__none__'] };
         }
 
         // Check if filter is "true" for limited field selection (e.g. dropdowns)

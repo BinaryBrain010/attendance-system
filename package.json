@@ -34,7 +34,8 @@
     "qa:leadassign": "ts-node qa/leadAssign.ts",
     "qa:leadtransfer": "ts-node qa/leadTransfer.ts",
     "qa:leadmention": "ts-node qa/leadMention.ts",
-    "qa:holidayunit": "ts-node qa/holidayUnit.ts"
+    "qa:holidayunit": "ts-node qa/holidayUnit.ts",
+    "qa:amsscope": "ts-node qa/amsUnitScope.ts"
   },
   "author": "ahad",
   "license": "ISC",

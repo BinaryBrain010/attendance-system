@@ -5,6 +5,8 @@ import prisma from "../../../../core/models/base.model";
 import unitEmployeeModel from "../models/unitEmployee.model";
 import { formatInTimeZone } from 'date-fns-tz';
 import { AttendanceStatus } from "@prisma/client";
+import { getAccessibleUnitIds, AMS_VIEW_ALL } from "../helper/unitAccess.helper";
+import { AppError } from "../../../../core/errors/app.error";
 
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
 
@@ -34,12 +36,23 @@ interface UnitAttendanceFilters {
 }
 
 class UnitService {
-  async getAllUnits(light?: boolean): Promise<Unit[] | { id: string; name: string }[]> {
-    return await unitModel.unit.gpFindMany(light);
+  async getAllUnits(light?: boolean, userId?: string): Promise<Unit[] | { id: string; name: string }[]> {
+    const all: any[] = await unitModel.unit.gpFindMany(light) as any[];
+    const scope = await getAccessibleUnitIds(userId, AMS_VIEW_ALL); // null = all units
+    if (scope === null) return all;
+    const set = new Set(scope);
+    return all.filter((u) => set.has(u.id));
   }
 
-  async getUnits(page: number, pageSize: number): Promise<paginatedData> {
-    return await unitModel.unit.gpPgFindMany(page, pageSize);
+  async getUnits(page: number, pageSize: number, userId?: string): Promise<paginatedData> {
+    const res: any = await unitModel.unit.gpPgFindMany(page, pageSize);
+    const scope = await getAccessibleUnitIds(userId, AMS_VIEW_ALL);
+    if (scope !== null && res && Array.isArray(res.data)) {
+      const set = new Set(scope);
+      res.data = res.data.filter((u: any) => set.has(u.id));
+      res.totalSize = res.data.length;
+    }
+    return res;
   }
 
   async getDeletedUnits(page: number, pageSize: number): Promise<paginatedData> {
@@ -67,7 +80,9 @@ class UnitService {
     await unitModel.unit.gpRestore(unitId);
   }
 
-  async getUnitById(unitId: string): Promise<Unit | null> {
+  async getUnitById(unitId: string, userId?: string): Promise<Unit | null> {
+    const scope = await getAccessibleUnitIds(userId, AMS_VIEW_ALL);
+    if (scope !== null && !scope.includes(unitId)) throw new AppError(403, "This unit is outside your units");
     return await unitModel.unit.gpFindById(unitId);
   }
 
