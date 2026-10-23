@@ -69,7 +69,7 @@ export function singleModulePersonas(): Persona[] {
     // Full AMS module operators (attendance/attendanceReq) are cross-unit by nature, so they carry
     // ams.viewAll.unit.* — the hotfix 2026-10-23 bypass — matching how a real HR/attendance admin is
     // set up. Without it they would be scoped to their own (non-existent) unit and could mark nobody.
-    directFeatures: ["login.admin.*", ...(p === "attendance" || p === "attendanceReq" ? ["ams.viewAll.unit.*"] : [])],
+    directFeatures: ["login.admin.*", ...(p === "attendance" || p === "attendanceReq" || p === "leaveReq" ? ["ams.viewAll.unit.*"] : [])],
     roles: [], groups: [], modulePrefix: p,
   }));
 }

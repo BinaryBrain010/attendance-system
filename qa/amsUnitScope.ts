@@ -12,10 +12,12 @@
  * Run:  npx ts-node qa/amsUnitScope.ts
  */
 import prisma from "../src/core/models/base.model";
+import { LeaveStatus } from "@prisma/client";
 import {
   getAccessibleEmployeeIds,
   canAccessEmployee,
 } from "../src/modules/AMS/Unit/helper/unitAccess.helper";
+import leaveReqModel from "../src/modules/AMS/Leaves/models/leaveReq.model";
 
 const TAG = `QA_SCOPE_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -46,6 +48,7 @@ async function main() {
   const createdUeIds: string[] = [];
   const createdEmpIds: string[] = [];
   const createdUnitIds: string[] = [];
+  const createdLeaveIds: string[] = [];
   try {
     // Units A and B
     const unitA = await prisma.unit.create({ data: { name: `${TAG}_UNIT_A`, type: "OFFICE" } as any });
@@ -96,8 +99,31 @@ async function main() {
     check("no-unit user sees exactly 1 employee", (noneScope?.length ?? -1) === 1, `len=${noneScope?.length}`);
     check("no-unit user sees ONLY self", !!noneScope && noneScope[0] === empNone.id);
     check("no-unit user does NOT see empA", !(noneScope ?? []).includes(empA.id));
+
+    // 5. Leave approve/reject is unit-gated (model gpUpdateStatus guard). Manager of A may NOT
+    //    approve empB's (unit B) leave; the viewAll holder may reject it.
+    const lr = await prisma.leaveRequest.create({
+      data: { employeeId: empB.id, startDate: new Date("2099-05-01"), endDate: new Date("2099-05-02"), status: "PENDING" } as any,
+    });
+    createdLeaveIds.push(lr.id);
+    let blocked = false;
+    try {
+      await (leaveReqModel as any).leaveRequest.gpUpdateStatus(lr.id, LeaveStatus.APPROVED, uMgr.id);
+    } catch (e: any) {
+      blocked = e?.statusCode === 403 || /outside your units/i.test(e?.message || "");
+    }
+    check("manager CANNOT approve unit-B leave (403)", blocked);
+    const stillPending = await prisma.leaveRequest.findUnique({ where: { id: lr.id }, select: { status: true } });
+    check("unit-B leave stays PENDING after blocked approve", stillPending?.status === "PENDING");
+    let viewOk = true;
+    try {
+      await (leaveReqModel as any).leaveRequest.gpUpdateStatus(lr.id, LeaveStatus.REJECTED, uView.id);
+    } catch { viewOk = false; }
+    const afterView = await prisma.leaveRequest.findUnique({ where: { id: lr.id }, select: { status: true } });
+    check("viewAll holder CAN reject unit-B leave", viewOk && afterView?.status === "REJECTED");
   } finally {
     // Cleanup (children first)
+    for (const id of createdLeaveIds) await prisma.leaveRequest.delete({ where: { id } }).catch(() => {});
     for (const id of createdFpIds) await prisma.featurePermission.delete({ where: { id } }).catch(() => {});
     for (const id of createdUeIds) await prisma.unitEmployee.delete({ where: { id } }).catch(() => {});
     for (const id of createdUserIds) await prisma.user.delete({ where: { id } }).catch(() => {});

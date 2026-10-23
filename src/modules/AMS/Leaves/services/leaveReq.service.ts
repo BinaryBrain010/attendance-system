@@ -108,9 +108,10 @@ class LeaveReqService {
   async updateLeaveRequestStatus(
     requestId: string,
     status: LeaveStatus,
-    note?: string
+    note?: string,
+    userId?: string
   ): Promise<void> {
-    await leaveReqModel.leaveRequest.gpUpdateStatus(requestId, status, note);
+    await leaveReqModel.leaveRequest.gpUpdateStatus(requestId, status, note, userId);
   }
 
   // Get total number of leave requests

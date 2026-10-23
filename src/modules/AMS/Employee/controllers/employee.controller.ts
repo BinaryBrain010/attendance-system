@@ -219,8 +219,7 @@ class EmployeeController extends BaseController<EmployeeService> {
 
   async getEmployees(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const r = req as Request & { userId?: string; unitIds?: string[] };
-    const operation = () => this.service.getEmployees(page, pageSize, r.userId, r.unitIds);
+    const operation = () => this.service.getEmployees(page, pageSize, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
   }
 
