@@ -37,3 +37,16 @@ Items that are blocked, risky, or need the user's decision are recorded here (sk
 - A3: markHolidayAttendance / unmarkHolidayAttendance now scope to the holiday's `unitIds` (empty =
   all). A unit-specific holiday only marks that unit's employees HOLIDAYS; others are marked normally
   by the absent job. New qa/holidayUnit.ts (npm run qa:holidayunit): 4/0.
+
+## HOTFIX 2026-10-23 — AMS unit scoping (commit 66f6f70, on top of A10 c212817)
+- Central resolver `getAccessibleEmployeeIds`/`canAccessEmployee` now scopes every AMS/Quick-Mark
+  path. `ams.viewAll.unit.*` bypasses. No-unit (with linked employee) = self only; no linked
+  employee + no viewAll = nothing. Seed: `npx ts-node seedReviewFeatures.ts` (upsert-only).
+- DELIBERATE SCOPE DECISION: leave-request **approve/reject** was left unguarded by canAccessEmployee
+  (leave LISTS are already scoped via the resolver). The client's data-visibility complaint was about
+  employee/attendance lists; attendance-request approve IS guarded. If leave approve must also be
+  unit-gated, add the same `canAccessEmployee` guard to the leave approve model path (low risk, one
+  guard) and give cross-unit approvers `ams.viewAll.unit.*`.
+- GOTCHA: `npx ts-node qa/*.ts` imports resolve to the compiled `qa/*.js` SIBLINGS (Node picks .js
+  before .ts). After editing any `qa/*.ts` used by the harness (e.g. personas.ts), run `npx tsc`
+  (or delete the stale .js) or ts-node silently runs the old compiled version.
