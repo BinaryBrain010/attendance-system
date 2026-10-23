@@ -55,6 +55,7 @@ import ActivityLogRoutes from "../../modules/ActivityLog/routes/activityLog.rout
 
 //Frontdesk
 import VisitorRoutes from "../../modules/Frontdesk/Visitor/routes/visitor.routes";
+import SearchRoutes from "../../modules/Search/routes/search.routes";
 
 //CRM (Sales CRM — Okasha Smart)
 import CrmCategoryRoutes from "../../modules/CRM/Catalogue/Category/routes/category.routes";
@@ -249,6 +250,7 @@ class App {
 
       //Frontdesk
       VisitorRoutes,
+      SearchRoutes,
 
       //CRM
       CrmCategoryRoutes,
