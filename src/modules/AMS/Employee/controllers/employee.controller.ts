@@ -28,6 +28,7 @@ class EmployeeController extends BaseController<EmployeeService> {
     const to = req.query.to as string;
     const dateField = (req.query.dateField as string) || 'joiningDate'; // joiningDate, createdAt, or updatedAt
     const userId = (req as Request & { userId?: string }).userId;
+    const unitIds = (req as Request & { unitIds?: string[] }).unitIds;
 
     const operation = async () => {
       return await this.service.getEmployeesWithPagination(
@@ -40,7 +41,8 @@ class EmployeeController extends BaseController<EmployeeService> {
         from,
         to,
         dateField,
-        userId
+        userId,
+        unitIds
       );
     };
 
@@ -217,7 +219,8 @@ class EmployeeController extends BaseController<EmployeeService> {
 
   async getEmployees(req: Request, res: Response) {
     const { page, pageSize } = req.body;
-    const operation = () => this.service.getEmployees(page, pageSize);
+    const r = req as Request & { userId?: string; unitIds?: string[] };
+    const operation = () => this.service.getEmployees(page, pageSize, r.userId, r.unitIds);
     await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
   }
 

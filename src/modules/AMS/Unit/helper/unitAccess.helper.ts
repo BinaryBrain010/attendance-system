@@ -47,6 +47,28 @@ export async function getAccessibleUnitIds(
   }
 }
 
+/**
+ * A4: employee ids that belong to the given units (members via UnitEmployee + attendance managers).
+ * Used to scope the employee/attendance lists by the caller's token unitIds. Empty input → [].
+ */
+export async function getEmployeeIdsInUnits(unitIds: string[]): Promise<string[]> {
+  if (!unitIds || unitIds.length === 0) return [];
+  const ids = new Set<string>();
+  for (const unitId of unitIds) {
+    try {
+      const members = await (unitEmployeeModel as any).unitEmployee.getEmployeesByUnitId(unitId);
+      members.forEach((ue: any) => { if (ue.employeeId) ids.add(ue.employeeId); });
+    } catch { /* ignore a bad unit id */ }
+  }
+  // Attendance managers of these units count as "in scope" too.
+  const managedUnits = await prisma.unit.findMany({
+    where: { id: { in: unitIds }, isDeleted: null, attendanceManagerId: { not: null } },
+    select: { attendanceManagerId: true },
+  }).catch(() => [] as { attendanceManagerId: string | null }[]);
+  managedUnits.forEach((u) => { if (u.attendanceManagerId) ids.add(u.attendanceManagerId); });
+  return Array.from(ids);
+}
+
 export async function getAccessibleEmployeeIds(
   userId: string | undefined,
   permissionType: "employee" | "attendance"

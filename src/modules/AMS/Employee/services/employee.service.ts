@@ -17,7 +17,14 @@ class EmployeeService {
     return await employeeModel.employee.gpFindMany();
   }
 
-  async getEmployees(page: number, pageSize: number): Promise<paginatedData> {
+  async getEmployees(page: number, pageSize: number, userId?: string, unitIds?: string[]): Promise<paginatedData> {
+    // A4: route through the unit-scoped paginator so the POST list filters by the caller's units too
+    // (matches GET /employee/get). no unit → see all.
+    if (unitIds && unitIds.length > 0) {
+      return await employeeModel.employee.gpPgFindManyWithSortAndFilter(
+        page, pageSize, 'createdAt', 'desc', undefined, undefined, undefined, undefined, undefined, userId, unitIds
+      );
+    }
     return await employeeModel.employee.gpPgFindMany(page, pageSize);
   }
 
@@ -31,7 +38,8 @@ class EmployeeService {
     from?: string,
     to?: string,
     dateField?: string,
-    userId?: string
+    userId?: string,
+    unitIds?: string[]
   ): Promise<paginatedData> {
     return await employeeModel.employee.gpPgFindManyWithSortAndFilter(
       page,
@@ -43,7 +51,8 @@ class EmployeeService {
       from,
       to,
       dateField,
-      userId
+      userId,
+      unitIds
     );
   }
 

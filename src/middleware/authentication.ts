@@ -58,10 +58,13 @@ class Authentication {
         }
       }
 
-      const r = req as Request & { userId?: string; impersonatorId?: string | null; impersonationId?: string | null };
+      const r = req as Request & { userId?: string; impersonatorId?: string | null; impersonationId?: string | null; unitIds?: string[] };
       r.userId = decoded.userId as string;
       r.impersonatorId = impersonatorId;
       r.impersonationId = (decoded.impersonationId as string | undefined) || null;
+      // A4: the token carries the user's unit ids (login derives them from assignments; empty = no
+      // unit restriction / sees all). Exposed so list endpoints can scope by unit.
+      r.unitIds = Array.isArray(decoded.unitIds) ? (decoded.unitIds as string[]) : [];
       next();
     });
   }

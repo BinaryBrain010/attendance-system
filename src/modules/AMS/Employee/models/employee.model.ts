@@ -703,30 +703,23 @@ const employeeModel = prisma.$extends({
         from?: string,
         to?: string,
         dateField?: string,
-        userId?: string
+        userId?: string,
+        unitIds?: string[]
       ) {
         const skip = (page - 1) * pageSize;
-        
+
         // Build where clause
         const where: any = {
           isDeleted: null,
         };
 
-        // Apply unit-based access control if userId is provided
-        if (userId) {
-          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
-          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'employee');
-          
-          // If null, user has supervisor permission (access all)
-          // If empty array, user has no access
-          // If array with IDs, filter by those IDs
-          if (accessibleEmployeeIds !== null) {
-            if (accessibleEmployeeIds.length === 0) {
-              // User has no access, return empty result
-              return { data: [], totalSize: 0 };
-            }
-            where.id = { in: accessibleEmployeeIds };
-          }
+        // A4: scope the list by the caller's token unitIds. Empty/absent unitIds = no unit
+        // restriction → see all (same fallback as visitors). A non-empty set scopes to those units'
+        // members (+ their attendance managers).
+        if (unitIds && unitIds.length > 0) {
+          const { getEmployeeIdsInUnits } = await import('../../Unit/helper/unitAccess.helper');
+          const scopedIds = await getEmployeeIdsInUnits(unitIds);
+          where.id = { in: scopedIds.length > 0 ? scopedIds : ['__none__'] };
         }
 
         // Check if filter is "true" for limited field selection (e.g. dropdowns)
