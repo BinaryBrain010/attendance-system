@@ -292,8 +292,8 @@ gated by the export permission).
       (done/skipped/failed/MB saved/elapsed). Not run against prod.
 
 ## Overnight 2026-10-23 (A/B/C)
-- [ ] A1 attendance+leave request side drawer  - [x] A2 PdfActions everywhere (done as R2)
-- [ ] A3 holidays per unit in attendance       - [x] A4 employee/attendance unit scoping (qa 307/0/3)
+- [x] A1 attendance+leave request side drawer  - [x] A2 PdfActions everywhere (done as R2)
+- [x] A3 holidays per unit in attendance (qa 4/0)       - [x] A4 employee/attendance unit scoping (qa 307/0/3)
 - [x] A5 My Day crash (already fixed; regression guard added)                           - [ ] A6 lead list filters + saved prefs
 - [ ] A7 notification bell dropdown + View all  - [x] A8 image cleanup batched/resumable (done as R8)
 - [ ] A9 frontdesk visitor referral timeline    - [ ] A10 global search (Ctrl+K)

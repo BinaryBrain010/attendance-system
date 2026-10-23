@@ -29,3 +29,11 @@ Items that are blocked, risky, or need the user's decision are recorded here (sk
   by the CRM scope resolver's "OWN-by-createdBy" fallback (scope.ts), which its own comment says
   replaced an earlier version that collapsed to NONE. So the error appears already fixed upstream.
 - Added a regression guard in qa/crm.ts (4 checks) so it can't regress. crm harness: 188 → 192 / 0.
+
+### A1 / A3 done
+- A1: shared RequestDrawer (attendance + leave requests) — full photo, employee, unit, type, reason,
+  requested time, that day's attendance, audit history; approve/reject with a note. Note persisted via
+  new nullable `reviewNote` columns (migration add_request_review_note). Row click opens the drawer.
+- A3: markHolidayAttendance / unmarkHolidayAttendance now scope to the holiday's `unitIds` (empty =
+  all). A unit-specific holiday only marks that unit's employees HOLIDAYS; others are marked normally
+  by the absent job. New qa/holidayUnit.ts (npm run qa:holidayunit): 4/0.

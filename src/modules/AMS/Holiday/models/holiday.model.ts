@@ -197,8 +197,8 @@ const holidayModel = prisma.$extends({
           },
         });
 
-        // Mark all employees' attendance as HOLIDAYS for this date
-        await this.markHolidayAttendance(holidayDate);
+        // A3: mark HOLIDAYS attendance for the holiday's units (empty = all employees).
+        await this.markHolidayAttendance(holidayDate, (data as any).unitIds);
 
         return data;
       },
@@ -268,19 +268,21 @@ const holidayModel = prisma.$extends({
           const oldDate = new Date(currentHoliday.date);
           oldDate.setHours(0, 0, 0, 0);
           
+          // A3: scope to the holiday's units (updated set if provided, else the current one).
+          const hUnits = (updatedHoliday as any).unitIds ?? currentHoliday.unitIds ?? [];
           // Remove holiday from old date if date changed
           if (remainingData.date && oldDate.getTime() !== updateData.date.getTime()) {
-            await this.unmarkHolidayAttendance(oldDate);
+            await this.unmarkHolidayAttendance(oldDate, currentHoliday.unitIds ?? []);
           }
 
           // Mark holiday on new date if active
           if (updateData.isActive !== false) {
             const newDate = remainingData.date ? updateData.date : oldDate;
-            await this.markHolidayAttendance(newDate);
+            await this.markHolidayAttendance(newDate, hUnits);
           } else {
             // If deactivated, remove holiday attendance
             const holidayDate = remainingData.date ? updateData.date : oldDate;
-            await this.unmarkHolidayAttendance(holidayDate);
+            await this.unmarkHolidayAttendance(holidayDate, hUnits);
           }
         }
 
@@ -296,10 +298,10 @@ const holidayModel = prisma.$extends({
           throw new Error(`Holiday with ID ${id} not found.`);
         }
 
-        // Unmark holiday attendance before soft delete
+        // Unmark holiday attendance before soft delete (A3: scoped to the holiday's units)
         const holidayDate = new Date(holiday.date);
         holidayDate.setHours(0, 0, 0, 0);
-        await this.unmarkHolidayAttendance(holidayDate);
+        await this.unmarkHolidayAttendance(holidayDate, (holiday as any).unitIds ?? []);
 
         return await prisma.holiday.update({
           where: { id },
@@ -337,14 +339,17 @@ const holidayModel = prisma.$extends({
         return restored;
       },
 
-      async markHolidayAttendance(this: any, date: Date) {
-        const employees = await prisma.employee.findMany({
-          where: {
-            isDeleted: null,
-            status: { notIn: ['RESIGNED', 'FIRE'] },
-          },
-          select: { id: true },
-        });
+      // A3: mark HOLIDAYS attendance for the employees a holiday applies to. `unitIds` empty/absent =
+      // all units (company holiday); a non-empty set restricts to those units' members, so a
+      // unit-specific holiday only affects that unit (others are marked present/absent as normal).
+      async markHolidayAttendance(this: any, date: Date, unitIds?: string[]) {
+        const where: any = { isDeleted: null, status: { notIn: ['RESIGNED', 'FIRE'] } };
+        if (unitIds && unitIds.length > 0) {
+          const { getEmployeeIdsInUnits } = await import('../../Unit/helper/unitAccess.helper');
+          const scoped = await getEmployeeIdsInUnits(unitIds);
+          where.id = { in: scoped.length > 0 ? scoped : ['__none__'] };
+        }
+        const employees = await prisma.employee.findMany({ where, select: { id: true } });
 
         const employeeIds = employees.map((e) => e.id);
         if (employeeIds.length === 0) {
@@ -393,23 +398,24 @@ const holidayModel = prisma.$extends({
         }
       },
 
-      async unmarkHolidayAttendance(this: any, date: Date) {
+      async unmarkHolidayAttendance(this: any, date: Date, unitIds?: string[]) {
         const dateStart = new Date(date);
         dateStart.setHours(0, 0, 0, 0);
         const dateEnd = new Date(date);
         dateEnd.setHours(23, 59, 59, 999);
 
-        // Find all HOLIDAYS attendance records for this date
-        const holidayAttendances = await prisma.attendance.findMany({
-          where: {
-            date: {
-              gte: dateStart,
-              lte: dateEnd,
-            },
-            status: AttendanceStatus.HOLIDAYS,
-            isDeleted: null,
-          },
-        });
+        // A3: only clear HOLIDAYS rows for the units this holiday applied to (empty = all).
+        const where: any = {
+          date: { gte: dateStart, lte: dateEnd },
+          status: AttendanceStatus.HOLIDAYS,
+          isDeleted: null,
+        };
+        if (unitIds && unitIds.length > 0) {
+          const { getEmployeeIdsInUnits } = await import('../../Unit/helper/unitAccess.helper');
+          const scoped = await getEmployeeIdsInUnits(unitIds);
+          where.employeeId = { in: scoped.length > 0 ? scoped : ['__none__'] };
+        }
+        const holidayAttendances = await prisma.attendance.findMany({ where });
 
         // Delete these attendance records (soft delete)
         for (const attendance of holidayAttendances) {
