@@ -164,13 +164,21 @@ const leaveReqModel = prisma.$extends({
         return leaveReqModel.leaveRequest.gpCreate(data);
       },
 
-      async gpUpdateStatus(requestId: string, status: LeaveStatus): Promise<void> {
+      async gpUpdateStatus(requestId: string, status: LeaveStatus, userId?: string): Promise<void> {
         const currentRequest = await prisma.leaveRequest.findUnique({
           where: { id: requestId },
         }) as any;
 
         if (!currentRequest) {
           throw new Error(`Leave request with ID ${requestId} not found.`);
+        }
+
+        // HOTFIX unit scoping: a reviewer may only approve/reject leave for employees in their
+        // accessible units (ams.viewAll.unit bypasses).
+        if (userId && currentRequest.employeeId) {
+          const { canAccessEmployee } = await import("../../Unit/helper/unitAccess.helper");
+          const ok = await canAccessEmployee(userId, currentRequest.employeeId);
+          if (!ok) throw new AppError(403, "This request is outside your units");
         }
 
         // Only a PENDING leave request can be approved or rejected (no double-apply).
