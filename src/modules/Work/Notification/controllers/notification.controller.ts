@@ -8,8 +8,8 @@ class NotificationController extends BaseController<NotificationService> {
   protected service = new NotificationService();
 
   async list(req: Request, res: Response) {
-    const { page, pageSize, onlyUnread } = req.body;
-    await this.handleRequest(() => this.service.list(uid(req), page, pageSize, !!onlyUnread), res, { successMessage: "Notifications retrieved!" });
+    const { page, pageSize, onlyUnread, type } = req.body;
+    await this.handleRequest(() => this.service.list(uid(req), page, pageSize, !!onlyUnread, type), res, { successMessage: "Notifications retrieved!" });
   }
   async unreadCount(req: Request, res: Response) {
     await this.handleRequest(() => this.service.unreadCount(uid(req)), res, { successMessage: "Unread count retrieved!" });
