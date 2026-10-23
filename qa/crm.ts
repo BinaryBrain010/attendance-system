@@ -646,6 +646,15 @@ async function main() {
   const c360A = (await api("POST", "/crmReport/customer360", tAdmin, { phone: "0300-1234567" })).data;
   check("customer360 exact: finds A, not B", (c360A?.leads || []).some((l: any) => l.customerName === `${QTAG}PhoneA`) && !(c360A?.leads || []).some((l: any) => l.customerName === `${QTAG}PhoneB`));
 
+  // ---- A5: My Day must not 500 for edge personas (no agent link; own agent with 0 follow-ups) ----
+  // My Day calls POST /lead/get with followUp OVERDUE and DUE_TODAY. Both personas must get 200.
+  for (const [who, tok] of [["no-agent user", tNoAgent], ["own agent", tOwn]] as [string, string][]) {
+    for (const fu of ["OVERDUE", "DUE_TODAY"]) {
+      const r = await api("POST", "/lead/get", tok, { page: 1, pageSize: 200, followUp: fu });
+      check(`My Day /lead/get ${fu} for ${who} -> 200 (no internal error)`, r.status === 200, `got ${r.status}`);
+    }
+  }
+
   // ---- cleanup (drop the entire QA world; real users/agents untouched) ----
   await cleanupFixtures();
   await prisma.featurePermission.deleteMany({ where: { id: { in: createdFP } } });

@@ -21,3 +21,11 @@ Items that are blocked, risky, or need the user's decision are recorded here (sk
 - DECISION FOR USER: a real user who holds read-all AND is assigned to a unit will now be scoped to
   that unit on these two lists (token carries their unit). A true see-everything admin should have no
   unit assignment (unitIds=[] → sees all). Flag if you want read-all to always override unit scoping.
+
+### A5 — My Day "internal error"
+- Could NOT reproduce a crash on the current code. Reproduced the exact My Day calls (POST /lead/get
+  with followUp OVERDUE and DUE_TODAY) for (a) an agent with 0 leads / no team / no target and (b) a
+  user with no SalesAgent link — both return 200 with 0 rows, no throw. The no-agent case is handled
+  by the CRM scope resolver's "OWN-by-createdBy" fallback (scope.ts), which its own comment says
+  replaced an earlier version that collapsed to NONE. So the error appears already fixed upstream.
+- Added a regression guard in qa/crm.ts (4 checks) so it can't regress. crm harness: 188 → 192 / 0.
