@@ -175,7 +175,7 @@ class ShiftController extends BaseController<ShiftService> {
       return res.status(400).json({ message: "shiftId is required" });
     }
 
-    const operation = () => this.service.getAssignedEmployeesOfShift(shiftId);
+    const operation = () => this.service.getAssignedEmployeesOfShift(shiftId, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Assigned employees retrieved successfully!" });
   }
 
@@ -184,7 +184,7 @@ class ShiftController extends BaseController<ShiftService> {
     if (!employeeId) {
       return res.status(400).json({ message: "employeeId is required" });
     }
-    const operation = () => this.service.getAssignmentsByEmployeeId(employeeId);
+    const operation = () => this.service.getAssignmentsByEmployeeId(employeeId, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employee shift assignments retrieved successfully!" });
   }
 
@@ -209,7 +209,7 @@ class ShiftController extends BaseController<ShiftService> {
       return res.status(400).json({ message: "employeeIds (array), shiftId and startDate are required" });
     }
     const operation = () =>
-      this.service.assignToEmployees(employeeIds, shiftId, new Date(startDate), endDate ? new Date(endDate) : null);
+      this.service.assignToEmployees(employeeIds, shiftId, new Date(startDate), endDate ? new Date(endDate) : null, (req as any).userId);
     await this.handleRequest(operation, res, {
       successMessage: "Shift assignment completed!",
       logActivity: {

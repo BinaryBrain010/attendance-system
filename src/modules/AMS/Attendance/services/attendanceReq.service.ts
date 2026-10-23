@@ -3,6 +3,7 @@ import { AttendanceRequest } from "../types/AttendanceRequest";
 import { paginatedData } from "../../../../types/paginatedData";
 import { LeaveStatus } from "@prisma/client";
 import { compressImageDataUrl } from "../../../../core/utils/imageCompression";
+import { getAccessibleEmployeeIds } from "../../Unit/helper/unitAccess.helper";
 
 // Only these fields exist on Prisma AttendanceRequest model (no JOIN/alias fields).
 const ATTENDANCE_REQUEST_SCHEMA_KEYS = [
@@ -59,16 +60,20 @@ class LeaveReqService {
   async getAttendanceRequests(
     page: number,
     pageSize: number,
-    filters?: { status?: string; employeeId?: string; from?: string; to?: string }
+    filters?: { status?: string; employeeId?: string; from?: string; to?: string },
+    userId?: string
   ): Promise<paginatedData> {
-    return await attendanceRequestModel.attendanceRequest.gpPgFindMany(page, pageSize, filters);
+    const scope = await getAccessibleEmployeeIds(userId);
+    return await attendanceRequestModel.attendanceRequest.gpPgFindMany(page, pageSize, filters, scope);
   }
 
   // Aggregate stats (status counts + current-year monthly) — SQL GROUP BY, no row download.
   async getAttendanceRequestStats(
-    filters?: { status?: string; employeeId?: string; from?: string; to?: string }
+    filters?: { status?: string; employeeId?: string; from?: string; to?: string },
+    userId?: string
   ): Promise<any> {
-    return await attendanceRequestModel.attendanceRequest.gpStats(filters);
+    const scope = await getAccessibleEmployeeIds(userId);
+    return await attendanceRequestModel.attendanceRequest.gpStats(filters, scope);
   }
 
   // Create new leave request(s)
@@ -152,9 +157,11 @@ class LeaveReqService {
   async updateAttendanceRequestStatus(
     requestId: string,
     status: LeaveStatus,
-    approvedBy?: string
+    approvedBy?: string,
+    note?: string,
+    userId?: string
   ): Promise<void> {
-    await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status, approvedBy);
+    await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status, approvedBy, note, userId);
   }
 
   // Get total number of leave requests
@@ -166,7 +173,8 @@ class LeaveReqService {
   async bulkUpdateAttendanceRequestStatus(
     requestIds: string[],
     status: LeaveStatus,
-    approvedBy?: string
+    approvedBy?: string,
+    userId?: string
   ): Promise<{
     successful: number;
     failed: number;
@@ -184,7 +192,9 @@ class LeaveReqService {
         await attendanceRequestModel.attendanceRequest.gpUpdateStatus(
           requestId,
           status,
-          approvedBy
+          approvedBy,
+          undefined,
+          userId
         );
         results.successful++;
       } catch (error: any) {

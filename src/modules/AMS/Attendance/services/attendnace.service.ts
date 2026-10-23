@@ -3,7 +3,8 @@ import { Attendance } from "../types/Attendance";
 import { AttendanceStatus } from "@prisma/client";
 import { paginatedData } from "../../../../types/paginatedData";
 import prisma from "../../../../core/models/base.model";
-import { getAccessibleEmployeeIds } from "../../Unit/helper/unitAccess.helper";
+import { getAccessibleEmployeeIds, canAccessEmployee } from "../../Unit/helper/unitAccess.helper";
+import { AppError } from "../../../../core/errors/app.error";
 import ExcelValidator from "../helper/excelValidator";
 import accessModel from "../../../rbac/Access/models/access.model";
 import attendanceRequestModel from "../models/attendanceReq.model";
@@ -13,7 +14,8 @@ class AttendanceService {
     return await attendanceModel.attendance.gpFindMany(userId);
   }
 
-  async getEmployeeAttendance(employeeId:string,from:Date,to:Date){
+  async getEmployeeAttendance(employeeId:string,from:Date,to:Date,userId?:string){
+    if (userId && !(await canAccessEmployee(userId, employeeId))) throw new AppError(403, "This employee is outside your units");
     return await attendanceModel.attendance.gpFindEmployeeAttendance(employeeId,from,to);
   }
 
@@ -36,9 +38,23 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     return await attendanceModel.attendance.gpPgFindDeletedMany(page, pageSize);
   }
 
+  // HOTFIX: filter a target employee-id list to the caller's accessible units (null scope = all).
+  private async scopeIds(ids: string[], userId?: string): Promise<string[]> {
+    if (!userId) return ids;
+    const acc = await getAccessibleEmployeeIds(userId);
+    if (acc === null) return ids;
+    const set = new Set(acc);
+    return ids.filter((id) => set.has(id));
+  }
+
   async markAttendance(
-    attendanceData: Attendance & { createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string }
+    attendanceData: Attendance & { createLeaveRequest?: boolean; leaveType?: string; leaveReason?: string },
+    userId?: string
   ){
+    // HOTFIX: cannot mark attendance for an employee outside the caller's units.
+    if (userId && attendanceData.employeeId && !(await canAccessEmployee(userId, attendanceData.employeeId))) {
+      throw new AppError(403, "This employee is outside your units");
+    }
     return await attendanceModel.attendance.markAttendance(attendanceData);
   }
 
@@ -51,7 +67,7 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     createdByUserId?: string
   ): Promise<any> {
     return await attendanceModel.attendance.bulkMarkLeave(
-      employeeIds,
+      await this.scopeIds(employeeIds, createdByUserId),
       date,
       leaveType,
       reason,
@@ -76,7 +92,7 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     createdByUserId?: string
   ): Promise<any> {
     return await attendanceModel.attendance.bulkMarkAttendance(
-      employeeIds,
+      await this.scopeIds(employeeIds, createdByUserId),
       status,
       date,
       options,
@@ -99,14 +115,17 @@ return await attendanceModel.attendance.markFaceAttendance(image);
     }[],
     createdByUserId?: string
   ): Promise<any> {
+    const allowed = await this.scopeIds(items.map((i) => i.employeeId), createdByUserId);
+    const allowedSet = new Set(allowed);
     return await attendanceModel.attendance.bulkMarkAttendanceByEmployee(
-      items,
+      items.filter((i) => allowedSet.has(i.employeeId)),
       createdByUserId
     );
   }
 
   async checkAttendance(employeeId:string,attendanceStatus:AttendanceStatus,date:Date, userId?: string
   ){
+    if (userId && !(await canAccessEmployee(userId, employeeId))) throw new AppError(403, "This employee is outside your units");
     return await attendanceModel.attendance.checkAttendance(employeeId,attendanceStatus,date, userId);
   }
 

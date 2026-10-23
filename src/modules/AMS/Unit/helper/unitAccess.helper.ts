@@ -47,92 +47,71 @@ export async function getAccessibleUnitIds(
   }
 }
 
+export const AMS_VIEW_ALL = "ams.viewAll.unit.*";
+
 export async function getAccessibleEmployeeIds(
   userId: string | undefined,
-  permissionType: "employee" | "attendance"
+  _permissionType?: "employee" | "attendance"
 ): Promise<string[] | null> {
-  // If no userId provided, return empty array (no access)
+  // No user => no access.
   if (!userId) {
     return [];
   }
 
   try {
-    // Check if user has supervisor permission
-    const supervisorPermission =
-      permissionType === "employee"
-        ? "employee.read.all.*"
-        : "attendance.read.all.*";
-    const hasSupervisorPermission = await accessModel.user.checkUserPermission(
-      userId,
-      supervisorPermission
-    );
-
-    // If user has supervisor permission, return null (access all employees)
-    if (hasSupervisorPermission) {
+    // HOTFIX 2026-10-23: a single AMS-wide bypass. Holders of `ams.viewAll.unit` (and god, which
+    // checkUserPermission bypasses) see everyone. Everyone else is scoped to their accessible units
+    // (units they are assigned to + units they manage); with NO unit they see only THEMSELVES
+    // (never "all" — this is attendance data). The returned array always includes the user's own
+    // employee record so a manager/employee can see themself.
+    if (await accessModel.user.checkUserPermission(userId, AMS_VIEW_ALL)) {
       return null;
     }
 
-    // Get employee ID from user
     const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-        isDeleted: null,
-      },
-      select: {
-        employeeId: true,
-      },
+      where: { id: userId, isDeleted: null },
+      select: { employeeId: true },
     });
+    const ownEmployeeId = user?.employeeId ?? null;
 
-    // If user doesn't have an employee linked, return empty array (no access)
-    if (!user || !user.employeeId) {
+    if (!ownEmployeeId) {
+      // No linked employee and not viewAll: nothing is theirs.
       return [];
     }
 
-    // Get units where employee is assigned (via UnitEmployee)
-    const unitEmployees =
-      await (unitEmployeeModel as any).unitEmployee.getUnitsByEmployeeId(
-        user.employeeId
-      );
-
-    // Get units where employee is the attendance manager (via attendanceManagerId)
+    const unitEmployees = await (unitEmployeeModel as any).unitEmployee.getUnitsByEmployeeId(ownEmployeeId);
     const managedUnits = await prisma.unit.findMany({
-      where: {
-        attendanceManagerId: user.employeeId,
-        isDeleted: null,
-      },
-      select: {
-        id: true,
-      },
+      where: { attendanceManagerId: ownEmployeeId, isDeleted: null },
+      select: { id: true },
     });
+    const allUnitIds = [
+      ...new Set<string>([
+        ...unitEmployees.map((ue: any) => ue.unitId),
+        ...managedUnits.map((u: any) => u.id),
+      ]),
+    ];
 
-    // Combine unit IDs from both sources
-    const unitIdsFromAssignments = unitEmployees.map((ue: any) => ue.unitId);
-    const unitIdsFromManagement = managedUnits.map((unit: any) => unit.id);
-    const allUnitIds = [...new Set([...unitIdsFromAssignments, ...unitIdsFromManagement])];
-
-    // If employee is not part of any units and not managing any units, return empty array (no access)
+    // No unit at all: see only self.
     if (allUnitIds.length === 0) {
-      return [];
+      return [ownEmployeeId];
     }
 
-    // Get all employee IDs from these units
-    const allEmployeeIds = new Set<string>();
-
-    // Get employees from each unit
+    const ids = new Set<string>([ownEmployeeId]);
     for (const unitId of allUnitIds) {
-      const employeesInUnit =
-        await (unitEmployeeModel as any).unitEmployee.getEmployeesByUnitId(unitId);
-      employeesInUnit.forEach((ue: any) => {
-        if (ue.employeeId) {
-          allEmployeeIds.add(ue.employeeId);
-        }
-      });
+      const employeesInUnit = await (unitEmployeeModel as any).unitEmployee.getEmployeesByUnitId(unitId);
+      employeesInUnit.forEach((ue: any) => { if (ue.employeeId) ids.add(ue.employeeId); });
     }
-
-    return Array.from(allEmployeeIds);
+    return Array.from(ids);
   } catch (error) {
     console.error("Error getting accessible employee IDs:", error);
-    // On error, return empty array (no access) for security
     return [];
   }
+}
+
+/** HOTFIX: true if `userId` may access `employeeId`'s records (unit scope). Used to 403 detail/overview
+ *  endpoints for an employee outside the caller's units. */
+export async function canAccessEmployee(userId: string | undefined, employeeId: string): Promise<boolean> {
+  const ids = await getAccessibleEmployeeIds(userId);
+  if (ids === null) return true; // viewAll / god
+  return ids.includes(employeeId);
 }

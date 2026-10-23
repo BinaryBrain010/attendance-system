@@ -8,9 +8,20 @@ import { compressImageDataUrl, makeThumbnailDataUrl } from "../../../../core/uti
 import userModel from "../../../rbac/user/models/user.model";
 import { getActorId } from "../../../../core/context/requestContext";
 import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
+import { getAccessibleEmployeeIds, canAccessEmployee } from "../../Unit/helper/unitAccess.helper";
+import { AppError } from "../../../../core/errors/app.error";
 
 // Phase 3c: employee states that terminate access. REJOINED stays active (and never auto-reactivates).
 const TERMINAL_EMPLOYEE_STATUSES = new Set(["RESIGNED", "FIRE"]);
+
+// HOTFIX: filter a list of {id} rows to the caller's accessible employees (null scope = all).
+async function scopeRows<T extends { id?: string }>(rows: T[], userId?: string): Promise<T[]> {
+  if (!userId) return rows;
+  const ids = await getAccessibleEmployeeIds(userId);
+  if (ids === null) return rows;
+  const set = new Set(ids);
+  return rows.filter((r) => r.id && set.has(r.id));
+}
 
 class EmployeeService {
   async getAllEmployees(): Promise<Employee[]> {
@@ -47,14 +58,14 @@ class EmployeeService {
     );
   }
 
-  async getFilterEmployees(): Promise<any[]> {
-    return await employeeModel.employee.gpFindFilterMany();
+  async getFilterEmployees(userId?: string): Promise<any[]> {
+    return await scopeRows(await employeeModel.employee.gpFindFilterMany(), userId);
   }
 
   // 6a: employees currently present (checked in today, not yet checked out) — the source for the
   // Frontdesk "Referred To" suggestions.
-  async getPresentTodayEmployees(): Promise<any[]> {
-    return await employeeModel.employee.gpFindPresentToday();
+  async getPresentTodayEmployees(userId?: string): Promise<any[]> {
+    return await scopeRows(await employeeModel.employee.gpFindPresentToday(), userId);
   }
 
   async getEmployeeByUserId(userId:string){
@@ -130,7 +141,8 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   }
 
   /** 5g: serve an employee photo (thumb or full) as decoded bytes for the /employee/photo endpoint. */
-  async getPhoto(id: string, size: "thumb" | "full"): Promise<{ buffer: Buffer; contentType: string } | null> {
+  async getPhoto(id: string, size: "thumb" | "full", userId?: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+    if (userId && !(await canAccessEmployee(userId, id))) throw new AppError(403, "This employee is outside your units");
     const emp = await prisma.employee.findUnique({ where: { id }, select: { image: true, imageThumb: true } });
     if (!emp) return null;
     const dataUrl = size === "thumb" ? (emp.imageThumb || emp.image) : (emp.image || emp.imageThumb);
@@ -153,7 +165,8 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     await employeeModel.employee.gpRestore(employeeId);
   }
 
-  async getEmployeeById(employeeId: string): Promise<Employee | null> {
+  async getEmployeeById(employeeId: string, userId?: string): Promise<Employee | null> {
+    if (userId && !(await canAccessEmployee(userId, employeeId))) throw new AppError(403, "This employee is outside your units");
     const employee = await employeeModel.employee.gpFindById(employeeId);
     if (employee && employee.emergencyContactNo === null) {
       employee.emergencyContactNo = undefined as unknown as string;
@@ -161,11 +174,14 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     return employee as Employee | null;
   }
 
-  async getEmployeeByCode(code: string){
-    return await employeeModel.employee.gpFindByCode(code);
+  async getEmployeeByCode(code: string, userId?: string){
+    const emp: any = await employeeModel.employee.gpFindByCode(code);
+    if (emp?.id && userId && !(await canAccessEmployee(userId, emp.id))) throw new AppError(403, "This employee is outside your units");
+    return emp;
   }
 
-  async getEmployeeLinkedUser(employeeId: string): Promise<any> {
+  async getEmployeeLinkedUser(employeeId: string, userId?: string): Promise<any> {
+    if (userId && !(await canAccessEmployee(userId, employeeId))) throw new AppError(403, "This employee is outside your units");
     return await employeeModel.employee.gpGetLinkedUser(employeeId);
   }
 
@@ -176,15 +192,21 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   async searchEmployee(
     searchTerm: string | string[],
     page: number,
-    pageSize: number
+    pageSize: number,
+    userId?: string
   ): Promise<paginatedData> {
     const columns: string[] = ['name','surname','address','bloodGroup','code','designation','department','contactNo','martialStatus'];
-    return await employeeModel.employee.gpSearch(
-      searchTerm,
-      columns,
-      page,
-      pageSize
-    );
+    const res: any = await employeeModel.employee.gpSearch(searchTerm, columns, page, pageSize);
+    // HOTFIX: restrict the page to the caller's accessible employees.
+    if (userId && res && Array.isArray(res.data)) {
+      const ids = await getAccessibleEmployeeIds(userId);
+      if (ids !== null) {
+        const set = new Set(ids);
+        res.data = res.data.filter((r: any) => r.id && set.has(r.id));
+        res.totalSize = res.data.length;
+      }
+    }
+    return res;
   }
 
   async getTotal() {
@@ -193,7 +215,8 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
 
   /** 4b: employee detail overview — linked user (+roles/last login/status), teams + team lead,
    *  assigned tasks, linked sales agent, recent daily reports. All server-computed, null-safe. */
-  async getOverview(employeeId: string): Promise<any> {
+  async getOverview(employeeId: string, userId?: string): Promise<any> {
+    if (userId && !(await canAccessEmployee(userId, employeeId))) throw new AppError(403, "This employee is outside your units");
     const [linkedUser, teamMemberships, taskAssignees, agent, reports] = await Promise.all([
       prisma.user.findFirst({ where: { employeeId, isDeleted: null }, select: { id: true, username: true, suspendedAt: true, userRoles: { where: { isDeleted: null }, select: { role: { select: { name: true } } } } } }),
       prisma.teamMember.findMany({ where: { employeeId, isDeleted: null }, select: { team: { select: { id: true, name: true, lead: { select: { name: true, surname: true } } } } } }),

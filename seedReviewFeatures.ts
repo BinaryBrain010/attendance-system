@@ -29,6 +29,9 @@ const FEATURES: F[] = [
   ["user.suspend.*", "user.*", "Suspend / Reactivate user"],
   // Frontdesk per-unit visibility (6c): holders see visitors from all units; others see only theirs.
   ["visitor.viewAll.unit.*", "visitor.*", "See visitors from all units (not just own unit)"],
+  // HOTFIX 2026-10-23: AMS/Quick-Mark unit scoping bypass. Holders see every unit's employees +
+  // attendance; everyone else is scoped to their units (no unit = only themselves).
+  ["ams.viewAll.unit.*", null, "AMS: see all units (bypass Quick Mark unit scoping)"],
 ];
 
 async function main() {

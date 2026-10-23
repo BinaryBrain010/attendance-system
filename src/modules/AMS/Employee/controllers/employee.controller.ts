@@ -14,7 +14,7 @@ class EmployeeController extends BaseController<EmployeeService> {
   async getAllEmployees(req: Request, res: Response) {
     const light = req.query.light === 'true' || req.query.light === '1';
     if (light) {
-      const operation = () => this.service.getFilterEmployees();
+      const operation = () => this.service.getFilterEmployees((req as any).userId);
       await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
       return;
     }
@@ -100,7 +100,7 @@ class EmployeeController extends BaseController<EmployeeService> {
   async getEmployeeCard(req: Request, res: Response) {
     const { id } = req.body;
     try {
-      const data: Employee | null = await this.service.getEmployeeById(id);
+      const data: Employee | null = await this.service.getEmployeeById(id, (req as any).userId);
       if (data) {
         const pdfDoc = this.pdfUtility.generateEmployeePDF(data);
 
@@ -230,7 +230,7 @@ class EmployeeController extends BaseController<EmployeeService> {
   async searchEmployees(req: Request, res: Response) {
     const { searchTerm, page, pageSize } = req.body;
     const operation = () =>
-      this.service.searchEmployee(searchTerm, page, pageSize);
+      this.service.searchEmployee(searchTerm, page, pageSize, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
   }
 
@@ -290,13 +290,13 @@ class EmployeeController extends BaseController<EmployeeService> {
 
   async getEmployeeById(req: Request, res: Response) {
     const { id } = req.body;
-    const operation = () => this.service.getEmployeeById(id);
+    const operation = () => this.service.getEmployeeById(id, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employee retrieved successfully!" });
   }
 
   async getEmployeeByCode(req: Request, res: Response) {
     const { code } = req.body;
-    const operation = () => this.service.getEmployeeByCode(code);
+    const operation = () => this.service.getEmployeeByCode(code, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employee retrieved successfully!" });
   }
 
@@ -310,7 +310,7 @@ class EmployeeController extends BaseController<EmployeeService> {
       });
     }
 
-    const operation = () => this.service.getEmployeeLinkedUser(id);
+    const operation = () => this.service.getEmployeeLinkedUser(id, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employee linked user retrieved successfully!" });
   }
 
@@ -338,7 +338,12 @@ class EmployeeController extends BaseController<EmployeeService> {
     const id = String(req.query.id || "");
     const size = req.query.size === "thumb" ? "thumb" : "full";
     if (!id) return res.status(400).json({ success: false, message: "id is required", statusCode: 400 });
-    const photo = await this.service.getPhoto(id, size as "thumb" | "full");
+    let photo;
+    try {
+      photo = await this.service.getPhoto(id, size as "thumb" | "full", (req as any).userId);
+    } catch (e: any) {
+      return res.status(e?.statusCode === 403 ? 403 : 500).json({ success: false, message: e?.message || "Error", statusCode: e?.statusCode || 500 });
+    }
     if (!photo) return res.status(404).json({ success: false, message: "No photo", statusCode: 404 });
     res.setHeader("Content-Type", photo.contentType);
     res.setHeader("Cache-Control", "private, max-age=86400");
@@ -347,7 +352,7 @@ class EmployeeController extends BaseController<EmployeeService> {
 
   async getOverview(req: Request, res: Response) {
     const { id } = req.body;
-    const operation = () => this.service.getOverview(id);
+    const operation = () => this.service.getOverview(id, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Employee overview retrieved successfully!" });
   }
 
@@ -357,7 +362,7 @@ class EmployeeController extends BaseController<EmployeeService> {
   }
 
   async getPresentToday(req: Request, res: Response) {
-    const operation = () => this.service.getPresentTodayEmployees();
+    const operation = () => this.service.getPresentTodayEmployees((req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Present employees retrieved successfully!" });
   }
 

@@ -13,13 +13,13 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
 
   async getAttendanceRequests(req: Request, res: Response) {
     const { page, pageSize, status, employeeId, from, to } = req.body;
-    const operation = () => this.service.getAttendanceRequests(page, pageSize, { status, employeeId, from, to });
+    const operation = () => this.service.getAttendanceRequests(page, pageSize, { status, employeeId, from, to }, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Attendance requests retrieved successfully!" });
   }
 
   async getAttendanceRequestStats(req: Request, res: Response) {
     const { status, employeeId, from, to } = req.body || {};
-    const operation = () => this.service.getAttendanceRequestStats({ status, employeeId, from, to });
+    const operation = () => this.service.getAttendanceRequestStats({ status, employeeId, from, to }, (req as any).userId);
     await this.handleRequest(operation, res, { successMessage: "Attendance request stats retrieved successfully!" });
   }
 
@@ -136,7 +136,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
       });
     }
 
-    const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId);
+    const operation = () => this.service.updateAttendanceRequestStatus(id, status, userId, undefined, userId);
     await this.handleRequest(operation, res, {
       successMessage: "Attendance request status updated successfully!",
       logActivity: {
@@ -194,7 +194,7 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
       });
     }
 
-    const operation = () => this.service.bulkUpdateAttendanceRequestStatus(requestIds, status, userId);
+    const operation = () => this.service.bulkUpdateAttendanceRequestStatus(requestIds, status, userId, userId);
     await this.handleRequest(operation, res, {
       successMessage: `Bulk ${status.toLowerCase()} operation completed!`,
       logActivity: {

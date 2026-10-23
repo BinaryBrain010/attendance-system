@@ -34,12 +34,18 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
 // Build the shared WHERE clause for attendance-request list/stats from optional server-side filters
 // (status, employeeId, created-date range). Always excludes soft-deleted rows. Values are bound
 // parameters (Prisma.sql), so this is injection-safe.
-function buildArFilter(f: any): Prisma.Sql {
+function buildArFilter(f: any, scope?: string[] | null): Prisma.Sql {
   const conds: Prisma.Sql[] = [Prisma.sql`ar."isDeleted" IS NULL`];
   if (f?.status) conds.push(Prisma.sql`ar.status::text = ${String(f.status)}`);
   if (f?.employeeId) conds.push(Prisma.sql`ar."employeeId" = ${String(f.employeeId)}`);
   if (f?.from) conds.push(Prisma.sql`ar."createdAt" >= ${new Date(f.from)}`);
   if (f?.to) conds.push(Prisma.sql`ar."createdAt" <= ${new Date(f.to)}`);
+  // HOTFIX unit scoping: when scope is a (possibly empty) array, restrict to those employees;
+  // null = see all (ams.viewAll.unit or no userId). Empty array -> matches nothing.
+  if (scope != null) {
+    const ids = scope.length > 0 ? scope : ["__none__"];
+    conds.push(Prisma.sql`ar."employeeId" IN (${Prisma.join(ids)})`);
+  }
   return Prisma.join(conds, " AND ");
 }
 
@@ -143,10 +149,10 @@ const attendanceRequestModel = prisma.$extends({
         return item;
       },
 
-      async gpPgFindMany(this: any, page: number, pageSize: number, filters?: any): Promise<any> {
+      async gpPgFindMany(this: any, page: number, pageSize: number, filters?: any, scope?: string[] | null): Promise<any> {
         const size = Math.min(Math.max(1, Number(pageSize) || 10), 100); // hard max take 100
         const skip = (Math.max(1, Number(page) || 1) - 1) * size;
-        const where = buildArFilter(filters);
+        const where = buildArFilter(filters, scope);
 
         const data = await prisma.$queryRaw(Prisma.sql`
           SELECT
@@ -202,8 +208,8 @@ const attendanceRequestModel = prisma.$extends({
 
       // Server-side aggregate stats (status counts + current-year monthly distribution) computed by
       // SQL GROUP BY — replaces the old pattern of downloading every row to the client to count them.
-      async gpStats(this: any, filters?: any): Promise<any> {
-        const where = buildArFilter(filters);
+      async gpStats(this: any, filters?: any, scope?: string[] | null): Promise<any> {
+        const where = buildArFilter(filters, scope);
         const statusRows = await prisma.$queryRaw(Prisma.sql`
           SELECT ar.status::text AS status, COUNT(*)::int AS count
           FROM "AttendanceRequest" ar
@@ -287,13 +293,21 @@ const attendanceRequestModel = prisma.$extends({
         return { data: resolvedData, totalSize };
       },
 
-      async gpUpdateStatus(requestId: string, status: LeaveStatus, approvedBy?: string): Promise<void> {
+      async gpUpdateStatus(requestId: string, status: LeaveStatus, approvedBy?: string, note?: string, userId?: string): Promise<void> {
         const attendanceRequest = await prisma.attendanceRequest.findUnique({
           where: { id: requestId },
         }) as any;
 
         if (!attendanceRequest) {
           throw new Error(`Attendance request with ID ${requestId} not found.`);
+        }
+
+        // HOTFIX unit scoping: the reviewer may only approve/reject requests for employees in
+        // their accessible units (ams.viewAll.unit bypasses).
+        if (userId && attendanceRequest.employeeId) {
+          const { canAccessEmployee } = await import("../../Unit/helper/unitAccess.helper");
+          const ok = await canAccessEmployee(userId, attendanceRequest.employeeId);
+          if (!ok) throw new AppError(403, "This request is outside your units");
         }
 
         // Only a PENDING request can be approved or rejected (no double-apply).

@@ -1106,23 +1106,18 @@ ORDER BY
         return data;
       },
 
-      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string) {
+      async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string, _unitIds?: string[]) {
         const skip = (page - 1) * pageSize;
-        
-        // Apply unit-based access control if userId is provided
+
+        // HOTFIX: scope to the caller's accessible units (ams.viewAll.unit bypasses; no unit = self
+        // only). null = see all; otherwise restrict to the resolved employee ids.
         let employeeFilter = '';
         if (userId) {
           const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
-          const accessibleEmployeeIds = await getAccessibleEmployeeIds(userId, 'attendance');
-          
-          // If null, user has supervisor permission (access all) - no filter needed
-          // If empty array, user has no access - return empty result
-          // If array with IDs, filter by those IDs
-          if (accessibleEmployeeIds !== null) {
-            if (accessibleEmployeeIds.length === 0) {
-              return { data: [], totalSize: 0 };
-            }
-            const idsString = accessibleEmployeeIds.map(id => `'${id}'`).join(',');
+          const scopedIds = await getAccessibleEmployeeIds(userId);
+          if (scopedIds !== null) {
+            const safe = scopedIds.length > 0 ? scopedIds : ['__none__'];
+            const idsString = safe.map(id => `'${id.replace(/'/g, "''")}'`).join(',');
             employeeFilter = `AND a."employeeId" IN (${idsString})`;
           }
         }

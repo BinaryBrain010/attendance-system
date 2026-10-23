@@ -225,8 +225,23 @@ class ShiftService {
     employeeIds: string[],
     shiftId: string,
     startDate: Date,
-    endDate: Date | null
+    endDate: Date | null,
+    userId?: string
   ): Promise<{ assigned: string[]; skipped: { employeeId: string; reason: string }[] }> {
+    const outOfScope: { employeeId: string; reason: string }[] = [];
+    // HOTFIX unit scoping: a manager may only assign shifts to employees in their accessible units.
+    if (userId) {
+      const { getAccessibleEmployeeIds } = await import("../../Unit/helper/unitAccess.helper");
+      const scope = await getAccessibleEmployeeIds(userId);
+      if (scope !== null) {
+        const set = new Set(scope);
+        const allowed = employeeIds.filter((id) => set.has(id));
+        outOfScope.push(
+          ...employeeIds.filter((id) => !set.has(id)).map((employeeId) => ({ employeeId, reason: "Employee is outside your units" }))
+        );
+        employeeIds = allowed;
+      }
+    }
     const { conflictingEmployeeIds, details } = await this.checkAssignmentConflicts(
       shiftId,
       startDate,
@@ -245,7 +260,7 @@ class ShiftService {
       assigned.push(employeeId);
     }
 
-    return { assigned, skipped };
+    return { assigned, skipped: [...skipped, ...outOfScope] };
   }
 
   // Assignments
@@ -291,11 +306,24 @@ class ShiftService {
     await shiftModel.shiftAssignment.softDeleteById(assignmentId);
   }
 
-  async getAssignedEmployeesOfShift(shiftId: string) {
-    return await shiftModel.shiftAssignment.getAssignedEmployeesByShiftId(shiftId);
+  async getAssignedEmployeesOfShift(shiftId: string, userId?: string) {
+    const rows = await shiftModel.shiftAssignment.getAssignedEmployeesByShiftId(shiftId);
+    // HOTFIX unit scoping: only reveal assigned employees within the caller's accessible units.
+    const { getAccessibleEmployeeIds } = await import("../../Unit/helper/unitAccess.helper");
+    const scope = await getAccessibleEmployeeIds(userId);
+    if (scope === null) return rows;
+    const set = new Set(scope);
+    return (rows as any[]).filter((r: any) => set.has(r.employeeId ?? r.employee?.id));
   }
 
-  async getAssignmentsByEmployeeId(employeeId: string): Promise<any[]> {
+  async getAssignmentsByEmployeeId(employeeId: string, userId?: string): Promise<any[]> {
+    // HOTFIX unit scoping: block viewing assignments of an employee outside the caller's units.
+    if (userId) {
+      const { canAccessEmployee } = await import("../../Unit/helper/unitAccess.helper");
+      const { AppError } = await import("../../../../core/errors/app.error");
+      const ok = await canAccessEmployee(userId, employeeId);
+      if (!ok) throw new AppError(403, "This employee is outside your units");
+    }
     const assignments = await prisma.shiftAssignment.findMany({
       where: { employeeId, isDeleted: null, shift: { isDeleted: null } },
       include: {

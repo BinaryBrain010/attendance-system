@@ -50,8 +50,8 @@ export const NAMED_PERSONAS: Persona[] = [
     note: "unitIds set in JWT; check whether employee/attendance data is actually filtered by unit" },
   { name: "QA_Revoked", platformsAllowed: ["Admin"], directFeatures: ["login.admin.*", "visitor.*"], roles: [], groups: [],
     note: "granted visitor.* then revoked mid-test; union must drop it" },
-  { name: "QA_AttendanceApprover", platformsAllowed: ["Admin"], directFeatures: ["login.admin.*", "attendanceReq.*", "attendance.request.approve.*"], roles: [], groups: [],
-    note: "holds attendance.request.approve.* (the feature the approve route actually enforces)" },
+  { name: "QA_AttendanceApprover", platformsAllowed: ["Admin"], directFeatures: ["login.admin.*", "attendanceReq.*", "attendance.request.approve.*", "ams.viewAll.unit.*"], roles: [], groups: [],
+    note: "holds attendance.request.approve.* (the feature the approve route actually enforces); ams.viewAll.unit.* = cross-unit HR approver (hotfix 2026-10-23)" },
 ];
 
 /** One full-access user per module (direct grant of all live features under the prefix). */
@@ -66,7 +66,10 @@ export function singleModulePersonas(): Persona[] {
   return SINGLE_MODULE_PREFIXES.map((p) => ({
     name: `QA_Mod_${p}`,
     platformsAllowed: ["Admin"] as any,
-    directFeatures: ["login.admin.*"],
+    // Full AMS module operators (attendance/attendanceReq) are cross-unit by nature, so they carry
+    // ams.viewAll.unit.* — the hotfix 2026-10-23 bypass — matching how a real HR/attendance admin is
+    // set up. Without it they would be scoped to their own (non-existent) unit and could mark nobody.
+    directFeatures: ["login.admin.*", ...(p === "attendance" || p === "attendanceReq" ? ["ams.viewAll.unit.*"] : [])],
     roles: [], groups: [], modulePrefix: p,
   }));
 }
