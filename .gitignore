@@ -50,3 +50,6 @@ qa/route_feature_map.json
 qa/RBAC_Impact_Report.md
 # RBAC denial log (runtime)
 logs/
+
+# prod role-grants export (may contain prod config) — never commit
+qa/_roleGrants*.json
