@@ -1,26 +1,27 @@
 # RBAC_ENFORCE flip preflight — 2026-10-24
 
+Source: **local DB** role/group grants (may differ from prod — run with --grants=<prod export> for the real picture).
 Routes in featureMap: **529** (feature-gated: 480, god-only: 4).
-Each section lists, for a QA_ user copying that role's + same-named group's grants, the **feature routes that would start returning 403** when prod flips RBAC_ENFORCE log→on. Grant the listed features (or confirm the role never calls that route) before flipping.
+Each section lists the **in-module** feature routes that would start returning 403 when prod flips RBAC_ENFORCE log→on — routes inside apps the role actually uses. Cross-module 403s (modules the role has no access to, so never calls) are counted but excluded. Grant the listed features, or confirm the role never calls that route, before flipping.
 
-## Admin  —  copied from role "Admin" + group "Admins"
+## Admin  —  role "Admin" + group "Admins"
 Module roots this role operates in: `activityLog`, `analytics`, `appModules`, `attendance`, `attendanceReq`, `audit`, `crm`, `customer`, `employee`, `featurePermission`, `gatePass`, `group`, `holiday`, `item`, `leave`, `leaveAlloc`, `leaveConfig`, `leaveReq`, `login`, `profile`, `role`, `setting`, `shift`, `systemConfig`, `unit`, `user`, `visitor`, `voucher`, `work`.
-**0** in-module feature routes would 403 (routes inside apps this role uses). 0 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**0** in-module feature routes would 403. 0 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 > ✅ Nothing to grant — every route inside this role's own modules is already covered.
 
-## HR  —  copied from role "HR"
+## HR  —  role "HR"
 Module roots this role operates in: `activityLog`, `analytics`, `appModules`, `attendance`, `attendanceReq`, `employee`, `holiday`, `leave`, `leaveAlloc`, `leaveConfig`, `leaveReq`, `login`, `profile`, `shift`, `unit`.
-**0** in-module feature routes would 403 (routes inside apps this role uses). 310 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**0** in-module feature routes would 403. 310 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 > ✅ Nothing to grant — every route inside this role's own modules is already covered.
 
-## Attendance Manager  —  copied from role "Attendance Manager" + group "Attendance Managers"
+## Attendance Manager  —  role "Attendance Manager" + group "Attendance Managers"
 Module roots this role operates in: `analytics`, `appModules`, `attendance`, `employee`, `login`, `profile`.
-**0** in-module feature routes would 403 (routes inside apps this role uses). 416 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**0** in-module feature routes would 403. 416 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 > ✅ Nothing to grant — every route inside this role's own modules is already covered.
 
-## Sales Agent  —  copied from role "Sales Agent"
+## Sales Agent  —  role "Sales Agent"
 Module roots this role operates in: `appModules`, `crm`, `login`, `profile`.
-**39** in-module feature routes would 403 (routes inside apps this role uses). 348 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**39** in-module feature routes would 403. 348 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 
 | Grant this feature | clears # routes | example routes |
 |---|---|---|
@@ -44,9 +45,9 @@ Module roots this role operates in: `appModules`, `crm`, `login`, `profile`.
 | `crm.order.restore.*` | 1 | POST /salesOrder/restore |
 | `crm.return.delete.*` | 1 | POST /salesReturn/delete |
 
-## Sales Manager  —  copied from role "Sales Manager"
+## Sales Manager  —  role "Sales Manager"
 Module roots this role operates in: `appModules`, `crm`, `login`, `profile`.
-**37** in-module feature routes would 403 (routes inside apps this role uses). 348 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**37** in-module feature routes would 403. 348 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 
 | Grant this feature | clears # routes | example routes |
 |---|---|---|
@@ -69,9 +70,9 @@ Module roots this role operates in: `appModules`, `crm`, `login`, `profile`.
 | `crm.order.restore.*` | 1 | POST /salesOrder/restore |
 | `crm.return.delete.*` | 1 | POST /salesReturn/delete |
 
-## Frontdesk  —  copied from role "Frontdesk"
+## Frontdesk  —  role "Frontdesk"
 Module roots this role operates in: `appModules`, `employee`, `login`, `profile`, `visitor`.
-**9** in-module feature routes would 403 (routes inside apps this role uses). 435 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**9** in-module feature routes would 403. 435 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 
 | Grant this feature | clears # routes | example routes |
 |---|---|---|
@@ -82,18 +83,18 @@ Module roots this role operates in: `appModules`, `employee`, `login`, `profile`
 | `employee.viewPreviousUpdate.*` | 1 | POST /employee/getHistoryById |
 | `employee.restore.*` | 1 | POST /employee/restore |
 
-## Head Office Reception  —  copied from role "Head Office Reception"
+## Head Office Reception  —  role "Head Office Reception"
 Module roots this role operates in: `analytics`, `appModules`, `attendance`, `attendanceReq`, `employee`, `leave`, `leaveReq`, `login`, `profile`.
-**0** in-module feature routes would 403 (routes inside apps this role uses). 395 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**0** in-module feature routes would 403. 395 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 > ✅ Nothing to grant — every route inside this role's own modules is already covered.
 
-## Warehouse  —  copied from role "Warehouse" + group "Warehouse"
+## Warehouse  —  role "Warehouse" + group "Warehouse"
 Module roots this role operates in: `appModules`, `customer`, `item`, `login`, `profile`, `setting`, `voucher`.
-**0** in-module feature routes would 403 (routes inside apps this role uses). 424 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
+**0** in-module feature routes would 403. 424 other feature routes would also 403 but belong to modules this role has no access to — ignore those.
 > ✅ Nothing to grant — every route inside this role's own modules is already covered.
 
 ## Executives
-> No matching role/group in the local DB config — confirm the exact prod name, then re-run. (Skipped.)
+> No matching role/group in the grant source (role "Executives" / group "Executives") — confirm the exact name and re-run. (Skipped.)
 
 ## God-only routes (would 403 for every role above)
 These 4 routes are intentionally god-only and are expected to 403 for normal roles — grant nothing unless a role genuinely needs them:

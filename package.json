@@ -36,7 +36,8 @@
     "qa:leadmention": "ts-node qa/leadMention.ts",
     "qa:holidayunit": "ts-node qa/holidayUnit.ts",
     "qa:amsscope": "ts-node qa/amsUnitScope.ts",
-    "qa:enforceprep": "ts-node qa/enforcePreflight.ts"
+    "qa:enforceprep": "ts-node qa/enforcePreflight.ts",
+    "qa:exportgrants": "ts-node qa/exportRoleGrants.ts"
   },
   "author": "ahad",
   "license": "ISC",
