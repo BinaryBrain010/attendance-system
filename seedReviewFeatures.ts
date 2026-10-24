@@ -31,7 +31,11 @@ const FEATURES: F[] = [
   ["visitor.viewAll.unit.*", "visitor.*", "See visitors from all units (not just own unit)"],
   // HOTFIX 2026-10-23: AMS/Quick-Mark unit scoping bypass. Holders see every unit's employees +
   // attendance; everyone else is scoped to their units (no unit = only themselves).
-  ["ams.viewAll.unit.*", null, "AMS: see all units (bypass Quick Mark unit scoping)"],
+  // The feature hierarchy endpoint keys buckets by a top-level "<module>.*" root (like "visitor.*"),
+  // so ams needs its own root for the permission editor's "Quick Mark" bucket to populate. The root
+  // MUST be upserted before the child below (parentFeatureId is a self-FK to AppFeature.name).
+  ["ams.*", null, "Quick Mark (unit visibility)"],
+  ["ams.viewAll.unit.*", "ams.*", "AMS: see all units (bypass Quick Mark unit scoping)"],
 ];
 
 async function main() {
