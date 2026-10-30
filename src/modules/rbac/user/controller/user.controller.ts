@@ -126,6 +126,35 @@ class UserController extends BaseController<UserService> {
     await this.handleRequest(() => this.service.getProfile(userId), res, { successMessage: "Profile retrieved successfully!" });
   }
 
+  // Sliding-session renewal for the client's "Stay signed in" prompt. Requires a STILL-VALID token
+  // (the auth middleware already ran), re-signs with the same claims + a fresh expiry, and returns the
+  // new token + expiresAt. Impersonation sessions are NOT extendable here (their own flow governs TTL).
+  async refreshSession(req: Request, res: Response) {
+    const r = req as Request & { userId?: string };
+    const userId = r.userId;
+    if (!userId) { res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401, code: "NO_TOKEN" }); return; }
+    try {
+      const authz = req.headers.authorization?.split(" ")[1];
+      const current = authz ? (jwt.decode(authz) as any) : null;
+      if (current?.impersonatorId) {
+        res.status(400).json({ success: false, message: "Impersonation sessions cannot be extended.", statusCode: 400 });
+        return;
+      }
+      const unitIds: string[] = Array.isArray(current?.unitIds) ? current.unitIds : [];
+      // Preserve the original session length (remember-me ~180d vs the normal 24h) when sliding.
+      const origLifetime = current?.exp && current?.iat ? current.exp - current.iat : 0; // seconds
+      const expiresIn = origLifetime > 25 * 3600 ? "180d" : "24h";
+      const token = jwt.sign({ userId, unitIds, jti: randomUUID() }, secretKey, { expiresIn });
+      // Best-effort session record (same as login); never fail the refresh over it.
+      try { await prisma.loggedInUsers.gpCreate({ userId, token, rememberMe: origLifetime > 25 * 3600 } as any); } catch { /* ignore */ }
+      const decoded = jwt.decode(token) as { exp?: number } | null;
+      const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null;
+      res.json({ success: true, token, expiresIn, expiresAt });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: "Could not refresh session", statusCode: 500 });
+    }
+  }
+
   // 8d/8e: own preferences
   async getMyPreferences(req: Request, res: Response) {
     const userId = AuthHelper.getUserIdFromHeader(req);

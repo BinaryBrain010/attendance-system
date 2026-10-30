@@ -118,6 +118,7 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "GET /search/global": { feature: "-", kind: "read", access: "token", note: "global search (permission-aware per type)" },
   // Phase 8d/8e: "Me" app — own profile + preferences (token access, own data only).
   "GET /user/me": { feature: "-", kind: "read", access: "token", note: "own profile for the Me app" },
+  "POST /user/refreshSession": { feature: "-", kind: "update", access: "token", note: "sliding-session renewal (Stay signed in)" },
   "GET /user/preferences": { feature: "-", kind: "read", access: "token", note: "own preferences" },
   "POST /user/preferences": { feature: "-", kind: "update", access: "token", note: "save own preferences" },
 };

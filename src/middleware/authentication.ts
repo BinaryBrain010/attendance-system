@@ -17,20 +17,27 @@ class Authentication {
     
     if (!token) {
       logger.warn("Authentication attempt without token", { path: req.path });
-      res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401 });
+      // `code` lets the client distinguish a truly dead session from a business/scope error and log
+      // out ONLY on these specific auth reasons. NO_TOKEN = header missing (client does not auto-logout
+      // on it — it can be a request that simply didn't attach the token).
+      res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401, code: "NO_TOKEN" });
       return;
     }
 
     jwt.verify(token, secret_key, async (err: jwt.VerifyErrors | null, decoded: jwt.JwtPayload | string | undefined) => {
       if (err) {
+        const expired = err.name === "TokenExpiredError";
         logger.warn("Invalid token provided", { path: req.path, error: err.message });
-        res.status(403).json({ success: false, message: "Invalid token", statusCode: 403 });
+        // Expired -> 401 TOKEN_EXPIRED; otherwise malformed/bad-signature -> 403 TOKEN_INVALID (403
+        // kept so the impersonation-restore path keeps working). Both are "session truly dead".
+        if (expired) res.status(401).json({ success: false, message: "Session expired", statusCode: 401, code: "TOKEN_EXPIRED" });
+        else res.status(403).json({ success: false, message: "Invalid token", statusCode: 403, code: "TOKEN_INVALID" });
         return;
       }
 
       if (!decoded || typeof decoded === 'string') {
         logger.warn("Token decoded incorrectly", { path: req.path });
-        res.status(403).json({ success: false, message: "Invalid token", statusCode: 403 });
+        res.status(403).json({ success: false, message: "Invalid token", statusCode: 403, code: "TOKEN_INVALID" });
         return;
       }
 
@@ -40,7 +47,7 @@ class Authentication {
 
       if (isBlacklisted) {
         logger.warn("Blacklisted token used", { path: req.path, userId: decoded.userId });
-        res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401 });
+        res.status(401).json({ success: false, message: "Unauthorized", statusCode: 401, code: "TOKEN_REVOKED" });
         return;
       }
 

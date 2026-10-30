@@ -2389,6 +2389,11 @@
     "feature": "user.suspend.*",
     "kind": "update"
   },
+  "POST /user/refreshSession": {
+    "access": "token",
+    "feature": "-",
+    "kind": "update"
+  },
   "POST /user/restore": {
     "access": "feature",
     "feature": "user.delete.*",
