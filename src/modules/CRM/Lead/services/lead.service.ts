@@ -13,6 +13,16 @@ export interface LeadFilters {
   company?: string; outlet?: string; city?: string; stage?: string;
   priority?: string; channel?: string; agentId?: string; followUp?: string; from?: string; to?: string;
   search?: string; phone?: string;
+  sortBy?: string; sortOrder?: "asc" | "desc";
+}
+
+// Date columns the lead list may be sorted by (server-side). Anything else -> default (newest
+// created first). Nullable columns sort their empties to the bottom regardless of direction.
+const LEAD_SORTABLE = new Set(["createdAt", "updatedAt", "lastContactAt", "nextFollowUpAt", "dateReceived"]);
+function leadOrderBy(f: LeadFilters = {}): any[] {
+  const field = f.sortBy && LEAD_SORTABLE.has(f.sortBy) ? f.sortBy : "createdAt";
+  const dir: "asc" | "desc" = f.sortOrder === "asc" ? "asc" : "desc";
+  return [{ [field]: { sort: dir, nulls: "last" } }];
 }
 
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -98,7 +108,7 @@ class LeadService {
     const where = { AND: [{ isDeleted: null }, filterWhere(filters), scope.where] };
     const skip = (page - 1) * pageSize;
     let [data, totalSize] = await Promise.all([
-      prisma.lead.findMany({ where, skip, take: pageSize, orderBy: { dateReceived: "desc" } }),
+      prisma.lead.findMany({ where, skip, take: pageSize, orderBy: leadOrderBy(filters) }),
       prisma.lead.count({ where }),
     ]);
     let rows = data.map(withComputed);
