@@ -214,6 +214,7 @@ class UserRoutes {
 
     // 8d/8e: "Me" app — own profile + preferences (every logged-in user, own data only).
     this.router.get('/me', this.controller.getMyProfile.bind(this.controller));
+    this.router.post('/refreshSession', this.controller.refreshSession.bind(this.controller)); // sliding-session renewal
     this.router.get('/preferences', this.controller.getMyPreferences.bind(this.controller));
     this.router.post('/preferences', this.controller.saveMyPreferences.bind(this.controller));
 
