@@ -2,6 +2,7 @@ import prisma from "../../../../core/models/base.model";
 import { resolveScope } from "../../shared/scope";
 import { OPEN_STAGES, weightedValue, probabilityFor } from "../../shared/computed";
 import { normalizePhone } from "../../shared/phone";
+import { computeCustomerStatus, type CustomerStatus } from "../../shared/customerStatus";
 
 /** Common filter -> where fragment (company / outlet / city / agent / channel / date range). */
 function baseWhere(f: any = {}, dateField = "createdAt"): Record<string, any> {
@@ -264,7 +265,8 @@ class ReportService {
       ...orders.map((o: any) => ({ type: "order", at: o.createdAt, label: `Order ${o.orderNo} ${o.status}`, id: o.id })),
       ...returns.map((r: any) => ({ type: "return", at: r.reportedAt, label: `Return ${r.returnNo} ${r.status}`, id: r.id })),
     ].filter((e) => e.at).sort((a, b) => new Date(b.at as any).getTime() - new Date(a.at as any).getTime());
-    return { phone, name, city, counts: { leads: leads.length, quotations: quotations.length, orders: orders.length, returns: returns.length }, totalSpent, leads, quotations, orders, returns, timeline };
+    const status = computeCustomerStatus(leads.map((l: any) => l.stage), orders.map((o: any) => o.status));
+    return { phone, name, city, status, counts: { leads: leads.length, quotations: quotations.length, orders: orders.length, returns: returns.length }, totalSpent, leads, quotations, orders, returns, timeline };
   }
 
   /** Customers list: distinct customers (by phoneNormalized) across leads/orders/returns in scope,
@@ -274,28 +276,49 @@ class ReportService {
     const [{ scope, rows: leads }, { rows: orders }, { rows: returns }] = await Promise.all([
       this.leads(userId, f), this.orders(userId, f), this.returns(userId, f),
     ]);
-    type Row = { key: string; name: string; phone: string; city: string | null; leads: number; orders: number; totalSpent: number; lastActivity: string | null };
+    type Row = { key: string; name: string; phone: string; city: string | null; leads: number; orders: number; totalSpent: number; lastActivity: string | null; leadStages: string[]; orderStatuses: string[]; status?: CustomerStatus };
     const by: Record<string, Row> = {};
     const keyOf = (p: string | null, pn: string | null) => (pn || (p ? p.replace(/\D/g, "") : "")) || "";
     const touch = (k: string, name: string | null, phone: string | null, city: string | null, at: any): Row | null => {
       if (!k) return null;
-      const c = (by[k] ||= { key: k, name: name || "(unknown)", phone: phone || k, city: city || null, leads: 0, orders: 0, totalSpent: 0, lastActivity: null });
+      const c = (by[k] ||= { key: k, name: name || "(unknown)", phone: phone || k, city: city || null, leads: 0, orders: 0, totalSpent: 0, lastActivity: null, leadStages: [], orderStatuses: [] });
       if ((!c.name || c.name === "(unknown)") && name) c.name = name;
       if (!c.city && city) c.city = city;
       if (at) { const t = new Date(at).getTime(); if (!c.lastActivity || t > new Date(c.lastActivity).getTime()) c.lastActivity = new Date(at).toISOString(); }
       return c;
     };
-    for (const l of leads as any[]) { const c = touch(keyOf(l.phone, l.phoneNormalized), l.customerName, l.phone, l.city, l.dateReceived || l.createdAt); if (c) c.leads++; }
-    for (const o of orders as any[]) { const c = touch(keyOf(o.phone, o.phoneNormalized), o.customerName, o.phone, o.city, o.createdAt || o.deliveredAt); if (c) { c.orders++; if (o.status === "DELIVERED") c.totalSpent += o.total || 0; } }
+    for (const l of leads as any[]) { const c = touch(keyOf(l.phone, l.phoneNormalized), l.customerName, l.phone, l.city, l.dateReceived || l.createdAt); if (c) { c.leads++; c.leadStages.push(l.stage); } }
+    for (const o of orders as any[]) { const c = touch(keyOf(o.phone, o.phoneNormalized), o.customerName, o.phone, o.city, o.createdAt || o.deliveredAt); if (c) { c.orders++; c.orderStatuses.push(o.status); if (o.status === "DELIVERED") c.totalSpent += o.total || 0; } }
     for (const r of returns as any[]) { touch(keyOf(r.phone, r.phoneNormalized), r.customerName, r.phone, null, r.reportedAt); }
     let list = Object.values(by);
+    // Lifecycle status per customer (computed from the rows above — see customerStatus.ts).
+    for (const c of list) c.status = computeCustomerStatus(c.leadStages, c.orderStatuses);
+    // Counts by status BEFORE the status filter (so the chips show the full breakdown).
+    const counts = { ALL: list.length, PROSPECT: 0, CUSTOMER: 0, LOST: 0 } as Record<string, number>;
+    for (const c of list) counts[c.status as string] = (counts[c.status as string] || 0) + 1;
     if (f.search) {
       const s = String(f.search).trim().toLowerCase();
       const sd = s.replace(/\D/g, "");
       list = list.filter((c) => c.name.toLowerCase().includes(s) || (!!sd && c.key.includes(sd)));
     }
+    if (f.status && ["PROSPECT", "CUSTOMER", "LOST"].includes(f.status)) list = list.filter((c) => c.status === f.status);
     list.sort((a, b) => (b.lastActivity ? new Date(b.lastActivity).getTime() : 0) - (a.lastActivity ? new Date(a.lastActivity).getTime() : 0));
-    return { scope, count: list.length, customers: list };
+    // Drop the internal arrays from the payload.
+    const customers = list.map(({ leadStages, orderStatuses, ...c }) => c);
+    return { scope, count: customers.length, counts, customers };
+  }
+
+  /** Lifecycle status for one phone-customer (for the lead-detail / 360 badge), scope-respecting. */
+  async customerStatus(userId: string, phone: string): Promise<{ status: CustomerStatus }> {
+    const national = normalizePhone(phone);
+    if (!national) return { status: "PROSPECT" };
+    const match = { phoneNormalized: national };
+    const [ls, os] = await Promise.all([resolveScope(userId, "lead"), resolveScope(userId, "order")]);
+    const [leads, orders] = await Promise.all([
+      prisma.lead.findMany({ where: { AND: [{ isDeleted: null }, match, ls.where] }, select: { stage: true } }),
+      prisma.salesOrder.findMany({ where: { AND: [{ isDeleted: null }, match, os.where] }, select: { status: true } }),
+    ]);
+    return { status: computeCustomerStatus(leads.map((l: any) => l.stage), orders.map((o: any) => o.status)) };
   }
 
   /** 11. Margin (cost-gated in the controller). */
