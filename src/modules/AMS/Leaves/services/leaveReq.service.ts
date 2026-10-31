@@ -39,6 +39,11 @@ class LeaveReqService {
     return await leaveReqModel.leaveRequest.gpPgFindMany(page, pageSize, userId, filters);
   }
 
+  async exportRows(userId: string | undefined, filters: any, cap: number): Promise<any[]> {
+    const res: any = await leaveReqModel.leaveRequest.gpPgFindMany(1, cap + 1, userId, filters, cap + 1);
+    return res?.data || [];
+  }
+
 
   // Create new leave request(s)
   async createLeaveRequest(

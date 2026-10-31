@@ -177,6 +177,37 @@ class GatePassService {
     return { data, totalSize, page, pageSize };
   }
 
+  /** Export: all gate passes matching the current web filters, newest first, capped (+1 to detect). */
+  async webExport(filters: { status?: string; customerId?: string; itemId?: string; from?: string | Date; to?: string | Date; search?: string }, cap: number) {
+    const where: any = { isDeleted: null };
+    if (filters.status) where.status = filters.status as any;
+    if (filters.customerId) where.customerId = filters.customerId;
+    if (filters.itemId) where.items = { some: { itemId: filters.itemId, isDeleted: null } };
+    if (filters.from || filters.to) {
+      where.issuedAt = {};
+      if (filters.from) where.issuedAt.gte = new Date(filters.from);
+      if (filters.to) where.issuedAt.lte = new Date(filters.to);
+    }
+    const s = (filters.search || "").trim();
+    if (s) {
+      where.OR = [
+        { vehicleNo: { contains: s, mode: "insensitive" } },
+        { storeIncharge: { contains: s, mode: "insensitive" } },
+        { id: { contains: s, mode: "insensitive" } },
+        { customer: { is: { name: { contains: s, mode: "insensitive" } } } },
+      ];
+    }
+    const rows = await prisma.gatePass.findMany({
+      where, orderBy: { issuedAt: "desc" }, take: cap + 1,
+      include: { customer: { select: { name: true } }, items: { where: { isDeleted: null }, select: { id: true } } },
+    });
+    return rows.map((g) => ({
+      id: g.id, status: g.status, customerName: g.customer?.name || "", location: g.location,
+      vehicleNo: g.vehicleNo, storeIncharge: g.storeIncharge, itemCount: g.items.length,
+      issuedAt: g.issuedAt, validUntil: g.validUntil,
+    }));
+  }
+
   /** Full gate-pass detail for the admin web: real status, items (with serials), signature + the
    *  status history (who/when/reason), and the audit footer ids. */
   async webDetail(id: string) {

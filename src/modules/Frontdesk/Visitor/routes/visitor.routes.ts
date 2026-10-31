@@ -54,6 +54,7 @@ class VisitorRoutes {
      *         description: Visitors retrieved successfully
      */
     this.router.get("/get", this.controller.getVisitors.bind(this.controller));
+    this.router.post("/export", this.controller.export.bind(this.controller));
 
     /**
      * @swagger

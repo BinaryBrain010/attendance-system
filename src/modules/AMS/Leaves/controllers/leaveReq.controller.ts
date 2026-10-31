@@ -2,9 +2,29 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import LeaveReqService from "../services/leaveReq.service";
 import { LeaveRequest } from "../types/leave";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const LEAVE_EXPORT_COLS: ExportCol[] = [
+  { key: "employeeCode", header: "Code" }, { key: "employeeName", header: "Employee" },
+  { key: "leaveType", header: "Leave type" }, { key: "startDate", header: "From" }, { key: "endDate", header: "To" },
+  { key: "status", header: "Status" }, { key: "reason", header: "Reason" }, { key: "createdAt", header: "Created" },
+];
 
 class LeaveReqController extends BaseController<LeaveReqService> {
   protected service = new LeaveReqService();
+
+  async export(req: Request, res: Response) {
+    const { format, status, from, to, employeeId } = req.body || {};
+    const raw = await this.service.exportRows((req as Request & { userId?: string }).userId, { status, from, to, employeeId }, EXPORT_CAP);
+    const capped = raw.length > EXPORT_CAP;
+    const rows = (capped ? raw.slice(0, EXPORT_CAP) : raw).map((r: any) => ({
+      ...r,
+      employeeCode: r.employee?.code ?? '',
+      employeeName: r.employee ? `${r.employee.name || ''} ${r.employee.surname || ''}`.trim() : '',
+      leaveType: r.leaveType || r.leaveAllocation?.leaveConfig?.name || '',
+    }));
+    await sendTableExport(res, { rows, columns: LEAVE_EXPORT_COLS, format: format === "csv" ? "csv" : "excel", filename: "leave-requests", capped });
+  }
 
   async getAllLeaveRequests(req: Request, res: Response) {
     const userId = (req as Request & { userId?: string }).userId;

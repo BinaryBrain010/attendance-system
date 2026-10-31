@@ -22,6 +22,11 @@ const FEATURES: F[] = [
   ["attendanceReq.export.*", "attendanceReq.*", "Export (bulk get-all)"],
   ["activityLog.export.*", "activityLog.*", "Export (bulk get-all)"],
   ["visitor.export.*", "visitor.*", "Export"], // already exists on most envs; upsert is a no-op there
+  // Table-export (CSV/Excel) features for modules that had no export permission yet. Children of the
+  // module root, so anyone holding the module parent (e.g. employee.*) passes via the parent rule.
+  ["employee.export.*", "employee.*", "Export"],
+  ["leaveReq.export.*", "leaveReq.*", "Export"],
+  ["voucher.export.*", "voucher.*", "Export"], // gate-pass list export (gatePass mount -> voucher root)
 ];
 
 async function main() {

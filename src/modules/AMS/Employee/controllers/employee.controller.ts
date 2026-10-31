@@ -4,12 +4,29 @@ import EmployeeService from "../services/employee.service";
 import { Employee } from "../types/employee";
 import path from "path";
 import { EmployeePDF } from "../../../../pdf/employee";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const EMPLOYEE_EXPORT_COLS: ExportCol[] = [
+  { key: "code", header: "Code" }, { key: "name", header: "First name" }, { key: "surname", header: "Surname" },
+  { key: "designation", header: "Designation" }, { key: "department", header: "Department" },
+  { key: "contactNo", header: "Contact" }, { key: "company", header: "Company" }, { key: "status", header: "Status" },
+];
 import { EmployeeExcelUtility } from "../../../../excel/employee";
 import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 class EmployeeController extends BaseController<EmployeeService> {
   protected service = new EmployeeService();
   private pdfUtility: EmployeePDF = new EmployeePDF();
   private excelUtility = new EmployeeExcelUtility();
+
+  async export(req: Request, res: Response) {
+    const b = req.body || {};
+    const rows = await this.service.exportRows({
+      sortBy: b.sortBy, sortOrder: b.sortOrder, filter: b.filter, search: b.search,
+      from: b.from, to: b.to, dateField: b.dateField, userId: (req as any).userId,
+    }, EXPORT_CAP);
+    const capped = rows.length > EXPORT_CAP;
+    await sendTableExport(res, { rows: capped ? rows.slice(0, EXPORT_CAP) : rows, columns: EMPLOYEE_EXPORT_COLS, format: b.format === "csv" ? "csv" : "excel", filename: "employees", capped });
+  }
 
   async getAllEmployees(req: Request, res: Response) {
     const light = req.query.light === 'true' || req.query.light === '1';

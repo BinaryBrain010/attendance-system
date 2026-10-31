@@ -2,6 +2,15 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import AttendanceReqService from "../services/attendanceReq.service";
 import { AttendanceRequest } from "../types/AttendanceRequest";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const AR_EXPORT_COLS: ExportCol[] = [
+  { key: "employeeCode", header: "Code" }, { key: "employeeName", header: "Employee" },
+  { key: "employeeDepartment", header: "Department" }, { key: "proposedStatus", header: "Proposed" },
+  { key: "proposedDate", header: "For date" }, { key: "status", header: "Status" },
+  { key: "reason", header: "Reason" }, { key: "requestedByName", header: "Requested by" },
+  { key: "approvedByName", header: "Approved by" }, { key: "createdAt", header: "Created" },
+];
 
 class AttendanceReqController extends BaseController<AttendanceReqService> {
   protected service = new AttendanceReqService();
@@ -9,6 +18,13 @@ class AttendanceReqController extends BaseController<AttendanceReqService> {
   async getAllAttendanceRequests(req: Request, res: Response) {
     const operation = () => this.service.getAllAttendanceRequests();
     await this.handleRequest(operation, res, { successMessage: "Attendance requests retrieved successfully!" });
+  }
+
+  async export(req: Request, res: Response) {
+    const { format, status, employeeId, from, to } = req.body || {};
+    const rows = await this.service.exportRows((req as any).userId, { status, employeeId, from, to }, EXPORT_CAP);
+    const capped = rows.length > EXPORT_CAP;
+    await sendTableExport(res, { rows: capped ? rows.slice(0, EXPORT_CAP) : rows, columns: AR_EXPORT_COLS, format: format === "csv" ? "csv" : "excel", filename: "attendance-requests", capped });
   }
 
   async getAttendanceRequests(req: Request, res: Response) {

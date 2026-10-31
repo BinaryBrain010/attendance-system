@@ -7,8 +7,14 @@ import { canSeeCost, stripCost } from "../../shared/cost";
 import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 import { ForbiddenError } from "../../../../core/errors/app.error";
 import { logEvent } from "../../../../core/audit/event";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
 
 const pdf = new ReportPDF();
+const CUSTOMER_EXPORT_COLS: ExportCol[] = [
+  { key: "name", header: "Customer" }, { key: "phone", header: "Phone" }, { key: "city", header: "City" },
+  { key: "status", header: "Status" }, { key: "leads", header: "Leads" }, { key: "orders", header: "Orders" },
+  { key: "totalSpent", header: "Total Spent" }, { key: "lastActivity", header: "Last Activity" },
+];
 
 class ReportController extends BaseController<ReportService> {
   protected service = new ReportService();
@@ -29,6 +35,13 @@ class ReportController extends BaseController<ReportService> {
   async dailySummary(req: Request, res: Response) { await this.run(req, res, () => this.service.dailySummary((req as any).userId, req.body || {}), "Daily summary ready"); }
   async customers(req: Request, res: Response) { await this.run(req, res, () => this.service.customers((req as any).userId, req.body || {}), "Customers ready"); }
   async customerStatus(req: Request, res: Response) { await this.run(req, res, () => this.service.customerStatus((req as any).userId, String(req.body?.phone || "")), "Customer status ready"); }
+  async customersExport(req: Request, res: Response) {
+    const { format, ...filters } = req.body || {};
+    const r: any = await this.service.customers((req as any).userId, filters);
+    const all: any[] = r?.customers || [];
+    const capped = all.length > EXPORT_CAP;
+    await sendTableExport(res, { rows: capped ? all.slice(0, EXPORT_CAP) : all, columns: CUSTOMER_EXPORT_COLS, format: format === "csv" ? "csv" : "excel", filename: "customers", capped });
+  }
   async customer360(req: Request, res: Response) {
     await this.handleRequest(async () => {
       const uid = (req as any).userId;

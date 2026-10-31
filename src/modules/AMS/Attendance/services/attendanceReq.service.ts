@@ -67,6 +67,11 @@ class LeaveReqService {
     return await attendanceRequestModel.attendanceRequest.gpPgFindMany(page, pageSize, filters, scope);
   }
 
+  async exportRows(userId: string | undefined, filters: any, cap: number): Promise<any[]> {
+    const scope = await getAccessibleEmployeeIds(userId);
+    return await attendanceRequestModel.attendanceRequest.gpExportMany(cap, filters, scope);
+  }
+
   // Aggregate stats (status counts + current-year monthly) — SQL GROUP BY, no row download.
   async getAttendanceRequestStats(
     filters?: { status?: string; employeeId?: string; from?: string; to?: string },

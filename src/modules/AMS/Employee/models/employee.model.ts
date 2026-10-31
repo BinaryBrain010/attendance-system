@@ -703,10 +703,12 @@ const employeeModel = prisma.$extends({
         from?: string,
         to?: string,
         dateField?: string,
-        userId?: string
+        userId?: string,
+        exportLimit?: number // when set: ignore paging, take up to this many (for server-side export)
       ) {
-        const skip = (page - 1) * pageSize;
-        
+        const skip = exportLimit ? 0 : (page - 1) * pageSize;
+        const take = exportLimit ?? pageSize;
+
         // Build where clause
         const where: any = {
           isDeleted: null,
@@ -827,7 +829,7 @@ const employeeModel = prisma.$extends({
           this.findMany({
             where,
             select,
-            take: pageSize,
+            take,
             skip: skip,
             orderBy,
           }),

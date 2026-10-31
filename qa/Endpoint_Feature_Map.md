@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-529 routes walked from the live routers. Real DB users counted: 180.
+539 routes walked from the live routers. Real DB users counted: 205.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,9 +11,9 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 19. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 13. God-only: 4. Token-only: 20. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 180) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 205) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -48,6 +48,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /attendance/create | create | feature | `attendance.create.*` | yes | 22 |  |
 | POST | /attendance/delete | delete | feature | `attendance.delete.*` | yes | 22 |  |
 | POST | /attendance/excel | export | feature | `attendance.export.*` | yes | 22 |  |
+| POST | /attendance/export | export | feature | `attendance.export.*` | yes | 22 |  |
 | POST | /attendance/face-attendance | create | feature | `attendance.markAttendance.*` | yes | 22 | marks attendance via face recognition |
 | GET | /attendance/get | read | feature | `attendance.read.*` | yes | 22 |  |
 | POST | /attendance/get | read | feature | `attendance.read.*` | yes | 22 |  |
@@ -69,6 +70,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /attendanceReq/create | self | self | `attendanceReq.create.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /attendanceReq/delete | delete | feature | `attendanceReq.delete.*` | yes | 4 |  |
 | GET | /attendanceReq/deleted | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| POST | /attendanceReq/export | export | feature | `attendanceReq.export.*` | yes | 4 |  |
 | GET | /attendanceReq/get | read | feature | `attendanceReq.export.*` | yes | 4 | bulk get-all; export only (UI uses paginated POST /get + /stats) |
 | POST | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 4 |  |
 | POST | /attendanceReq/getById | read | feature | `attendanceReq.read.*` | yes | 4 |  |
@@ -142,6 +144,8 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /crmReport/agentPerformance | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /crmReport/customer360 | read | feature | `crm.lead.read.own.*` | yes | 3 | customer 360 profile; gated on lead read |
 | POST | /crmReport/customers | read | feature | `crm.lead.read.own.*` | yes | 3 | customer directory; gated on lead read |
+| POST | /crmReport/customersExport | export | feature | `crm.report.export.*` | yes | 3 | customer directory CSV/Excel export (10k cap) |
+| POST | /crmReport/customerStatus | read | feature | `crm.lead.read.own.*` | yes | 3 | customer lifecycle status badge; gated on lead read |
 | POST | /crmReport/dailySummary | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /crmReport/dashboard | read | feature | `crm.report.read.*` | yes | 3 |  |
 | POST | /crmReport/export | export | feature | `crm.report.export.*` | yes | 3 |  |
@@ -172,6 +176,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /employee/create | create | feature | `employee.create.*` | yes | 22 |  |
 | POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 22 |  |
 | GET | /employee/distinctFields | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/export | export | feature | `employee.export.*` | yes | 22 |  |
 | POST | /employee/files | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/filesDel | update | feature | `employee.update.*` | yes | 22 |  |
 | GET | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
@@ -179,9 +184,9 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /employee/getByCode | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getById | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getByUserId | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
-| POST | /employee/getCard | export | feature | `employee.excel.*` | yes | 22 |  |
+| POST | /employee/getCard | export | feature | `employee.export.*` | yes | 22 |  |
 | POST | /employee/getDeleted | read | feature | `employee.read.*` | yes | 22 |  |
-| GET | /employee/getExcel | export | feature | `employee.excel.*` | yes | 22 |  |
+| GET | /employee/getExcel | export | feature | `employee.export.*` | yes | 22 |  |
 | GET | /employee/getFaceRecognitionData | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getHistoryById | history | feature | `employee.viewPreviousUpdate.*` | yes | 22 |  |
 | POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
@@ -213,7 +218,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /gatePass/getById | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/getDeleted | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/itemId | read | feature | `voucher.read.*` | yes | 3 |  |
-| POST | /gatePass/pdf | export | feature | `voucher.pdf.*` | yes | 3 |  |
+| POST | /gatePass/pdf | export | feature | `voucher.export.*` | yes | 3 |  |
 | POST | /gatePass/reject | update | feature | `gatePass.reject.*` | yes | 1 | reject a gate pass |
 | GET | /gatePass/report | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePass/restore | restore | feature | `voucher.restore.*` | yes | 3 |  |
@@ -223,6 +228,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /gatePass/total | read | feature | `voucher.read.*` | yes | 3 |  |
 | PUT | /gatePass/update | update | feature | `voucher.update.*` | yes | 3 |  |
 | POST | /gatePass/webDetail | read | feature | `voucher.read.*` | yes | 3 |  |
+| POST | /gatePass/webExport | export | feature | `voucher.export.*` | yes | 3 |  |
 | POST | /gatePass/webList | read | feature | `voucher.read.*` | yes | 3 |  |
 | POST | /gatePassItem/create | create | feature | `voucher.create.*` | yes | 3 |  |
 | POST | /gatePassItem/delete | delete | feature | `voucher.delete.*` | yes | 3 |  |
@@ -292,6 +298,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /lead/assign | update | feature | `crm.lead.assign.*` | yes | 3 | reassign agent |
 | POST | /lead/create | create | feature | `crm.lead.create.*` | yes | 3 |  |
 | POST | /lead/delete | delete | feature | `crm.lead.delete.*` | yes | 1 |  |
+| POST | /lead/export | export | feature | `crm.lead.export.*` | yes | 1 | lead list CSV/Excel export (current filters+sort, 10k cap) |
 | POST | /lead/filtered | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/fromVisitor | create | feature | `crm.lead.create.*` | yes | 3 | Visitor -> Lead |
 | POST | /lead/get | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
@@ -334,6 +341,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /leave/leave-requests/create | self | self | `leaveReq.create.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /leave/leave-requests/delete | delete | feature | `leaveReq.delete.*` | yes | 4 |  |
 | GET | /leave/leave-requests/deleted | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| POST | /leave/leave-requests/export | export | feature | `leaveReq.export.*` | yes | 4 |  |
 | GET | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | POST | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | GET | /leave/leave-requests/getById | read | feature | `leaveReq.read.*` | yes | 4 |  |
@@ -493,6 +501,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /user/preferences | read | token | `-` | - | - | own preferences |
 | POST | /user/preferences | update | token | `-` | - | - | save own preferences |
 | POST | /user/reactivate | update | feature | `user.suspend.*` | yes | 2 | reactivate a suspended user |
+| POST | /user/refreshSession | update | token | `-` | - | - | sliding-session renewal (Stay signed in) |
 | POST | /user/restore | restore | feature | `user.delete.*` | yes | 2 | restore mapped to delete feature |
 | POST | /user/search | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/suspend | update | feature | `user.suspend.*` | yes | 2 | suspend a user |
@@ -519,6 +528,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /visitor/delete | delete | feature | `visitor.delete.*` | yes | 1 |  |
 | GET | /visitor/deleted | read | feature | `visitor.read.*` | yes | 1 |  |
 | POST | /visitor/excel | export | feature | `visitor.export.*` | yes | 1 |  |
+| POST | /visitor/export | export | feature | `visitor.export.*` | yes | 1 |  |
 | POST | /visitor/filtered | read | feature | `visitor.read.*` | yes | 1 |  |
 | GET | /visitor/get | read | feature | `visitor.read.*` | yes | 1 |  |
 | GET | /visitor/getAll | read | feature | `visitor.export.*` | yes | 1 | bulk get-all; export only (UI uses paginated GET /visitor/get) |

@@ -23,6 +23,10 @@ class AttendanceService {
     return await attendanceModel.attendance.gpPgFindMany(page, pageSize, userId);
   }
 
+  async exportRows(userId: string | undefined, cap: number, filters?: { from?: string | Date; to?: string | Date; employeeId?: string }): Promise<any[]> {
+    return await attendanceModel.attendance.gpExportMany(cap, userId, filters);
+  }
+
   async getDatedAttendance(from:Date,to:Date, userId?: string){
     return await attendanceModel.attendance.gpFindDatedMany(from,to, userId);
   }

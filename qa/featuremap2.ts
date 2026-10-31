@@ -138,6 +138,10 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   "POST /crmPriceList/bulkPrice": { feature: "crm.catalogue.cost.*", kind: "update", access: "feature", note: "bulk price/cost from Excel (cost-gated)" },
   "POST /crmReport/margin": { feature: "crm.report.read.*", kind: "read", access: "feature", note: "cost enforced in controller via crm.catalogue.cost.*" },
   "POST /crmReport/export": { feature: "crm.report.export.*", kind: "export", access: "feature" },
+  // Table-export (CSV/Excel) of the current filtered list. Lead export uses the lead module's own
+  // export feature; the customer directory export reuses the CRM report-export permission.
+  "POST /lead/export": { feature: "crm.lead.export.*", kind: "export", access: "feature", note: "lead list CSV/Excel export (current filters+sort, 10k cap)" },
+  "POST /crmReport/customersExport": { feature: "crm.report.export.*", kind: "export", access: "feature", note: "customer directory CSV/Excel export (10k cap)" },
   // Customer directory (list + 360) is gated on LEAD read, not report read, so any salesperson who can
   // read leads sees their customers; the data is still scope-checked per entity inside the service.
   "POST /crmReport/customers": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer directory; gated on lead read" },
