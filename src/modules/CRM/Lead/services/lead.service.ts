@@ -14,6 +14,10 @@ export interface LeadFilters {
   priority?: string; channel?: string; agentId?: string; followUp?: string; from?: string; to?: string;
   search?: string; phone?: string;
   sortBy?: string; sortOrder?: "asc" | "desc";
+  // Extended server-side filters (lead filter dialog):
+  createdBy?: string;                 // createdById
+  valueMin?: number | string; valueMax?: number | string; // estimatedValue range
+  fuFrom?: string; fuTo?: string;     // next-follow-up date range
 }
 
 // Date columns the lead list may be sorted by (server-side). Anything else -> default (newest
@@ -82,6 +86,28 @@ function filterWhere(f: LeadFilters = {}): Record<string, any> {
     w.dateReceived = {};
     if (f.from) w.dateReceived.gte = new Date(f.from);
     if (f.to) w.dateReceived.lte = new Date(f.to);
+  }
+  // Follow-up due preset (SQL, so paging/totals are correct). All require a nextFollowUpAt except NONE.
+  if (f.followUp) {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
+    if (f.followUp === "OVERDUE") w.nextFollowUpAt = { lt: start };
+    else if (f.followUp === "DUE_TODAY") w.nextFollowUpAt = { gte: start, lte: endToday };
+    else if (f.followUp === "THIS_WEEK") { const wk = new Date(start); wk.setDate(wk.getDate() + 7); w.nextFollowUpAt = { gte: start, lte: wk }; }
+    else if (f.followUp === "NONE") w.nextFollowUpAt = null;
+  } else if (f.fuFrom || f.fuTo) {
+    // Explicit next-follow-up date range (only when no preset above is set — same column).
+    w.nextFollowUpAt = {};
+    if (f.fuFrom) (w.nextFollowUpAt as any).gte = new Date(f.fuFrom);
+    if (f.fuTo) (w.nextFollowUpAt as any).lte = new Date(f.fuTo);
+  }
+  if (f.createdBy) w.createdById = f.createdBy;
+  const vMin = f.valueMin === "" || f.valueMin == null ? null : Number(f.valueMin);
+  const vMax = f.valueMax === "" || f.valueMax == null ? null : Number(f.valueMax);
+  if ((vMin != null && !isNaN(vMin)) || (vMax != null && !isNaN(vMax))) {
+    w.estimatedValue = {};
+    if (vMin != null && !isNaN(vMin)) (w.estimatedValue as any).gte = vMin;
+    if (vMax != null && !isNaN(vMax)) (w.estimatedValue as any).lte = vMax;
   }
   return w;
 }
