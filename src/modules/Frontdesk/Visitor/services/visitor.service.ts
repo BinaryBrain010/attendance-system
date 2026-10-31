@@ -45,6 +45,32 @@ class VisitorService {
     return await visitorModel.visitor.gpPgFindMany(page, pageSize, unitIds);
   }
 
+  /** Export the visitors matching the screen's current view + filters (unit-scoped), newest first,
+   *  capped (+1 to detect the ceiling). Routes through the same list methods the UI uses so the export
+   *  equals what is on screen. */
+  async exportRows(
+    userId: string | undefined,
+    cap: number,
+    opts?: { view?: string; search?: string; from?: string; to?: string; outcome?: string; purchased?: boolean; unitId?: string }
+  ): Promise<any[]> {
+    const unitIds = await this.unitScope(userId);
+    const o = opts || {};
+    let res: any;
+    if (o.view === "present") {
+      res = await visitorModel.visitor.gpPresent(1, cap + 1, unitIds);
+    } else if (o.view === "filtered") {
+      res = await visitorModel.visitor.gpFilterPaginated(
+        { from: o.from, to: o.to, outcome: o.outcome, purchased: o.purchased, unitId: o.unitId },
+        1, cap + 1, unitIds
+      );
+    } else if (o.search && o.search.trim()) {
+      res = await visitorModel.visitor.gpSearch(o.search.trim(), 1, cap + 1, unitIds);
+    } else {
+      res = await visitorModel.visitor.gpPgFindMany(1, cap + 1, unitIds);
+    }
+    return res?.data || [];
+  }
+
   async getDeletedVisitors(page: number, pageSize: number): Promise<paginatedData> {
     return await visitorModel.visitor.gpPgFindDeletedMany(page, pageSize);
   }

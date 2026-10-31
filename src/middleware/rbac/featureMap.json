@@ -164,6 +164,11 @@
     "feature": "attendance.export.*",
     "kind": "export"
   },
+  "POST /attendance/export": {
+    "access": "feature",
+    "feature": "attendance.export.*",
+    "kind": "export"
+  },
   "POST /attendance/face-attendance": {
     "access": "feature",
     "feature": "attendance.markAttendance.*",
@@ -268,6 +273,11 @@
     "access": "feature",
     "feature": "attendanceReq.read.*",
     "kind": "read"
+  },
+  "POST /attendanceReq/export": {
+    "access": "feature",
+    "feature": "attendanceReq.export.*",
+    "kind": "export"
   },
   "GET /attendanceReq/get": {
     "access": "feature",
@@ -634,6 +644,11 @@
     "feature": "crm.lead.read.own.*",
     "kind": "read"
   },
+  "POST /crmReport/customersExport": {
+    "access": "feature",
+    "feature": "crm.report.export.*",
+    "kind": "export"
+  },
   "POST /crmReport/customerStatus": {
     "access": "feature",
     "feature": "crm.lead.read.own.*",
@@ -789,6 +804,11 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "POST /employee/export": {
+    "access": "feature",
+    "feature": "employee.export.*",
+    "kind": "export"
+  },
   "POST /employee/files": {
     "access": "feature",
     "feature": "employee.read.*",
@@ -826,7 +846,7 @@
   },
   "POST /employee/getCard": {
     "access": "feature",
-    "feature": "employee.excel.*",
+    "feature": "employee.export.*",
     "kind": "export"
   },
   "POST /employee/getDeleted": {
@@ -836,7 +856,7 @@
   },
   "GET /employee/getExcel": {
     "access": "feature",
-    "feature": "employee.excel.*",
+    "feature": "employee.export.*",
     "kind": "export"
   },
   "GET /employee/getFaceRecognitionData": {
@@ -996,7 +1016,7 @@
   },
   "POST /gatePass/pdf": {
     "access": "feature",
-    "feature": "voucher.pdf.*",
+    "feature": "voucher.export.*",
     "kind": "export"
   },
   "POST /gatePass/reject": {
@@ -1043,6 +1063,11 @@
     "access": "feature",
     "feature": "voucher.read.*",
     "kind": "read"
+  },
+  "POST /gatePass/webExport": {
+    "access": "feature",
+    "feature": "voucher.export.*",
+    "kind": "export"
   },
   "POST /gatePass/webList": {
     "access": "feature",
@@ -1389,6 +1414,11 @@
     "feature": "crm.lead.delete.*",
     "kind": "delete"
   },
+  "POST /lead/export": {
+    "access": "feature",
+    "feature": "crm.lead.export.*",
+    "kind": "export"
+  },
   "POST /lead/filtered": {
     "access": "feature",
     "feature": "crm.lead.read.own.*",
@@ -1598,6 +1628,11 @@
     "access": "feature",
     "feature": "leaveReq.read.*",
     "kind": "read"
+  },
+  "POST /leave/leave-requests/export": {
+    "access": "feature",
+    "feature": "leaveReq.export.*",
+    "kind": "export"
   },
   "GET /leave/leave-requests/get": {
     "access": "feature",
@@ -2525,6 +2560,11 @@
     "kind": "read"
   },
   "POST /visitor/excel": {
+    "access": "feature",
+    "feature": "visitor.export.*",
+    "kind": "export"
+  },
+  "POST /visitor/export": {
     "access": "feature",
     "feature": "visitor.export.*",
     "kind": "export"

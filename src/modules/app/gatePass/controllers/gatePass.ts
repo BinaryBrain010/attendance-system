@@ -4,6 +4,13 @@ import GatePassService from "../services/gatePass.service";
 import { GatePass } from "../../../../types/schema";
 import { GatePassPDF } from "../../../../pdf/gatePass";
 import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const GATEPASS_EXPORT_COLS: ExportCol[] = [
+  { key: "id", header: "Gate pass" }, { key: "customerName", header: "Recipient" }, { key: "status", header: "Status" },
+  { key: "location", header: "Location" }, { key: "vehicleNo", header: "Vehicle" }, { key: "storeIncharge", header: "Store incharge" },
+  { key: "itemCount", header: "Items" }, { key: "issuedAt", header: "Issued" }, { key: "validUntil", header: "Valid until" },
+];
 import { DetailedGatePass } from "../../../../types/paginatedData";
 import { CreateGatePassItem } from "../../../../types/schema";
 import GatePassWorkflowService, { TransitionAction } from "../services/gatePassWorkflow.service";
@@ -16,6 +23,13 @@ class GatePassController extends BaseController<GatePassService> {
   async webList(req: Request, res: Response) {
     const operation = () => this.service.webList(req.body || {});
     await this.handleRequest(operation, res, { successMessage: "Gate passes retrieved successfully!" });
+  }
+
+  async webExport(req: Request, res: Response) {
+    const { format, ...filters } = req.body || {};
+    const rows = await this.service.webExport(filters, EXPORT_CAP);
+    const capped = rows.length > EXPORT_CAP;
+    await sendTableExport(res, { rows: capped ? rows.slice(0, EXPORT_CAP) : rows, columns: GATEPASS_EXPORT_COLS, format: format === "csv" ? "csv" : "excel", filename: "gate-passes", capped });
   }
 
   async webDetail(req: Request, res: Response) {

@@ -2,9 +2,30 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import VisitorService from "../services/visitor.service";
 import { Visitor } from "../types/visitor";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const VISITOR_EXPORT_COLS: ExportCol[] = [
+  { key: "name", header: "Visitor" }, { key: "phone", header: "Phone" }, { key: "cnic", header: "CNIC" },
+  { key: "purpose", header: "Purpose" }, { key: "hostName", header: "Host" }, { key: "company", header: "Company" },
+  { key: "visitDate", header: "Visit date" }, { key: "timeIn", header: "Time in" }, { key: "timeOut", header: "Time out" },
+  { key: "status", header: "Status" },
+];
 
 class VisitorController extends BaseController<VisitorService> {
   protected service = new VisitorService();
+
+  async export(req: Request, res: Response) {
+    const b = req.body || {};
+    const format = (b.format === "csv" ? "csv" : "excel") as "csv" | "excel";
+    const raw = await this.service.exportRows((req as Request & { userId?: string }).userId, EXPORT_CAP, {
+      view: b.view, search: b.search, from: b.from, to: b.to, outcome: b.outcome, purchased: b.purchased, unitId: b.unitId,
+    });
+    const capped = raw.length > EXPORT_CAP;
+    const rows = (capped ? raw.slice(0, EXPORT_CAP) : raw).map((v: any) => ({
+      ...v, hostName: v.referredToEmployee ? `${v.referredToEmployee.name || ''} ${v.referredToEmployee.surname || ''}`.trim() : (v.hostName || v.host || ''),
+    }));
+    await sendTableExport(res, { rows, columns: VISITOR_EXPORT_COLS, format, filename: "visitors", capped });
+  }
 
   /** Resolve the acting user id: prefer an explicit body value, fall back to the JWT-derived id. */
   private actingUserId(req: Request, bodyValue?: string): string | undefined {

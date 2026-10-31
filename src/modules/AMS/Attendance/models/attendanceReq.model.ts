@@ -149,6 +149,27 @@ const attendanceRequestModel = prisma.$extends({
         return item;
       },
 
+      // Export: all rows matching the current filters + scope, newest first, capped at `cap` (+1 so the
+      // caller can detect the ceiling). Mirrors gpPgFindMany's WHERE/order exactly.
+      async gpExportMany(this: any, cap: number, filters?: any, scope?: string[] | null): Promise<any[]> {
+        const where = buildArFilter(filters, scope);
+        const data = await prisma.$queryRaw(Prisma.sql`
+          SELECT ar.id, ar.reason, ar.status, ar.location, ar."proposedStatus", ar."proposedDate",
+                 ar."createdAt",
+                 e.code AS "employeeCode", e."name" AS "employeeName", e."surname" AS "employeeSurname",
+                 e."department" AS "employeeDepartment",
+                 ru.username AS "requestedByName", au.username AS "approvedByName"
+          FROM "AttendanceRequest" ar
+          LEFT JOIN "Employee" e ON ar."employeeId" = e.id
+          LEFT JOIN "User" ru ON ar."requestedBy" = ru.id
+          LEFT JOIN "User" au ON ar."approvedBy" = au.id
+          WHERE ${where}
+          ORDER BY ar."createdAt" DESC
+          LIMIT ${cap + 1}
+        `) as any[];
+        return data;
+      },
+
       async gpPgFindMany(this: any, page: number, pageSize: number, filters?: any, scope?: string[] | null): Promise<any> {
         const size = Math.min(Math.max(1, Number(pageSize) || 10), 100); // hard max take 100
         const skip = (Math.max(1, Number(page) || 1) - 1) * size;

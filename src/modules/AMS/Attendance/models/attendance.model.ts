@@ -1106,6 +1106,37 @@ ORDER BY
         return data;
       },
 
+      // Export: all attendance rows in scope, newest first, capped (+1 to detect the ceiling).
+      async gpExportMany(this: any, cap: number, userId?: string, filters?: { from?: string | Date; to?: string | Date; employeeId?: string }) {
+        let employeeFilter = '';
+        if (userId) {
+          const { getAccessibleEmployeeIds } = await import('../../Unit/helper/unitAccess.helper');
+          const scopedIds = await getAccessibleEmployeeIds(userId);
+          if (scopedIds !== null) {
+            const safe = scopedIds.length > 0 ? scopedIds : ['__none__'];
+            const idsString = safe.map(id => `'${id.replace(/'/g, "''")}'`).join(',');
+            employeeFilter = `AND a."employeeId" IN (${idsString})`;
+          }
+        }
+        // Honour the list's own date-range + single-employee filters so the export matches the screen.
+        let extra = '';
+        const esc = (v: string) => v.replace(/'/g, "''");
+        if (filters?.employeeId) extra += ` AND a."employeeId" = '${esc(String(filters.employeeId))}'`;
+        if (filters?.from) extra += ` AND a."date" >= '${esc(new Date(filters.from).toISOString())}'`;
+        if (filters?.to) extra += ` AND a."date" <= '${esc(new Date(filters.to).toISOString())}'`;
+        const data = await prisma.$queryRawUnsafe(`
+          SELECT a.id, a."employeeId", a.date, a.status, a."checkIn", a."checkOut", a.location, a.comment,
+                 e."code", e."name" AS "employeeName", e."surname" AS "employeeSurname",
+                 e."designation", e."department"
+          FROM "Attendance" a
+          LEFT JOIN "Employee" e ON a."employeeId" = e.id
+          WHERE a."isDeleted" IS NULL ${employeeFilter} ${extra}
+          ORDER BY a."date" DESC
+          LIMIT ${cap + 1}
+        `) as any[];
+        return data;
+      },
+
       async gpPgFindMany(this: any, page: number, pageSize: number, userId?: string, _unitIds?: string[]) {
         const skip = (page - 1) * pageSize;
 

@@ -66,6 +66,7 @@ class LeaveReqRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/get', this.controller.getLeaveRequests.bind(this.controller));
+    this.router.post('/export', this.controller.export.bind(this.controller));
     
     /**
      * @swagger

@@ -8,6 +8,7 @@ import { NotFoundError, AppError, ForbiddenError, ValidationError } from "../../
 import { assertTransition, allowedNext } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
 import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
+import { EXPORT_CAP } from "../../../../core/export/tableExport";
 
 export interface LeadFilters {
   company?: string; outlet?: string; city?: string; stage?: string;
@@ -145,6 +146,17 @@ class LeadService {
   async total(userId: string, filters: LeadFilters = {}) {
     const scope = await resolveScope(userId, "lead");
     return prisma.lead.count({ where: { AND: [{ isDeleted: null }, filterWhere(filters), scope.where] } });
+  }
+
+  /** All leads matching the current filters + sort (scope-respecting), capped at EXPORT_CAP + 1 so the
+   *  caller can detect the ceiling. Mirrors get() exactly so the export matches the on-screen list. */
+  async exportRows(userId: string, filters: LeadFilters = {}) {
+    const scope = await resolveScope(userId, "lead");
+    const where = { AND: [{ isDeleted: null }, filterWhere(filters), scope.where] };
+    const data = await prisma.lead.findMany({ where, take: EXPORT_CAP + 1, orderBy: leadOrderBy(filters) });
+    let rows = data.map(withComputed);
+    if (filters.followUp) rows = rows.filter((r) => r.followUpStatus === filters.followUp);
+    return rows;
   }
 
   async getById(userId: string, id: string) {

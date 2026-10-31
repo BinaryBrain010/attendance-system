@@ -403,9 +403,11 @@ const leaveReqModel = prisma.$extends({
         page: number,
         pageSize: number,
         userId?: string,
-        filters?: { status?: string; from?: string; to?: string; employeeId?: string }
+        filters?: { status?: string; from?: string; to?: string; employeeId?: string },
+        exportLimit?: number // when set: ignore paging, take up to this many (server-side export)
       ) {
-        const skip = (page - 1) * pageSize;
+        const skip = exportLimit ? 0 : (page - 1) * pageSize;
+        const take = exportLimit ?? pageSize;
 
         const where: any = {
           isDeleted: null,
@@ -447,7 +449,7 @@ const leaveReqModel = prisma.$extends({
         const [data, totalSize] = await Promise.all([
           prisma.leaveRequest.findMany({
             where,
-            take: pageSize,
+            take,
             skip: skip,
             orderBy: { createdAt: 'desc' },
             select: {

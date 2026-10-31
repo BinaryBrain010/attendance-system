@@ -6,6 +6,13 @@ import AttendanceService from "../services/attendnace.service";
 import { logActivityFromRequest } from "../../../ActivityLog/helper/activityLog.helper";
 import { AttendanceExcelUtility } from "../../../../excel/attendance";
 import { AttendancePDF } from "../../../../pdf/attendance";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const ATTENDANCE_EXPORT_COLS: ExportCol[] = [
+  { key: "code", header: "Code" }, { key: "employeeName", header: "Employee" },
+  { key: "department", header: "Department" }, { key: "date", header: "Date" }, { key: "status", header: "Status" },
+  { key: "checkIn", header: "Check in" }, { key: "checkOut", header: "Check out" }, { key: "location", header: "Location" },
+];
 import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
 
 class AttendanceController extends BaseController<AttendanceService> {
@@ -24,6 +31,13 @@ class AttendanceController extends BaseController<AttendanceService> {
     const r = req as Request & { userId?: string; unitIds?: string[] };
     const operation = () => this.service.getAttendances(page, pageSize, r.userId, r.unitIds);
     await this.handleRequest(operation, res, { successMessage: "Attendances retrieved successfully!" });
+  }
+
+  async export(req: Request, res: Response) {
+    const { from, to, employeeId } = req.body || {};
+    const rows = await this.service.exportRows((req as Request & { userId?: string }).userId, EXPORT_CAP, { from, to, employeeId });
+    const capped = rows.length > EXPORT_CAP;
+    await sendTableExport(res, { rows: capped ? rows.slice(0, EXPORT_CAP) : rows, columns: ATTENDANCE_EXPORT_COLS, format: req.body?.format === "csv" ? "csv" : "excel", filename: "attendance", capped });
   }
 
   async getEmployeeAttendance(req: Request, res: Response) {

@@ -178,6 +178,7 @@ class AttendanceRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/get', this.controller.getAttendances.bind(this.controller));
+    this.router.post('/export', this.controller.export.bind(this.controller));
     
     /**
      * @swagger

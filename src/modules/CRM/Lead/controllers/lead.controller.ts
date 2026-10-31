@@ -2,10 +2,30 @@ import { Request, Response } from "express";
 import BaseController from "../../../../core/controllers/base.controller";
 import LeadService from "../services/lead.service";
 import LeadImportService from "../services/leadImport.service";
+import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+
+const LEAD_EXPORT_COLS: ExportCol[] = [
+  { key: "leadNo", header: "Lead #" }, { key: "customerName", header: "Customer" },
+  { key: "phone", header: "Phone" }, { key: "city", header: "City" }, { key: "stage", header: "Stage" },
+  { key: "priority", header: "Priority" }, { key: "channel", header: "Channel" },
+  { key: "estimatedValue", header: "Est. Value" }, { key: "followUpStatus", header: "Follow-up" },
+  { key: "createdAt", header: "Created" }, { key: "nextFollowUpAt", header: "Next follow-up" },
+];
 
 class LeadController extends BaseController<LeadService> {
   protected service = new LeadService();
   private importer = new LeadImportService();
+
+  /** Server-side export of ALL leads matching the current filters + sort (capped at EXPORT_CAP). */
+  async export(req: Request, res: Response) {
+    const { format, ...filters } = req.body || {};
+    const rows = await this.service.exportRows((req as any).userId, filters);
+    const capped = rows.length > EXPORT_CAP;
+    await sendTableExport(res, {
+      rows: capped ? rows.slice(0, EXPORT_CAP) : rows,
+      columns: LEAD_EXPORT_COLS, format: format === "csv" ? "csv" : "excel", filename: "leads", capped,
+    });
+  }
 
   /** Import a lead register CSV. dryRun defaults TRUE — pass dryRun=false to persist. */
   async importCsv(req: Request, res: Response) {

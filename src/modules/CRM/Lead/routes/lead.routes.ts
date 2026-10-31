@@ -19,6 +19,7 @@ class LeadRoutes {
   private initializeRoutes(): void {
     this.router.post("/import", upload.single("file"), this.controller.importCsv.bind(this.controller));
     this.router.post("/get", validate(schemas.readList), this.controller.get.bind(this.controller));
+    this.router.post("/export", this.controller.export.bind(this.controller));
     this.router.post("/filtered", validate(schemas.readList), this.controller.filtered.bind(this.controller));
     this.router.post("/total", validate(schemas.readList), this.controller.total.bind(this.controller));
     this.router.post("/getById", validate(schemas.idOnly), this.controller.getById.bind(this.controller));
