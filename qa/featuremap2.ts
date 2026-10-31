@@ -142,6 +142,7 @@ const CRM_OVERRIDE: Record<string, { feature: string; kind: string; access: stri
   // read leads sees their customers; the data is still scope-checked per entity inside the service.
   "POST /crmReport/customers": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer directory; gated on lead read" },
   "POST /crmReport/customer360": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer 360 profile; gated on lead read" },
+  "POST /crmReport/customerStatus": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "customer lifecycle status badge; gated on lead read" },
   "POST /lead/transition": { feature: "crm.lead.transition.*", kind: "update", access: "feature", note: "server-enforced stage change" },
   "POST /lead/transfer": { feature: "crm.lead.transfer.*", kind: "update", access: "feature", note: "transfer lead to another agent in the team (reason required)" },
   "POST /lead/mentionables": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "users the caller may @mention (team, or everyone for managers)" },

@@ -634,6 +634,11 @@
     "feature": "crm.lead.read.own.*",
     "kind": "read"
   },
+  "POST /crmReport/customerStatus": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
   "POST /crmReport/dailySummary": {
     "access": "feature",
     "feature": "crm.report.read.*",
