@@ -600,7 +600,10 @@ const employeeModel = prisma.$extends({
         // on their attendance calendar. Only holidays on/after the joining date are applied.
         try {
           const emp = createdData[0];
-          const holidayWhere: any = { isDeleted: null, isActive: true };
+          // A3: only backfill COMPANY-WIDE holidays (unitIds empty) — a new employee must not inherit
+          // another unit's holiday. Unit assignment happens after creation, so unit holidays aren't
+          // applied here (they get marked when assigned via the unit, going forward).
+          const holidayWhere: any = { isDeleted: null, isActive: true, unitIds: { isEmpty: true } };
           if (emp?.joiningDate) {
             const jd = new Date(emp.joiningDate);
             jd.setHours(0, 0, 0, 0);
@@ -704,7 +707,8 @@ const employeeModel = prisma.$extends({
         to?: string,
         dateField?: string,
         userId?: string,
-        exportLimit?: number // when set: ignore paging, take up to this many (for server-side export)
+        unitIds?: string[],
+        exportLimit?: number // when set: ignore paging, take up to this many (server-side export)
       ) {
         const skip = exportLimit ? 0 : (page - 1) * pageSize;
         const take = exportLimit ?? pageSize;

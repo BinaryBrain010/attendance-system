@@ -69,9 +69,11 @@ class EmployeeService {
     opts: { sortBy?: string; sortOrder?: 'asc' | 'desc'; filter?: string; search?: string; from?: string; to?: string; dateField?: string; userId?: string },
     cap: number
   ): Promise<any[]> {
+    // unitIds stays undefined so the model resolves scope from userId (same as getEmployees); the
+    // final arg is exportLimit, which makes the paginator return up to cap+1 rows instead of a page.
     const res: any = await employeeModel.employee.gpPgFindManyWithSortAndFilter(
       1, cap + 1, opts.sortBy || 'createdAt', opts.sortOrder === 'asc' ? 'asc' : 'desc',
-      opts.filter, opts.search, opts.from, opts.to, opts.dateField, opts.userId, cap + 1
+      opts.filter, opts.search, opts.from, opts.to, opts.dateField, opts.userId, undefined, cap + 1
     );
     return res?.data || [];
   }
