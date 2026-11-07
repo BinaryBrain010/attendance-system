@@ -33,6 +33,7 @@ import WebhookRoutes from "../../modules/rbac/Access/routes/webhook.routes";
 import TokenCleanHelper from '../../helper/schedule.helper';
 import { apiLimiter } from '../../middleware/rateLimiter.middleware';
 import logger from '../logger/logger';
+import { verifyAssetPaths, UPLOADS_DIR } from '../paths';
 import { environment } from '../../environment/env.schema';
 import { AppError } from '../errors/app.error';
 import { sendError } from '../utils/errorEnvelope';
@@ -88,6 +89,9 @@ class App {
 
   constructor() {
     this.installProcessGuards();
+    // Resolve + log the asset/upload folders from the project root (never the cwd) and fail loudly
+    // if the PDF logo is missing — catches a wrong working directory at boot, not at first PDF/upload.
+    verifyAssetPaths((m) => logger.info(m));
     this.app = express();
     this.helper = routesHelper;
     this.accessControl();
@@ -182,7 +186,7 @@ class App {
       bodyParser.urlencoded({ limit: '50mb', extended: true })(req, res, next);
     });
     
-    this.app.use('/uploads', express.static(path.join(__dirname, '..','..',  'assets', 'uploads')));
+    this.app.use('/uploads', express.static(UPLOADS_DIR));
   }
 
   private initializeSwagger() {
@@ -358,7 +362,7 @@ class App {
       logger.info(`Server is running on port ${port}`);
       logger.info(`Environment: ${environment.nodeEnv}`);
       logger.info(`Timezone: ${process.env.TZ || 'Asia/Karachi'}`);
-      logger.info(`Uploads path: ${path.join(__dirname, '..','..',  'assets', 'uploads')}`);
+      logger.info(`Uploads path: ${UPLOADS_DIR}`);
       logger.info(`Compression: Enabled`);
       logger.info(`Keep-Alive: Enabled (${this.server?.keepAliveTimeout}ms)`);
     });

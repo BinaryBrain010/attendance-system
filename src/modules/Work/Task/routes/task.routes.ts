@@ -4,12 +4,13 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import TaskController from "../controllers/task.controller";
+import { uploadPath } from "../../../../core/paths";
 
 // Attachments reuse the Employee disk-storage pattern: assets/uploads/tasks/<taskId>, served at /uploads.
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
     const id = (req.body?.id || req.body?.taskId || "misc").toString();
-    const dir = path.join(process.cwd(), "src", "assets", "uploads", "tasks", id);
+    const dir = uploadPath("tasks", id);
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import path from "path";
 import BaseController from "../../../../core/controllers/base.controller";
 import TaskService from "../services/task.service";
+import { ASSETS_DIR } from "../../../../core/paths";
 
 const uid = (req: Request) => (req as any).userId as string;
 
@@ -58,7 +59,7 @@ class TaskController extends BaseController<TaskService> {
   async uploadAttachments(req: Request, res: Response) {
     const id = req.body.id || req.body.taskId;
     const files = ((req as any).files?.files || (req as any).files || []) as any[];
-    const paths = (Array.isArray(files) ? files : []).map((f) => path.relative(path.join(process.cwd(), "src", "assets"), f.path).split(path.sep).join("/"));
+    const paths = (Array.isArray(files) ? files : []).map((f) => path.relative(ASSETS_DIR, f.path).split(path.sep).join("/"));
     await this.handleRequest(() => this.service.addAttachments(uid(req), id, paths), res, {
       successMessage: "Attachments added!", logActivity: { action: "UPDATE", entityType: "Task", entityId: id, description: "Attachments added" }, req,
     });

@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts, PDFImage, PDFPage } from "pdf-lib";
 import * as fs from "fs";
 import { DetailedGatePass, Item } from "../types/paginatedData";
 import { formatDate } from "../helper/date.helper";
+import { LOGO_PATH } from "../core/paths";
 
 export class GatePassPDF {
   public async generateGatePassPDF(data: DetailedGatePass): Promise<Buffer> {
@@ -19,7 +20,7 @@ export class GatePassPDF {
     // Load logo
     let logoImage: PDFImage | null = null;
     try {
-      const logoPath = "./src/assets/images/Power-Highway-Logo.png";
+      const logoPath = LOGO_PATH;
       if (fs.existsSync(logoPath)) {
         const logoBytes = fs.readFileSync(logoPath);
         logoImage = await pdfDoc.embedPng(logoBytes);

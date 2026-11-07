@@ -1,5 +1,10 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import { environment } from '../../environment/env.schema';
+import { SRC_DIR } from '../paths';
+import path from 'path';
+
+// Absolute globs from the project root, not the cwd — swagger-jsdoc reads the JSDoc out of these.
+const apiGlob = (p: string) => path.join(SRC_DIR, p).split(path.sep).join('/');
 
 interface SwaggerOptions {
   title?: string;
@@ -16,9 +21,9 @@ class SwaggerFactory {
     description: 'RESTful API documentation for Gate Pass and Attendance Management System',
     basePath: '/api',
     apis: [
-      './src/**/*.routes.ts',
-      './src/**/*.controller.ts',
-      './src/Auth/**/*.ts',
+      apiGlob('**/*.routes.ts'),
+      apiGlob('**/*.controller.ts'),
+      apiGlob('Auth/**/*.ts'),
     ],
   };
 
