@@ -1,6 +1,7 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import EmployeeController from '../controllers/employee.controller';
 import multer from 'multer';
+import { uploadPath } from '../../../../core/paths';
 import path from 'path';
 import { v4 as uuidv4 } from "uuid";
 import logger from '../../../../core/logger/logger'; 
@@ -18,19 +19,10 @@ class EmployeeRoutes {
       }
     
       const employeeFolder = `${employeeId.slice(-4)}-${employeeName.replace(/ /g, "_")}`;
-      const uploadPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "..",
-        "..",
-        "assets",
-        "uploads",
-        employeeFolder
-      );
-    
-      require("fs").mkdirSync(uploadPath, { recursive: true });
-      cb(null, uploadPath);
+      const dest = uploadPath(employeeFolder);
+
+      require("fs").mkdirSync(dest, { recursive: true });
+      cb(null, dest);
     }
 ,    
     filename: function (req, file, cb) {

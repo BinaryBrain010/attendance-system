@@ -1,5 +1,6 @@
 import { Prisma, Company } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
+import { uploadPath } from "../../../../core/paths";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcrypt";
@@ -224,16 +225,7 @@ const employeeModel = prisma.$extends({
             throw new Error("Employee not found");
           }
 
-          const uploadDir = path.join(
-            __dirname,
-            "..",
-            "..",
-            "..",
-            "..",
-            "assets",
-            "uploads",
-            `${employeeId.slice(-4)}-${employee.name.replace(/ /g, "_")}`
-          );
+          const uploadDir = uploadPath(`${employeeId.slice(-4)}-${employee.name.replace(/ /g, "_")}`);
 
           // Construct the full file path
           const filePath = path.join(uploadDir, fileName);

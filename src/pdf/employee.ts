@@ -4,6 +4,7 @@ import { fonts } from "./config/pdf-fonts";
 import { generateEmployeeTemplate } from "./templates/employee/employee.template";
 import { DetailedGatePass } from "../types/paginatedData";
 import { getLogoDataURL } from "./helper/logo.helper"
+import { LOGO_PATH } from "../core/paths";
 import { Employee } from "../modules/AMS/Employee/types/employee";
 
 const pdfFonts = require("./config/custom-fonts");
@@ -15,7 +16,7 @@ export class EmployeePDF {
   }
 
   public generateEmployeePDF(data: Employee): any {
-    const logoDataURL = getLogoDataURL("./src/assets/images/Power-Highway-Logo.png");
+    const logoDataURL = getLogoDataURL(LOGO_PATH);
     const docDefinition: TDocumentDefinitions = generateEmployeeTemplate(data, logoDataURL);
     const pdfDocGenerator = pdfMake.createPdf(docDefinition);
     return pdfDocGenerator;

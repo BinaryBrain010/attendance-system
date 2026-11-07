@@ -1,5 +1,6 @@
 import winston from 'winston';
 import path from 'path';
+import { LOGS_DIR } from '../paths';
 
 // Define log levels
 const levels = {
@@ -42,13 +43,13 @@ const consoleFormat = winston.format.combine(
 const transports = [
   // Write all logs to `combined.log`
   new winston.transports.File({
-    filename: path.join(process.cwd(), 'logs', 'error.log'),
+    filename: path.join(LOGS_DIR, 'error.log'),
     level: 'error',
     format: format,
   }),
   // Write all logs with level `info` and below to `combined.log`
   new winston.transports.File({
-    filename: path.join(process.cwd(), 'logs', 'combined.log'),
+    filename: path.join(LOGS_DIR, 'combined.log'),
     format: format,
   }),
 ];
@@ -68,14 +69,14 @@ export const logger = winston.createLogger({
   // Handle exceptions
   exceptionHandlers: [
     new winston.transports.File({
-      filename: path.join(process.cwd(), 'logs', 'exceptions.log'),
+      filename: path.join(LOGS_DIR, 'exceptions.log'),
       format: format,
     }),
   ],
   // Handle promise rejections
   rejectionHandlers: [
     new winston.transports.File({
-      filename: path.join(process.cwd(), 'logs', 'rejections.log'),
+      filename: path.join(LOGS_DIR, 'rejections.log'),
       format: format,
     }),
   ],
@@ -92,7 +93,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Create logs directory if it doesn't exist
 import fs from 'fs';
-const logsDir = path.join(process.cwd(), 'logs');
+const logsDir = LOGS_DIR;
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }

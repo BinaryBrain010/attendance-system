@@ -5,6 +5,7 @@ import { Employee } from "../types/employee";
 import path from "path";
 import { EmployeePDF } from "../../../../pdf/employee";
 import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
+import { ASSETS_DIR } from "../../../../core/paths";
 
 const EMPLOYEE_EXPORT_COLS: ExportCol[] = [
   { key: "code", header: "Code" }, { key: "name", header: "First name" }, { key: "surname", header: "Surname" },
@@ -184,10 +185,7 @@ class EmployeeController extends BaseController<EmployeeService> {
       // Create new file paths
       const newFilePaths = files.map((file: any) => {
         // Extract the relative path for the structured folder
-        const relativePath = path.relative(
-          path.join(__dirname, "..", "..", "..", "..", "assets"),
-          file.path
-        );
+        const relativePath = path.relative(ASSETS_DIR, file.path);
 
         // Ensure forward slashes in the path
         const normalizedPath = relativePath.replace(/\\+/g, "/");
