@@ -43,6 +43,7 @@ import CrmBundleRoutes from "../src/modules/CRM/Catalogue/Bundle/routes/bundle.r
 import SalesAgentRoutes from "../src/modules/CRM/SalesAgent/routes/salesAgent.routes";
 import LeadRoutes from "../src/modules/CRM/Lead/routes/lead.routes";
 import LeadActivityRoutes from "../src/modules/CRM/LeadActivity/routes/leadActivity.routes";
+import LeadReviewRoutes from "../src/modules/CRM/LeadReview/routes/leadReview.routes";
 import QuotationRoutes from "../src/modules/CRM/Quotation/routes/quotation.routes";
 import SalesOrderRoutes from "../src/modules/CRM/SalesOrder/routes/salesOrder.routes";
 import SalesReturnRoutes from "../src/modules/CRM/Return/routes/salesReturn.routes";
@@ -63,7 +64,7 @@ const authed: any[] = [
   UnitRoutes, UnitEmployeeRoutes, ShiftRoutes, SystemConfigRoutes, AnalyticsRoutes,
   ActivityLogRoutes, VisitorRoutes,
   CrmCategoryRoutes, CrmBrandRoutes, CrmProductRoutes, CrmPriceListRoutes, CrmBundleRoutes,
-  SalesAgentRoutes, LeadRoutes, LeadActivityRoutes, QuotationRoutes, SalesOrderRoutes, SalesReturnRoutes, CrmReportRoutes,
+  SalesAgentRoutes, LeadRoutes, LeadActivityRoutes, LeadReviewRoutes, QuotationRoutes, SalesOrderRoutes, SalesReturnRoutes, CrmReportRoutes,
   TeamRoutes, TaskRoutes, DailyReportRoutes, NotificationRoutes, WorkReportRoutes,
   AuditLogRoutes,
   InsightsRoutes,

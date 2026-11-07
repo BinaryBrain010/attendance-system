@@ -1015,6 +1015,27 @@ enum AgentScope {
   ALL
 }
 
+enum ReviewColour {
+  RED
+  AMBER
+  GREEN
+}
+
+enum ReviewStatus {
+  OPEN
+  DONE
+}
+
+// What a lead review flag points at: the whole lead, or one timeline entry.
+enum LeadReviewTarget {
+  LEAD
+  ACTIVITY
+  NOTE
+  STAGE
+  QUOTATION
+  FOLLOWUP
+}
+
 enum PriceTier {
   RETAIL
   DEALER
@@ -1256,6 +1277,39 @@ model LeadActivity {
   createdById    String?      @db.VarChar(36)
 
   @@index([leadId])
+}
+
+// A reviewer's coloured flag on a lead or a single timeline entry, optionally sent to the owner's
+// My Day with an instruction + due date. Scope-checked through the parent lead. Counts/time-to-resolve
+// reports are computed on the server. Audit fields are stamped by the central audit extension.
+model LeadReview {
+  id          String           @id @default(uuid())
+  leadId      String
+  targetType  LeadReviewTarget @default(LEAD)
+  targetId    String? // the timeline entry id when targetType != LEAD (else null)
+  colour      ReviewColour
+  comment     String?
+  instruction String? // required when sent back to the owner's My Day
+  dueAt       DateTime?
+  sentToMyDay Boolean          @default(false)
+  status      ReviewStatus     @default(OPEN)
+  reviewerId  String           @db.VarChar(36) // User id of the reviewer
+  ownerId     String?          @db.VarChar(36) // User id of the lead's owner (agent's user) at flag time
+  reply       String? // owner's reply when marking done
+  resolvedAt  DateTime?
+  createdAt   DateTime?        @default(now())
+  updatedAt   DateTime?        @updatedAt
+  isDeleted   DateTime?
+  createdBy   String?
+  updatedBy   String?
+  createdById String?          @db.VarChar(36)
+  updatedById String?          @db.VarChar(36)
+  deletedById String?          @db.VarChar(36)
+
+  @@index([leadId])
+  @@index([ownerId, status])
+  @@index([reviewerId])
+  @@index([status])
 }
 
 model Quotation {

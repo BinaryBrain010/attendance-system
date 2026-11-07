@@ -116,6 +116,15 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /visitor/attend": { feature: "visitor.update.*", kind: "update", access: "feature", note: "mark a visit attended" },
   // A10: global top-bar search — token access, permission-aware per entity inside the service.
   "GET /search/global": { feature: "-", kind: "read", access: "token", note: "global search (permission-aware per type)" },
+  // Lead Review: reviewer actions gate on crm.lead.review.*; owner/read actions gate on lead read
+  // (so the owner agent can see flags on their own lead and mark them done without being a reviewer).
+  "POST /leadReview/create": { feature: "crm.lead.review.*", kind: "create", access: "feature", note: "flag a lead / timeline entry" },
+  "POST /leadReview/sendBack": { feature: "crm.lead.review.*", kind: "update", access: "feature", note: "send an existing flag to the owner's My Day" },
+  "POST /leadReview/reopen": { feature: "crm.lead.review.*", kind: "update", access: "feature", note: "reopen a resolved review" },
+  "POST /leadReview/forLead": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "flags on a lead (scope-checked)" },
+  "POST /leadReview/flagsForLeads": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "open-flag summary for the list/board dot" },
+  "POST /leadReview/myDay": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "owner's From-review items" },
+  "POST /leadReview/reply": { feature: "crm.lead.read.own.*", kind: "update", access: "feature", note: "owner marks a review done" },
   // Phase 8d/8e: "Me" app — own profile + preferences (token access, own data only).
   "GET /user/me": { feature: "-", kind: "read", access: "token", note: "own profile for the Me app" },
   "POST /user/refreshSession": { feature: "-", kind: "update", access: "token", note: "sliding-session renewal (Stay signed in)" },

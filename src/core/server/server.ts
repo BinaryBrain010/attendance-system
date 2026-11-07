@@ -66,6 +66,7 @@ import CrmBundleRoutes from "../../modules/CRM/Catalogue/Bundle/routes/bundle.ro
 import SalesAgentRoutes from "../../modules/CRM/SalesAgent/routes/salesAgent.routes";
 import LeadRoutes from "../../modules/CRM/Lead/routes/lead.routes";
 import LeadActivityRoutes from "../../modules/CRM/LeadActivity/routes/leadActivity.routes";
+import LeadReviewRoutes from "../../modules/CRM/LeadReview/routes/leadReview.routes";
 import QuotationRoutes from "../../modules/CRM/Quotation/routes/quotation.routes";
 import SalesOrderRoutes from "../../modules/CRM/SalesOrder/routes/salesOrder.routes";
 import SalesReturnRoutes from "../../modules/CRM/Return/routes/salesReturn.routes";
@@ -261,6 +262,7 @@ class App {
       SalesAgentRoutes,
       LeadRoutes,
       LeadActivityRoutes,
+      LeadReviewRoutes,
       QuotationRoutes,
       SalesOrderRoutes,
       SalesReturnRoutes,

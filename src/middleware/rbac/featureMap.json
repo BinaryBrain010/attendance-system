@@ -704,6 +704,21 @@
     "feature": "crm.report.read.*",
     "kind": "read"
   },
+  "POST /crmReport/reviewByAgent": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/reviewColours": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
+  "POST /crmReport/reviewResolution": {
+    "access": "feature",
+    "feature": "crm.report.read.*",
+    "kind": "read"
+  },
   "POST /crmReport/sales": {
     "access": "feature",
     "feature": "crm.report.read.*",
@@ -1497,6 +1512,41 @@
   "PUT /leadActivity/update": {
     "access": "feature",
     "feature": "crm.lead.update.*",
+    "kind": "update"
+  },
+  "POST /leadReview/create": {
+    "access": "feature",
+    "feature": "crm.lead.review.*",
+    "kind": "create"
+  },
+  "POST /leadReview/flagsForLeads": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /leadReview/forLead": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /leadReview/myDay": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /leadReview/reopen": {
+    "access": "feature",
+    "feature": "crm.lead.review.*",
+    "kind": "update"
+  },
+  "POST /leadReview/reply": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "update"
+  },
+  "POST /leadReview/sendBack": {
+    "access": "feature",
+    "feature": "crm.lead.review.*",
     "kind": "update"
   },
   "POST /leave/leave-allocations/assignToAll": {

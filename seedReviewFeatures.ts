@@ -25,6 +25,8 @@ const FEATURES: F[] = [
   // CRM lead permissions (2c/2d)
   ["crm.lead.assign.*", "crm.lead.*", "Assign lead to an agent"],
   ["crm.lead.transfer.*", "crm.lead.*", "Transfer lead to another agent"],
+  // Lead Review (2026-11): flag a lead / timeline entry, send back to the owner's My Day.
+  ["crm.lead.review.*", "crm.lead.*", "Lead Review (flag & send back)"],
   // Access control (3b)
   ["user.suspend.*", "user.*", "Suspend / Reactivate user"],
   // Frontdesk per-unit visibility (6c): holders see visitors from all units; others see only theirs.

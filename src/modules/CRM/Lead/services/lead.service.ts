@@ -5,7 +5,7 @@ import { notify } from "../../../Work/shared/workHelpers";
 import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
 import { notifyMentions } from "../../shared/mentions";
 import { NotFoundError, AppError, ForbiddenError, ValidationError } from "../../../../core/errors/app.error";
-import { assertTransition, allowedNext } from "../../shared/stateMachine";
+import { assertTransition, allowedNext, isLeadForward, leadLadderIndex, LEAD_TERMINAL } from "../../shared/stateMachine";
 import { probabilityFor, weightedValue, daysBetween, followUpStatus } from "../../shared/computed";
 import { normalizePhone, searchPhoneDigits } from "../../shared/phone";
 import { EXPORT_CAP } from "../../../../core/export/tableExport";
@@ -333,6 +333,85 @@ class LeadService {
     return { ...withComputed(updated), from: lead.stage, to };
   }
 
+  /**
+   * Part B — the ONE combined "log activity (+ move stage)" operation. Both logging an activity and
+   * changing a stage go through here, so the two defects can't recur:
+   *   - every stage change carries an activity (type + required outcome);
+   *   - logging an activity advances the stage automatically, FORWARD ONLY:
+   *       contact (call/WhatsApp/visit/email) on a NEW lead  -> CONTACTED
+   *       outcome "interested"                                -> QUALIFIED (if not already further)
+   *       "Quotation sent" (type or outcome)                  -> QUOTATION (requires a quotation)
+   *       markLost (outcome "not interested", confirmed)      -> LOST (reason required)
+   *   - QUOTATION / "Quotation sent" require the lead to have (or be given) a quotation.
+   * The activity row + the stage-change audit are written in the same request, so the timeline shows
+   * them as ONE entry. Returns { from, to } so the controller can log + the client can refresh.
+   */
+  async logActivity(userId: string, input: any) {
+    const { leadId, type, outcome, notes, nextFollowUpAt, toStage, reason, quotationId, markLost, mentions } = input || {};
+    const scope = await resolveScope(userId, "lead");
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
+    assertRowInScope(scope, lead, "Lead");
+    if (!type) throw new ValidationError("An activity type is required.");
+    // A contact activity, a stage move, or marking lost must state an outcome/response; a bare
+    // note/other activity need not.
+    const outcomeRequired = !["NOTE", "OTHER"].includes(type) || !!toStage || !!markLost;
+    if (outcomeRequired && (!outcome || !String(outcome).trim())) throw new ValidationError("An outcome / response is required.");
+
+    const furthest = (a: string, b: string) => (leadLadderIndex(b) > leadLadderIndex(a) ? b : a);
+    const o = String(outcome).toLowerCase();
+    const isContact = ["CALL", "WHATSAPP", "VISIT", "EMAIL"].includes(type);
+
+    // Decide the target stage.
+    let target: string | null = null;
+    if (markLost) {
+      if (!reason || !String(reason).trim()) throw new ValidationError("A reason is required to mark the lead lost.");
+      if (!LEAD_TERMINAL.has(lead.stage)) target = "LOST";
+    } else if (toStage && toStage !== lead.stage) {
+      // Explicit stage from the combined dialog: follow the single-step state machine (the dialog only
+      // offers allowedNext), which also enforces forward-only + reason-required for LOST / ON_HOLD.
+      assertTransition("lead", lead.stage, toStage, reason);
+      target = toStage;
+    } else if (!toStage && !LEAD_TERMINAL.has(lead.stage)) {
+      // Auto-advance from the activity (forward only).
+      let t: string = lead.stage;
+      if (isContact && lead.stage === "NEW") t = furthest(t, "CONTACTED");
+      if (o.includes("interested") && !o.includes("not interested")) t = furthest(t, "QUALIFIED");
+      if (type === "QUOTATION_SENT" || o.includes("quotation sent")) t = furthest(t, "QUOTATION");
+      if (t !== lead.stage && isLeadForward(lead.stage, t)) target = t;
+    }
+
+    // Quotation requirement for QUOTATION / "Quotation sent".
+    if (type === "QUOTATION_SENT" || target === "QUOTATION") {
+      const where: any = quotationId ? { id: quotationId, leadId: lead.id, isDeleted: null } : { leadId: lead.id, isDeleted: null };
+      const q = await prisma.quotation.findFirst({ where });
+      if (!q) {
+        throw new ValidationError(quotationId
+          ? "That quotation does not belong to this lead."
+          : "This lead has no quotation yet — create or link a quotation before logging 'Quotation sent' or moving to Quotation.");
+      }
+    }
+
+    const occurredAt = new Date();
+    const nf = nextFollowUpAt ? new Date(nextFollowUpAt) : null;
+    const act = await prisma.leadActivity.create({
+      data: { leadId: lead.id, type, outcome: outcome ?? null, occurredAt, nextFollowUpAt: nf, notes: notes ?? null, agentId: lead.agentId, createdBy: userId },
+    });
+
+    const data: any = { lastContactAt: occurredAt };
+    if (nf) data.nextFollowUpAt = nf;
+    let movedTo: string | null = null;
+    if (target && target !== lead.stage) {
+      data.stage = target; data.updatedBy = userId; data.updatedAt = new Date();
+      if (target === "LOST") { data.lostReason = reason; data.stageReason = reason; }
+      else if (target === "ON_HOLD") { data.stageReason = reason; }
+      movedTo = target;
+    }
+    await prisma.lead.update({ where: { id: lead.id }, data });
+    await notifyMentions(userId, mentions, lead.id, lead.customerName || "a lead", notes);
+    return { activity: act, leadId: lead.id, from: lead.stage, to: movedTo, stageMoved: !!movedTo, customerName: lead.customerName };
+  }
+
   /** Convert a Visitor into a Lead (one lead per visitor). */
   async fromVisitor(userId: string, visitorId: string) {
     const scope = await resolveScope(userId, "lead");
@@ -439,10 +518,18 @@ class LeadService {
         title = ACTION_TITLE[a0.action] || sentenceCase(a0.action) || "Updated";
       }
 
+      // Fold a co-occurring stage change into the entry (so "Called + moved to Qualified" is ONE row).
+      const stageChange = changes.find((c) => c.field === "stage");
+      let stageTo: string | null = null;
+      if (stageChange && stageChange.after) {
+        stageTo = sentenceCase(String(stageChange.after));
+        changes = changes.filter((c) => c.field !== "stage");
+      }
+
       return {
         id: (activity?.id || log?.id || audits[0]?.id || at) as string,
         at, occurredAt, kind, title,
-        type, outcome, notes, nextFollowUpAt,
+        type, outcome, notes, nextFollowUpAt, stageTo,
         actor,
         ...(changes.length ? { changes } : {}),
       };

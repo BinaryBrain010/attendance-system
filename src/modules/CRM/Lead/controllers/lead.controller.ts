@@ -90,11 +90,17 @@ class LeadController extends BaseController<LeadService> {
   }
 
   async transition(req: Request, res: Response) {
-    const { id, to, reason } = req.body;
-    await this.handleRequest(() => this.service.transition((req as any).userId, id, to, reason ?? null), res, {
-      successMessage: "Lead stage changed successfully!",
-      logActivity: { action: "STAGE_CHANGE", entityType: "Lead", entityId: id, description: (r: any) => `Stage ${r?.from} -> ${r?.to}`, metadata: (r: any) => ({ from: r?.from, to: r?.to, reason: reason ?? null }) }, req,
-    });
+    // Part B: a stage change always carries its activity; the combined operation lives in
+    // LeadService.logActivity (quick actions, board drag, stage chips all post here).
+    const { id, to, reason, type, outcome, notes, nextFollowUpAt, quotationId } = req.body;
+    await this.handleRequest(
+      () => this.service.logActivity((req as any).userId, { leadId: id, toStage: to, reason: reason ?? null, type, outcome, notes, nextFollowUpAt, quotationId }),
+      res,
+      {
+        successMessage: "Lead stage changed successfully!",
+        logActivity: { action: "STAGE_CHANGE", entityType: "Lead", entityId: id, description: (r: any) => `Stage ${r?.from} -> ${r?.to}`, metadata: (r: any) => ({ from: r?.from, to: r?.to, reason: reason ?? null, activity: type, outcome }) }, req,
+      },
+    );
   }
 
   async assign(req: Request, res: Response) {

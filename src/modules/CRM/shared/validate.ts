@@ -40,6 +40,8 @@ const OrderStatus = z.enum(["DRAFT", "CONFIRMED", "PACKED", "DISPATCHED", "DELIV
 const ReturnStatus = z.enum(["REPORTED", "RECEIVED_BACK", "RESTOCKED", "DAMAGED"]);
 const PaymentType = z.enum(["COD", "ADVANCE", "PARTIAL"]);
 const AgentScope = z.enum(["OWN", "TEAM", "ALL"]);
+const ReviewColour = z.enum(["RED", "AMBER", "GREEN"]);
+const ReviewTarget = z.enum(["LEAD", "ACTIVITY", "NOTE", "STAGE", "QUOTATION", "FOLLOWUP"]);
 
 const lineItem = z.object({
   productId: idStr.optional(), variantId: idStr.optional(), description: shortStr(500).optional(),
@@ -87,17 +89,39 @@ export const schemas = {
       lastContactAt: dt.optional(), nextFollowUpAt: dt.optional(), company: Company.optional(),
       mentions: mentions.optional(),
     }), // NOTE: no `stage` — stage changes go through /transition only
-    transition: z.object({ id: idStr, to: LeadStage, reason: longStr.optional() }),
+    // Part B: a stage change carries its activity (type + required outcome). quotationId links/validates
+    // the quotation when moving to QUOTATION; the service rejects invalid combos.
+    transition: z.object({
+      id: idStr, to: LeadStage, reason: longStr.optional(),
+      type: ActivityType, outcome: shortStr(500).min(1),
+      notes: longStr.optional(), nextFollowUpAt: dt.optional(), quotationId: idStr.optional(), mentions: mentions.optional(),
+    }),
   },
 
   leadActivity: {
     create: z.object({
       leadId: idStr, type: ActivityType, outcome: shortStr(500).optional(), occurredAt: dt.optional(),
       nextFollowUpAt: dt.optional(), agentId: idStr.optional(), notes: longStr.optional(),
+      // Part B: logging an activity may move the stage. toStage = explicit forward move from the combined
+      // dialog; markLost + reason = confirmed "not interested" -> LOST; quotationId links a quotation.
+      toStage: LeadStage.optional(), reason: longStr.optional(), quotationId: idStr.optional(), markLost: bool.optional(),
       mentions: mentions.optional(),
     }),
     update: z.object({ id: idStr, type: ActivityType.optional(), outcome: shortStr(500).optional(), nextFollowUpAt: dt.optional(), notes: longStr.optional() }),
     byLead: z.object({ leadId: idStr }),
+  },
+
+  leadReview: {
+    create: z.object({
+      leadId: idStr, targetType: ReviewTarget.optional(), targetId: idStr.optional(),
+      colour: ReviewColour, comment: longStr.optional(),
+      instruction: longStr.optional(), dueAt: dt.optional(), sendToMyDay: bool.optional(),
+    }),
+    sendBack: z.object({ id: idStr, instruction: longStr.min(1), dueAt: dt.optional() }),
+    forLead: z.object({ leadId: idStr }),
+    flagsForLeads: z.object({ leadIds: z.array(idStr).max(500) }),
+    reply: z.object({ id: idStr, reply: longStr.optional() }),
+    reopen: z.object({ id: idStr }),
   },
 
   quotation: {

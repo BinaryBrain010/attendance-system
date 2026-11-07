@@ -1,6 +1,7 @@
 import prisma from "../../../../../core/models/base.model";
 
 const currentPrice = { where: { isDeleted: null, validTo: null } };
+// Detail include: full image (base64 data URL in `url`) for a single product.
 const include = {
   category: { select: { id: true, name: true } },
   brand: { select: { id: true, name: true } },
@@ -8,15 +9,25 @@ const include = {
   images: { where: { isDeleted: null } },
   prices: currentPrice,
 };
+// List include: the small `thumbUrl` only, never the full base64 `url` — a list of products with
+// embedded images (post-catalogue-import) would otherwise ship ~25KB/row (5MB for getAll). Lists/pickers
+// don't need the full image; the detail view (getById) does.
+const listInclude = {
+  category: { select: { id: true, name: true } },
+  brand: { select: { id: true, name: true } },
+  variants: { where: { isDeleted: null } },
+  images: { where: { isDeleted: null }, select: { id: true, isPrimary: true, sortOrder: true, thumbUrl: true } },
+  prices: currentPrice,
+};
 
 class ProductService {
   getAll() {
-    return prisma.product.findMany({ where: { isDeleted: null }, include, orderBy: { name: "asc" } });
+    return prisma.product.findMany({ where: { isDeleted: null }, include: listInclude, orderBy: { name: "asc" } });
   }
   async get(page = 1, pageSize = 10) {
     const skip = (page - 1) * pageSize;
     const [data, totalSize] = await Promise.all([
-      prisma.product.findMany({ where: { isDeleted: null }, include, skip, take: pageSize, orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where: { isDeleted: null }, include: listInclude, skip, take: pageSize, orderBy: { name: "asc" } }),
       prisma.product.count({ where: { isDeleted: null } }),
     ]);
     return { data, totalSize };
@@ -28,7 +39,7 @@ class ProductService {
     return prisma.product.findUnique({ where: { id, isDeleted: null }, include });
   }
   byCategory(categoryId: string) {
-    return prisma.product.findMany({ where: { isDeleted: null, categoryId }, include, orderBy: { name: "asc" } });
+    return prisma.product.findMany({ where: { isDeleted: null, categoryId }, include: listInclude, orderBy: { name: "asc" } });
   }
   /**
    * Sales of a product: sold qty + revenue from DELIVERED order lines, quoted qty, returned qty, and
@@ -91,7 +102,7 @@ class ProductService {
     ];
     const skip = (page - 1) * pageSize;
     const [data, totalSize] = await Promise.all([
-      prisma.product.findMany({ where, include, skip, take: pageSize, orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where, include: listInclude, skip, take: pageSize, orderBy: { name: "asc" } }),
       prisma.product.count({ where }),
     ]);
     return { data, totalSize };

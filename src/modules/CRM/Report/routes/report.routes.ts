@@ -26,6 +26,9 @@ class CrmReportRoutes {
     this.router.post("/customers", this.controller.customers.bind(this.controller));
     this.router.post("/customer360", this.controller.customer360.bind(this.controller));
     this.router.post("/customerStatus", this.controller.customerStatus.bind(this.controller));
+    this.router.post("/reviewByAgent", this.controller.reviewByAgent.bind(this.controller));
+    this.router.post("/reviewResolution", this.controller.reviewResolution.bind(this.controller));
+    this.router.post("/reviewColours", this.controller.reviewColours.bind(this.controller));
     this.router.post("/customersExport", this.controller.customersExport.bind(this.controller));
     this.router.post("/margin", this.controller.margin.bind(this.controller));
     this.router.post("/export", this.controller.export.bind(this.controller));
