@@ -108,6 +108,7 @@ async function cleanupFixtures() {
   const qaLeads = await prisma.lead.findMany({ where: { customerName: { startsWith: QTAG } }, select: { id: true } }).catch(() => [] as { id: string }[]);
   const ids = qaLeads.map((l) => l.id);
   if (ids.length) await prisma.leadActivity.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
+  if (ids.length) await prisma.leadReview.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
   await prisma.returnItem.deleteMany({ where: { return: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.salesReturn.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.salesOrderItem.deleteMany({ where: { order: { customerName: { startsWith: QTAG } } } }).catch(() => {});
@@ -428,17 +429,26 @@ async function main() {
   await prisma.priceList.deleteMany({ where: { productId: bulkProd.id } }).catch(() => {});
   await prisma.product.delete({ where: { id: bulkProd.id } }).catch(() => {});
 
-  console.log("\n[crm] ===== Phase 2: lead state machine =====");
+  console.log("\n[crm] ===== Phase 2: lead state machine + combined stage/activity (Part B) =====");
   const newLead = async (t: string, agentId: string, extra: any = {}) => {
     const r = await api("POST", "/lead/create", t, { customerName: `${QTAG}SM ${Date.now()}${Math.random()}`, stage: "NEW", agentId, ...extra });
     return r.data?.[0]?.id as string;
   };
-  const trans = (t: string, id: string, to: string, reason?: string) => api("POST", "/lead/transition", t, { id, to, ...(reason ? { reason } : {}) });
+  // B1/B5: every stage change carries its activity (type + required outcome).
+  const trans = (t: string, id: string, to: string, reason?: string, extra: any = {}) =>
+    api("POST", "/lead/transition", t, { id, to, ...(reason ? { reason } : {}), type: "CALL", outcome: "spoke", ...extra });
+  const mkQuote = (t: string, leadId: string) => api("POST", "/quotation/fromLead", t, { leadId });
+  const getStage = async (t: string, id: string) => (await api("POST", "/lead/getById", t, { id })).data?.stage;
+  const logAct = (t: string, leadId: string, body: any) => api("POST", "/leadActivity/create", t, { leadId, ...body });
+
   const smLead = await newLead(tAdmin, AG001.id);
-  check("transition NEW->CONTACTED 200", (await trans(tAdmin, smLead, "CONTACTED")).status === 200);
+  check("B1: stage change WITHOUT activity -> 400", (await api("POST", "/lead/transition", tAdmin, { id: smLead, to: "CONTACTED" })).status === 400);
+  check("transition NEW->CONTACTED (with activity) 200", (await trans(tAdmin, smLead, "CONTACTED")).status === 200);
   check("transition CONTACTED->QUALIFIED 200", (await trans(tAdmin, smLead, "QUALIFIED")).status === 200);
   check("invalid skip QUALIFIED->WON 409", (await trans(tAdmin, smLead, "WON")).status === 409);
-  check("transition QUALIFIED->QUOTATION 200", (await trans(tAdmin, smLead, "QUOTATION")).status === 200);
+  check("B3: QUALIFIED->QUOTATION without a quotation -> 400", (await trans(tAdmin, smLead, "QUOTATION")).status === 400);
+  check("fromLead creates a quotation 2xx", (await mkQuote(tAdmin, smLead)).status < 300);
+  check("B3: QUALIFIED->QUOTATION with a quotation -> 200", (await trans(tAdmin, smLead, "QUOTATION")).status === 200);
   check("transition QUOTATION->WON 200", (await trans(tAdmin, smLead, "WON")).status === 200);
   check("transition from terminal WON->LOST 409", (await trans(tAdmin, smLead, "LOST", "x")).status === 409);
   const lostLead = await newLead(tAdmin, AG001.id);
@@ -446,7 +456,22 @@ async function main() {
   check("LOST with reason -> 200", (await trans(tAdmin, lostLead, "LOST", "price too high")).status === 200);
   const holdLead = await newLead(tAdmin, AG001.id);
   check("ON_HOLD without reason -> 400", (await trans(tAdmin, holdLead, "ON_HOLD")).status === 400);
+  check("transition missing outcome -> 400", (await api("POST", "/lead/transition", tAdmin, { id: holdLead, to: "CONTACTED", type: "CALL" })).status === 400);
   check("AGENT_OWN transition out-of-scope lead -> 403", (await trans(tOwn, outLead1.id, "CONTACTED")).status === 403);
+
+  console.log("\n[crm] ===== Phase 2: activity auto-advances stage (Part B2) =====");
+  const autoLead = await newLead(tAdmin, AG001.id);
+  check("B2: contact on NEW -> auto CONTACTED", (await logAct(tAdmin, autoLead, { type: "CALL", outcome: "spoke" })).status === 201 && (await getStage(tAdmin, autoLead)) === "CONTACTED");
+  check("B2: outcome 'interested' -> auto QUALIFIED", (await logAct(tAdmin, autoLead, { type: "CALL", outcome: "Interested" })).status === 201 && (await getStage(tAdmin, autoLead)) === "QUALIFIED");
+  check("B2/B3: QUOTATION_SENT without quotation -> 400", (await logAct(tAdmin, autoLead, { type: "QUOTATION_SENT", outcome: "sent" })).status === 400);
+  await mkQuote(tAdmin, autoLead);
+  check("B2/B3: QUOTATION_SENT with quotation -> QUOTATION", (await logAct(tAdmin, autoLead, { type: "QUOTATION_SENT", outcome: "sent" })).status === 201 && (await getStage(tAdmin, autoLead)) === "QUOTATION");
+  const lostAuto = await newLead(tAdmin, AG001.id);
+  check("B2: markLost without reason -> 400", (await logAct(tAdmin, lostAuto, { type: "CALL", outcome: "Not interested", markLost: true })).status === 400);
+  check("B2: markLost with reason -> LOST", (await logAct(tAdmin, lostAuto, { type: "CALL", outcome: "Not interested", markLost: true, reason: "no budget" })).status === 201 && (await getStage(tAdmin, lostAuto)) === "LOST");
+  const fwdLead = await newLead(tAdmin, AG001.id); await trans(tAdmin, fwdLead, "CONTACTED");
+  check("backward CONTACTED->NEW -> 409", (await trans(tAdmin, fwdLead, "NEW")).status === 409);
+  check("NOTE activity without an outcome -> 201", (await logAct(tAdmin, fwdLead, { type: "NOTE", notes: "just a note" })).status === 201);
 
   console.log("\n[crm] ===== Phase 2: LeadActivity + timeline =====");
   const actLead = await newLead(tOwn, AG001.id);
@@ -456,13 +481,37 @@ async function main() {
   const aList = await api("POST", "/leadActivity/byLead", tOwn, { leadId: actLead });
   check("byLead returns the activity", (aList.data || []).length === 1);
   check("activity set lead.nextFollowUpAt (UPCOMING)", (await api("POST", "/lead/getById", tOwn, { id: actLead })).data?.followUpStatus === "UPCOMING");
-  check("AGENT_OWN log activity on out-of-scope lead -> 403", (await api("POST", "/leadActivity/create", tOwn, { leadId: outLead1.id, type: "CALL" })).status === 403);
+  check("AGENT_OWN log activity on out-of-scope lead -> 403", (await api("POST", "/leadActivity/create", tOwn, { leadId: outLead1.id, type: "CALL", outcome: "x" })).status === 403);
   const tl = await api("POST", "/lead/timeline", tOwn, { id: actLead });
   // 2a: one merged entry per action. The CALL is a single entry (kind=activity, sentence-case title,
   // resolved actor), NOT three separate activity/activity-log/audit rows.
   const callE = (tl.data || []).filter((e: any) => e.kind === "activity" && e.title === "Called");
   check("timeline: CALL is ONE merged entry", Array.isArray(tl.data) && callE.length === 1, `calls ${callE.length} of ${tl.data?.length}`);
   check("timeline: entry has readable title + actor, no raw source fields", !!callE[0]?.actor && !!callE[0]?.title && !(tl.data || []).some((e: any) => "source" in e));
+  check("timeline: activity entry folds the stage move (stageTo)", callE.some((e: any) => e.stageTo === "Contacted"));
+
+  console.log("\n[crm] ===== Phase 2: Lead Review (Part A) =====");
+  // reviewer = ADMIN (crm.* -> crm.lead.review.* + ALL scope); owner = AGENT_OWN (AG001's user).
+  const revLead = ownA1.id; // assigned to AG001 -> owner is agentOwnUser
+  check("non-reviewer (AGENT_OWN) cannot flag -> 403", (await api("POST", "/leadReview/create", tOwn, { leadId: revLead, colour: "GREEN" })).status === 403);
+  check("flag: sendToMyDay without instruction -> 400", (await api("POST", "/leadReview/create", tAdmin, { leadId: revLead, colour: "AMBER", sendToMyDay: true })).status === 400);
+  const flagRes = await api("POST", "/leadReview/create", tAdmin, { leadId: revLead, targetType: "LEAD", colour: "RED", comment: "double-check pricing", instruction: "Call the customer today", dueAt: futureFu, sendToMyDay: true });
+  check("reviewer flags lead + sends to My Day -> 201", flagRes.status === 201, `got ${flagRes.status}`);
+  const reviewId = flagRes.data?.id as string;
+  check("owner My Day shows the From-review item", ((await api("POST", "/leadReview/myDay", tOwn, {})).data || []).some((r: any) => r.id === reviewId));
+  check("owner forLead returns the flag (OPEN)", ((await api("POST", "/leadReview/forLead", tOwn, { leadId: revLead })).data || []).some((r: any) => r.id === reviewId && r.status === "OPEN"));
+  const fsum = await api("POST", "/leadReview/flagsForLeads", tOwn, { leadIds: [revLead] });
+  check("flagsForLeads: open dot for the lead", fsum.data?.[revLead]?.open >= 1 && (fsum.data?.[revLead]?.colours || []).includes("RED"));
+  check("owner forLead out-of-scope lead -> 403", (await api("POST", "/leadReview/forLead", tOwn, { leadId: outLead1.id })).status === 403);
+  check("owner replies + marks done -> 200", (await api("POST", "/leadReview/reply", tOwn, { id: reviewId, reply: "Called, sorted" })).status === 200);
+  check("review now DONE (resolved)", ((await api("POST", "/leadReview/forLead", tOwn, { leadId: revLead })).data || []).some((r: any) => r.id === reviewId && r.status === "DONE"));
+  check("done review drops off owner My Day", !((await api("POST", "/leadReview/myDay", tOwn, {})).data || []).some((r: any) => r.id === reviewId));
+  check("reviewer reopens -> 200 + OPEN", (await api("POST", "/leadReview/reopen", tAdmin, { id: reviewId })).status === 200 && ((await api("POST", "/leadReview/forLead", tAdmin, { leadId: revLead })).data || []).some((r: any) => r.id === reviewId && r.status === "OPEN"));
+  check("non-owner (team lead, not ALL) cannot reply -> 403", (await api("POST", "/leadReview/reply", tTeam, { id: reviewId, reply: "x" })).status === 403);
+  check("review report reviewByAgent 200", (await api("POST", "/crmReport/reviewByAgent", tOwn, {})).status === 200);
+  const rcol = await api("POST", "/crmReport/reviewColours", tAdmin, {});
+  check("reviewColours returns counts incl RED", rcol.status === 200 && (rcol.data?.all?.RED ?? 0) >= 1);
+  check("review report reviewResolution 200", (await api("POST", "/crmReport/reviewResolution", tAdmin, {})).status === 200);
 
   console.log("\n[crm] ===== Phase 2: follow-up status (computed) =====");
   const overdue = await newLead(tAdmin, AG001.id, { nextFollowUpAt: new Date(Date.now() - 2 * 86400000).toISOString() });

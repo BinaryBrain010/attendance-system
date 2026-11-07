@@ -11,8 +11,9 @@ export async function nextTaskCode(): Promise<string> {
 
 export type NotifType =
   | "ASSIGNED" | "DUE_SOON" | "OVERDUE" | "COMMENT" | "REPORT_MISSING"
-  // CRM (leads): unassigned-lead alert to managers, lead transfer, @mention.
+  // CRM (leads): unassigned-lead alert to managers, lead transfer, @mention, lead review.
   | "LEAD_UNASSIGNED" | "LEAD_TRANSFER" | "MENTION"
+  | "LEAD_REVIEW" | "LEAD_REVIEW_DONE" | "LEAD_REVIEW_REOPEN"
   // Frontdesk (6b): a visitor was referred to this employee.
   | "VISITOR";
 

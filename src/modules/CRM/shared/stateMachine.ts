@@ -45,6 +45,19 @@ export function allowedNext(entity: SmEntity, from: string): string[] {
   return TABLES[entity]?.[from] ?? [];
 }
 
+// ---- Lead forward ladder (Part B: activity-driven stage moves are forward-only) ----
+// The linear "progress" stages. LOST / ON_HOLD / DRAFT are off-ladder (index -1) and handled
+// explicitly (reason required). A stage move is "forward" iff its ladder index is strictly higher.
+export const LEAD_LADDER = ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION", "NEGOTIATION", "WON"];
+export function leadLadderIndex(stage: string): number { return LEAD_LADDER.indexOf(stage); }
+/** True if moving from->to is a forward ladder move (never equal, never backward, both on-ladder). */
+export function isLeadForward(from: string, to: string): boolean {
+  const a = leadLadderIndex(from), b = leadLadderIndex(to);
+  return a >= 0 && b >= 0 && b > a;
+}
+/** Stages from which a lead is "closed" and must not auto-advance. */
+export const LEAD_TERMINAL = new Set(["WON", "LOST"]);
+
 /** Throw unless from->to is a legal transition; enforce reason-required states. */
 export function assertTransition(entity: SmEntity, from: string, to: string, reason?: string | null): void {
   const table = TABLES[entity];

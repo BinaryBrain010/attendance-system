@@ -1,7 +1,7 @@
 import prisma from "../../../../core/models/base.model";
 import { resolveScope, assertRowInScope } from "../../shared/scope";
-import { notifyMentions } from "../../shared/mentions";
 import { NotFoundError } from "../../../../core/errors/app.error";
+import LeadService from "../../Lead/services/lead.service";
 
 /** LeadActivity is scoped through its parent lead (same agent-scope as the lead itself). */
 class LeadActivityService {
@@ -18,18 +18,10 @@ class LeadActivityService {
     return prisma.leadActivity.findMany({ where: { leadId, isDeleted: null }, orderBy: { occurredAt: "desc" } });
   }
 
+  /** Logging an activity goes through the one combined operation (LeadService.logActivity) so the
+   *  Part B stage-advance + quotation rules apply everywhere (web, mobile, bulk). */
   async create(userId: string, data: any) {
-    const lead = await this.assertLeadInScope(userId, data.leadId);
-    const occurredAt = data.occurredAt ? new Date(data.occurredAt) : new Date();
-    const nextFollowUpAt = data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null;
-    const act = await prisma.leadActivity.create({
-      data: { leadId: lead.id, type: data.type, outcome: data.outcome ?? null, occurredAt, nextFollowUpAt, notes: data.notes ?? null, agentId: lead.agentId, createdBy: userId },
-    });
-    // logging a touch advances the lead's last-contact (and next follow-up if set)
-    await prisma.lead.update({ where: { id: lead.id }, data: { lastContactAt: occurredAt, ...(nextFollowUpAt ? { nextFollowUpAt } : {}) } });
-    // @mentions in the activity note -> notify the (authorized) mentioned users, linking to the lead.
-    await notifyMentions(userId, data.mentions, lead.id, lead.customerName || "a lead", data.notes);
-    return act;
+    return new LeadService().logActivity(userId, data);
   }
 
   async update(userId: string, id: string, data: any) {

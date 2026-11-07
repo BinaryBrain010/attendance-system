@@ -46,6 +46,56 @@ class ReportService {
     return { scope: scope.mode, rows: await prisma.salesReturn.findMany({ where: { AND: [w, scope.where] }, include: { items: { where: { isDeleted: null } } } }) };
   }
 
+  /** Scoped lead reviews: every review on a lead the caller may see (optional review-date range).
+   *  Each review is attributed to the lead's current agent for per-agent rollups. */
+  private async reviews(userId: string, f: any = {}) {
+    const scope = await resolveScope(userId, "lead");
+    const leads = await prisma.lead.findMany({ where: { AND: [{ isDeleted: null }, scope.where] }, select: { id: true, agentId: true } });
+    const agentByLead: Record<string, string | null> = {};
+    for (const l of leads) agentByLead[l.id] = l.agentId;
+    const where: any = { isDeleted: null, leadId: { in: leads.map((l) => l.id) } };
+    if (f.from || f.to) { where.createdAt = {}; if (f.from) where.createdAt.gte = new Date(f.from); if (f.to) where.createdAt.lte = new Date(f.to); }
+    const rows = await prisma.leadReview.findMany({ where });
+    return { scope: scope.mode, rows, agentByLead };
+  }
+
+  /** R1. Open reviews per agent (the lead's owner agent). */
+  async reviewByAgent(userId: string, f: any = {}) {
+    const { scope, rows, agentByLead } = await this.reviews(userId, f);
+    const names = await agentNames();
+    const by: Record<string, any> = {};
+    for (const r of rows) {
+      const k = agentByLead[r.leadId] || "(unassigned)";
+      const a = (by[k] ||= { agent: names[k]?.code || k, name: names[k]?.name || k, open: 0, done: 0, red: 0, amber: 0, green: 0 });
+      if (r.status === "OPEN") a.open++; else a.done++;
+      if (r.colour === "RED") a.red++; else if (r.colour === "AMBER") a.amber++; else a.green++;
+    }
+    const agents = Object.values(by).sort((x: any, y: any) => y.open - x.open);
+    return { scope, totalOpen: rows.filter((r) => r.status === "OPEN").length, agents };
+  }
+
+  /** R2. Average time to resolve (DONE reviews), overall + per agent. */
+  async reviewResolution(userId: string, f: any = {}) {
+    const { scope, rows, agentByLead } = await this.reviews(userId, f);
+    const done = rows.filter((r) => r.status === "DONE" && r.resolvedAt && r.createdAt);
+    const hours = (r: any) => (new Date(r.resolvedAt).getTime() - new Date(r.createdAt).getTime()) / 3600000;
+    const avg = (arr: any[]) => (arr.length ? Math.round((arr.reduce((s, r) => s + hours(r), 0) / arr.length) * 10) / 10 : null);
+    const names = await agentNames();
+    const by: Record<string, any[]> = {};
+    for (const r of done) { const k = agentByLead[r.leadId] || "(unassigned)"; (by[k] ||= []).push(r); }
+    const byAgent = Object.entries(by).map(([k, arr]) => ({ agent: names[k]?.code || k, name: names[k]?.name || k, resolved: arr.length, avgHours: avg(arr), avgDays: avg(arr) != null ? Math.round((avg(arr)! / 24) * 10) / 10 : null }))
+      .sort((a, b) => (b.resolved - a.resolved));
+    return { scope, resolved: done.length, open: rows.filter((r) => r.status === "OPEN").length, avgHours: avg(done), avgDays: avg(done) != null ? Math.round((avg(done)! / 24) * 10) / 10 : null, byAgent };
+  }
+
+  /** R3. Red / amber / green flag counts (all + open). */
+  async reviewColours(userId: string, f: any = {}) {
+    const { scope, rows } = await this.reviews(userId, f);
+    const count = (set: any[]) => ({ RED: set.filter((r) => r.colour === "RED").length, AMBER: set.filter((r) => r.colour === "AMBER").length, GREEN: set.filter((r) => r.colour === "GREEN").length });
+    const open = rows.filter((r) => r.status === "OPEN");
+    return { scope, total: rows.length, open: open.length, all: count(rows), openByColour: count(open) };
+  }
+
   /** 1. Dashboard KPIs. */
   async dashboard(userId: string, f: any = {}) {
     const { scope, rows: allLeads } = await this.leads(userId, {}); // period counts ignore the date filter

@@ -34,6 +34,9 @@ class ReportController extends BaseController<ReportService> {
   async repeatCustomers(req: Request, res: Response) { await this.run(req, res, () => this.service.repeatCustomers((req as any).userId, req.body || {}), "Repeat customers ready"); }
   async dailySummary(req: Request, res: Response) { await this.run(req, res, () => this.service.dailySummary((req as any).userId, req.body || {}), "Daily summary ready"); }
   async customers(req: Request, res: Response) { await this.run(req, res, () => this.service.customers((req as any).userId, req.body || {}), "Customers ready"); }
+  async reviewByAgent(req: Request, res: Response) { await this.run(req, res, () => this.service.reviewByAgent((req as any).userId, req.body || {}), "Review counts ready"); }
+  async reviewResolution(req: Request, res: Response) { await this.run(req, res, () => this.service.reviewResolution((req as any).userId, req.body || {}), "Review resolution ready"); }
+  async reviewColours(req: Request, res: Response) { await this.run(req, res, () => this.service.reviewColours((req as any).userId, req.body || {}), "Review colours ready"); }
   async customerStatus(req: Request, res: Response) { await this.run(req, res, () => this.service.customerStatus((req as any).userId, String(req.body?.phone || "")), "Customer status ready"); }
   async customersExport(req: Request, res: Response) {
     const { format, ...filters } = req.body || {};
