@@ -1099,6 +1099,7 @@ model Product {
   variants    ProductVariant[]
   images      ProductImage[]
   prices      PriceList[]
+  leadLinks   LeadProduct[]
   legacyId    String?          @unique
   createdAt   DateTime?        @default(now())
   updatedAt   DateTime?        @updatedAt
@@ -1217,9 +1218,10 @@ model SalesAgent {
 
 model Lead {
   id              String        @id @default(uuid())
-  leadNo          String?
+  leadNo          String?       @unique
   customerName    String
   phone           String?
+  whatsapp        String? // WhatsApp number when it differs from the phone (opens wa.me)
   city            String?
   area            String? // short sub-locality within the city (e.g. "Johar Town" under Lahore)
   address         String? // full street address when the source gave one
@@ -1229,7 +1231,8 @@ model Lead {
   stage           LeadStage     @default(NEW)
   priority        LeadPriority  @default(MEDIUM)
   estimatedValue  Int?
-  productId       String?
+  productId       String? // legacy single loose link; the lead's interest list is leadProducts
+  leadProducts    LeadProduct[]
   requirement     String?
   agentId         String?
   dateReceived    DateTime      @default(now())
@@ -1276,6 +1279,20 @@ model LeadActivity {
   createdBy      String?
   createdById    String?      @db.VarChar(36)
 
+  @@index([leadId])
+}
+
+// Products a lead is interested in (multi-select from the catalogue). Many-to-many via this join.
+model LeadProduct {
+  id        String    @id @default(uuid())
+  leadId    String
+  lead      Lead      @relation(fields: [leadId], references: [id])
+  productId String
+  product   Product   @relation(fields: [productId], references: [id])
+  createdAt DateTime? @default(now())
+  isDeleted DateTime?
+
+  @@unique([leadId, productId])
   @@index([leadId])
 }
 

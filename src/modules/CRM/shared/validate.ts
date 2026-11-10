@@ -73,19 +73,19 @@ export const schemas = {
 
   lead: {
     create: z.object({
-      customerName: name, phone: shortStr(40).optional(), city: shortStr(120).optional(), area: shortStr(160).optional(),
+      customerName: name, phone: shortStr(40).optional(), whatsapp: shortStr(40).optional(), city: shortStr(120).optional(), area: shortStr(160).optional(),
       address: shortStr(500).optional(), notes: longStr.optional(), outlet: shortStr(120).optional(),
       channel: Channel.optional(), stage: LeadStage.optional(), priority: LeadPriority.optional(),
-      estimatedValue: money.optional(), productId: idStr.optional(), requirement: longStr.optional(),
+      estimatedValue: money.optional(), productId: idStr.optional(), productIds: z.array(idStr).max(100).optional(), requirement: longStr.optional(),
       agentId: idStr.nullable().optional(), dateReceived: dt.optional(), lastContactAt: dt.optional(),
       nextFollowUpAt: dt.optional(), visitorId: idStr.optional(), company: Company.optional(), leadNo: shortStr(64).optional(),
       mentions: mentions.optional(),
     }),
     update: z.object({
-      id: idStr, customerName: name.optional(), phone: shortStr(40).optional(), city: shortStr(120).optional(),
+      id: idStr, customerName: name.optional(), phone: shortStr(40).optional(), whatsapp: shortStr(40).optional(), city: shortStr(120).optional(),
       area: shortStr(160).optional(), address: shortStr(500).optional(), notes: longStr.optional(), outlet: shortStr(120).optional(),
       channel: Channel.optional(), priority: LeadPriority.optional(), estimatedValue: money.optional(),
-      productId: idStr.optional(), requirement: longStr.optional(), agentId: idStr.nullable().optional(),
+      productId: idStr.optional(), productIds: z.array(idStr).max(100).optional(), requirement: longStr.optional(), agentId: idStr.nullable().optional(),
       lastContactAt: dt.optional(), nextFollowUpAt: dt.optional(), company: Company.optional(),
       mentions: mentions.optional(),
     }), // NOTE: no `stage` — stage changes go through /transition only

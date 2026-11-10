@@ -4,12 +4,14 @@ import LeadService from "../services/lead.service";
 import LeadImportService from "../services/leadImport.service";
 import { sendTableExport, EXPORT_CAP, type ExportCol } from "../../../../core/export/tableExport";
 
+// Same column order as the lead list (ID, Date, Customer, Phone/WhatsApp, City, Channel, Products,
+// Agent, Stage, Priority, Est. value, Next follow-up, Last contacted).
 const LEAD_EXPORT_COLS: ExportCol[] = [
-  { key: "leadNo", header: "Lead #" }, { key: "customerName", header: "Customer" },
-  { key: "phone", header: "Phone" }, { key: "city", header: "City" }, { key: "stage", header: "Stage" },
-  { key: "priority", header: "Priority" }, { key: "channel", header: "Channel" },
-  { key: "estimatedValue", header: "Est. Value" }, { key: "followUpStatus", header: "Follow-up" },
-  { key: "createdAt", header: "Created" }, { key: "nextFollowUpAt", header: "Next follow-up" },
+  { key: "leadNo", header: "ID" }, { key: "createdAt", header: "Date" }, { key: "customerName", header: "Customer" },
+  { key: "phone", header: "Phone" }, { key: "whatsapp", header: "WhatsApp" }, { key: "city", header: "City" },
+  { key: "channel", header: "Channel" }, { key: "productsText", header: "Products" }, { key: "agentCode", header: "Agent" },
+  { key: "stage", header: "Stage" }, { key: "priority", header: "Priority" }, { key: "estimatedValue", header: "Est. value" },
+  { key: "nextFollowUpAt", header: "Next follow-up" }, { key: "lastContactAt", header: "Last contacted" },
 ];
 
 class LeadController extends BaseController<LeadService> {
