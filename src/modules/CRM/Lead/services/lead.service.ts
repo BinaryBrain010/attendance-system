@@ -23,7 +23,7 @@ export interface LeadFilters {
 
 // Date columns the lead list may be sorted by (server-side). Anything else -> default (newest
 // created first). Nullable columns sort their empties to the bottom regardless of direction.
-const LEAD_SORTABLE = new Set(["createdAt", "updatedAt", "lastContactAt", "nextFollowUpAt", "dateReceived"]);
+const LEAD_SORTABLE = new Set(["createdAt", "updatedAt", "lastContactAt", "nextFollowUpAt", "dateReceived", "estimatedValue"]);
 function leadOrderBy(f: LeadFilters = {}): any[] {
   const field = f.sortBy && LEAD_SORTABLE.has(f.sortBy) ? f.sortBy : "createdAt";
   const dir: "asc" | "desc" = f.sortOrder === "asc" ? "asc" : "desc";
@@ -129,16 +129,55 @@ export function withComputed(l: any) {
   };
 }
 
+/** Next human-readable lead code LD-0001 (mirrors nextQuotationNo). leadNo is @unique; a create races
+ *  only under heavy concurrent lead creation, which the unique constraint would reject — rare enough. */
+async function nextLeadNo(): Promise<string> {
+  const rows = await prisma.lead.findMany({ where: { leadNo: { startsWith: "LD-" } }, select: { leadNo: true } });
+  let max = 0;
+  for (const r of rows) { const m = (r.leadNo || "").match(/(\d+)/); if (m) max = Math.max(max, parseInt(m[1], 10)); }
+  return `LD-${String(max + 1).padStart(4, "0")}`;
+}
+
+// List include: the lead's interest products (names). Lead scalars (leadNo, whatsapp, …) come anyway.
+const LIST_INCLUDE = { leadProducts: { where: { isDeleted: null }, include: { product: { select: { id: true, name: true } } } } } as const;
+
+/** Resolve each row's `products` display list: the linked catalogue products, else the latest
+ *  quotation's line items, else [] (the frontend/export then falls back to the Requirement text). */
+async function attachProducts(rows: any[]): Promise<void> {
+  for (const r of rows) {
+    r.products = Array.isArray(r.leadProducts)
+      ? r.leadProducts.map((lp: any) => ({ id: lp.productId, name: lp.product?.name || "" })).filter((p: any) => p.name)
+      : [];
+    delete r.leadProducts;
+  }
+  const need = rows.filter((r) => !r.products.length);
+  if (need.length) {
+    const ids = need.map((r) => r.id);
+    const quotes = await prisma.quotation.findMany({
+      where: { leadId: { in: ids }, isDeleted: null },
+      orderBy: { createdAt: "desc" },
+      select: { leadId: true, items: { where: { isDeleted: null }, select: { description: true } } },
+    });
+    const byLead = new Map<string, any>();
+    for (const q of quotes) if (q.leadId && !byLead.has(q.leadId)) byLead.set(q.leadId, q);
+    for (const r of need) {
+      const q = byLead.get(r.id);
+      if (q) r.products = (q.items || []).map((it: any) => ({ name: it.description || "" })).filter((p: any) => p.name).slice(0, 10);
+    }
+  }
+}
+
 class LeadService {
   async get(userId: string, page = 1, pageSize = 10, filters: LeadFilters = {}) {
     const scope = await resolveScope(userId, "lead");
     const where = { AND: [{ isDeleted: null }, filterWhere(filters), scope.where] };
     const skip = (page - 1) * pageSize;
     let [data, totalSize] = await Promise.all([
-      prisma.lead.findMany({ where, skip, take: pageSize, orderBy: leadOrderBy(filters) }),
+      prisma.lead.findMany({ where, skip, take: pageSize, orderBy: leadOrderBy(filters), include: LIST_INCLUDE }),
       prisma.lead.count({ where }),
     ]);
     const rows = data.map(withComputed);
+    await attachProducts(rows);
     // A6: follow-up filtering now happens in SQL (filterWhere), so pagination counts are correct.
     return { data: rows, totalSize, scope: scope.mode };
   }
@@ -153,18 +192,30 @@ class LeadService {
   async exportRows(userId: string, filters: LeadFilters = {}) {
     const scope = await resolveScope(userId, "lead");
     const where = { AND: [{ isDeleted: null }, filterWhere(filters), scope.where] };
-    const data = await prisma.lead.findMany({ where, take: EXPORT_CAP + 1, orderBy: leadOrderBy(filters) });
+    const data = await prisma.lead.findMany({ where, take: EXPORT_CAP + 1, orderBy: leadOrderBy(filters), include: LIST_INCLUDE });
     let rows = data.map(withComputed);
+    await attachProducts(rows);
     if (filters.followUp) rows = rows.filter((r) => r.followUpStatus === filters.followUp);
+    // Flatten for the export file: product names joined, agent code resolved (same column order as the list).
+    const agentIds = Array.from(new Set(rows.map((r) => r.agentId).filter(Boolean))) as string[];
+    const agents = agentIds.length ? await prisma.salesAgent.findMany({ where: { id: { in: agentIds } }, select: { id: true, agentCode: true } }) : [];
+    const agentMap = new Map(agents.map((a) => [a.id, a.agentCode]));
+    for (const r of rows) {
+      r.productsText = (r.products || []).map((p: any) => p.name).join(", ") || (r.requirement ? String(r.requirement).slice(0, 60) : "");
+      r.agentCode = r.agentId ? (agentMap.get(r.agentId) || "") : "";
+    }
     return rows;
   }
 
   async getById(userId: string, id: string) {
     const scope = await resolveScope(userId, "lead");
-    const lead = await prisma.lead.findUnique({ where: { id } });
+    const lead = await prisma.lead.findUnique({ where: { id }, include: LIST_INCLUDE });
     if (!lead || lead.isDeleted) return null;
     assertRowInScope(scope, lead, "Lead");
-    return withComputed(lead);
+    const row = withComputed(lead);
+    await attachProducts([row]);
+    row.productIds = (row.products || []).map((p: any) => p.id).filter(Boolean); // for the edit form
+    return row;
   }
 
   /** crm.lead.assign (2c): only holders may choose the agent a lead is assigned to. Everyone else's
@@ -176,6 +227,8 @@ class LeadService {
 
   async create(userId: string, data: any) {
     const mentionIds: string[] | undefined = data.mentions; delete data.mentions; // not a Lead column
+    const productIds: string[] | undefined = data.productIds; delete data.productIds; // -> LeadProduct rows
+    if (!data.leadNo) data.leadNo = await nextLeadNo();
     const scope = await resolveScope(userId, "lead");
     const canAssign = await this.canAssign(userId);
     let unassigned = false;
@@ -194,6 +247,7 @@ class LeadService {
     if (data.phone !== undefined) data.phoneNormalized = normalizePhone(data.phone);
     const created = await prisma.lead.gpCreate(data);
     const lead = Array.isArray(created) ? created[0] : created;
+    if (lead?.id) await this.setLeadProducts(lead.id, productIds);
     if (unassigned && lead?.id) {
       // Notify managers (agents with ALL scope) so an unassigned lead doesn't sit unseen.
       try {
@@ -205,8 +259,23 @@ class LeadService {
     return created;
   }
 
+  /** Replace a lead's interest-product links with the given set (idempotent; undefined = leave as is). */
+  private async setLeadProducts(leadId: string, productIds: string[] | undefined): Promise<void> {
+    if (productIds === undefined) return;
+    const ids = Array.from(new Set((productIds || []).filter(Boolean)));
+    await prisma.leadProduct.deleteMany({ where: { leadId } });
+    if (ids.length) {
+      // Only link products that exist (skip junk ids silently).
+      const valid = await prisma.product.findMany({ where: { id: { in: ids }, isDeleted: null }, select: { id: true } });
+      for (const p of valid) {
+        await prisma.leadProduct.create({ data: { leadId, productId: p.id } }).catch(() => { /* dupe */ });
+      }
+    }
+  }
+
   async update(userId: string, id: string, data: any) {
     const mentionIds: string[] | undefined = data.mentions; delete data.mentions; // not a Lead column
+    const productIds: string[] | undefined = data.productIds; delete data.productIds; // -> LeadProduct rows
     const scope = await resolveScope(userId, "lead");
     const existing = await prisma.lead.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Lead");
@@ -219,6 +288,7 @@ class LeadService {
     if (Object.prototype.hasOwnProperty.call(data, "stage")) delete data.stage; // stage only via /transition
     if (Object.prototype.hasOwnProperty.call(data, "phone")) data.phoneNormalized = normalizePhone(data.phone);
     const updated = await prisma.lead.gpUpdate(id, data);
+    await this.setLeadProducts(id, productIds);
     await notifyMentions(userId, mentionIds, id, existing.customerName || "a lead", data.notes);
     return updated;
   }

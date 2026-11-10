@@ -109,6 +109,7 @@ async function cleanupFixtures() {
   const ids = qaLeads.map((l) => l.id);
   if (ids.length) await prisma.leadActivity.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
   if (ids.length) await prisma.leadReview.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
+  if (ids.length) await prisma.leadProduct.deleteMany({ where: { leadId: { in: ids } } }).catch(() => {});
   await prisma.returnItem.deleteMany({ where: { return: { customerName: { startsWith: QTAG } } } }).catch(() => {});
   await prisma.salesReturn.deleteMany({ where: { customerName: { startsWith: QTAG } } }).catch(() => {});
   await prisma.salesOrderItem.deleteMany({ where: { order: { customerName: { startsWith: QTAG } } } }).catch(() => {});
