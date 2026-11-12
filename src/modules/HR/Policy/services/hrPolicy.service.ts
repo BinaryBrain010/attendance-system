@@ -73,33 +73,42 @@ class HrPolicyService {
     return { ...res, employeeId };
   }
 
+  /** Existing non-deleted allocations that overlap `year` (POLICY for the year, or any date-overlap). */
+  async allocationsForYear(employeeId: string, year: number): Promise<{ id: string; assignedDays: number; source: string | null }[]> {
+    const start = new Date(year, 0, 1); const end = new Date(year, 11, 31);
+    return prisma.leaveAllocation.findMany({
+      where: {
+        employeeId, isDeleted: null,
+        OR: [
+          { source: "POLICY", policyYear: year },
+          { AND: [{ allocationStartDate: { lte: end } }, { OR: [{ allocationEndDate: null }, { allocationEndDate: { gte: start } }] }] },
+        ],
+      },
+      select: { id: true, assignedDays: true, source: true },
+    });
+  }
+
   /**
-   * Feed the policy entitlement into the employee's POLICY LeaveAllocation for `year` (idempotent:
-   * one POLICY allocation per employee+year, updated in place). Returns a change summary.
+   * NON-DESTRUCTIVE policy apply: create a POLICY LeaveAllocation for `year` ONLY when the employee has
+   * no allocation for that year. NEVER updates, reduces or deletes an existing allocation. Where the
+   * policy entitlement is LESS than the current allocation, the row is left untouched and flagged for
+   * HR to decide. Returns a side-by-side summary.
    */
   async applyEntitlement(employeeId: string, year: number): Promise<any> {
     const ent = await this.previewEntitlement(employeeId, year);
-    const start = new Date(year, 0, 1);
-    const end = new Date(year, 11, 31);
-    const existing = await prisma.leaveAllocation.findFirst({
-      where: { employeeId, isDeleted: null, source: "POLICY", policyYear: year },
-    });
-    if (existing) {
-      const delta = ent.annualLeaveDays - existing.assignedDays;
-      const used = existing.usedDays ?? 0;
-      await prisma.leaveAllocation.update({
-        where: { id: existing.id },
-        data: { assignedDays: ent.annualLeaveDays, remainingDays: Math.max(0, ent.annualLeaveDays - used), note: ent.detail },
-      });
-      return { employeeId, year, action: "updated", previous: existing.assignedDays, assigned: ent.annualLeaveDays, delta };
+    const existing = await this.allocationsForYear(employeeId, year);
+    const currentTotal = existing.reduce((s, a) => s + (a.assignedDays || 0), 0);
+    if (existing.length) {
+      const policyBelowCurrent = ent.annualLeaveDays < currentTotal;
+      return { employeeId, year, action: "skipped", current: currentTotal, policy: ent.annualLeaveDays, policyBelowCurrent, flagged: policyBelowCurrent };
     }
     await prisma.leaveAllocation.create({
       data: {
         employeeId, assignedDays: ent.annualLeaveDays, usedDays: 0, remainingDays: ent.annualLeaveDays,
-        source: "POLICY", policyYear: year, allocationStartDate: start, allocationEndDate: end, note: ent.detail,
+        source: "POLICY", policyYear: year, allocationStartDate: new Date(year, 0, 1), allocationEndDate: new Date(year, 11, 31), note: ent.detail,
       },
     });
-    return { employeeId, year, action: "created", previous: 0, assigned: ent.annualLeaveDays, delta: ent.annualLeaveDays };
+    return { employeeId, year, action: "created", current: 0, policy: ent.annualLeaveDays, policyBelowCurrent: false, flagged: false };
   }
 
   /** HR manually overrides a policy entitlement (reason required, audited). */
@@ -140,26 +149,41 @@ class HrPolicyService {
   }
 
   /**
-   * Employees whose probation is due within `withinDays` (and not yet cleared/terminal), scoped to
-   * the caller's units. Used by the dashboard list, the Reports section and the daily alert job.
+   * Whether an employee is genuinely ON probation: not cleared, not terminal, AND either their status
+   * is PROBATION or they joined on/after the policy start date. Legacy staff are never on probation.
+   */
+  isOnProbation(e: { status: string; joiningDate: Date; probationClearedAt: Date | null }, policyStart: Date | null): boolean {
+    if (e.probationClearedAt) return false;
+    if (e.status === "FIRE" || e.status === "RESIGNED") return false;
+    if (e.status === "PROBATION") return true;
+    if (policyStart && new Date(e.joiningDate) >= policyStart) return true;
+    return false;
+  }
+
+  /**
+   * Employees genuinely on probation whose end is within `withinDays`, scoped to the caller's units.
+   * Used by the dashboard list, the Reports section and the daily alert job. Legacy staff (joined
+   * before the policy start, status not PROBATION) are excluded entirely.
    */
   async probationDue(userId: string | undefined, withinDays = 7): Promise<any[]> {
     const settings = await getHrSettings();
+    const policyStart = settings.probationPolicyStartDate ? startOfDay(new Date(settings.probationPolicyStartDate)) : null;
     const scope = userId ? await getAccessibleEmployeeIds(userId) : null;
     if (scope !== null && scope.length === 0) return [];
     const where: any = {
       isDeleted: null,
       probationClearedAt: null,
-      status: { in: ["ACTIVE", "PROBATION", "REJOINED"] },
+      status: { notIn: ["FIRE", "RESIGNED"] },
     };
     if (scope !== null) where.id = { in: scope };
     const emps = await prisma.employee.findMany({
-      where, select: { id: true, code: true, name: true, surname: true, designation: true, department: true, joiningDate: true, probationEndDate: true, status: true },
+      where, select: { id: true, code: true, name: true, surname: true, designation: true, department: true, joiningDate: true, probationEndDate: true, probationClearedAt: true, status: true },
     });
     const today = startOfDay(new Date());
     const horizon = addDays(today, withinDays);
     const rows: any[] = [];
     for (const e of emps) {
+      if (!this.isOnProbation(e, policyStart)) continue; // legacy / already-confirmed never appear
       const end = startOfDay(e.probationEndDate ?? probationDefaultEnd(e.joiningDate, settings.probationMonths));
       if (end <= horizon) {
         rows.push({
@@ -172,6 +196,27 @@ class HrPolicyService {
     }
     rows.sort((a, b) => a.probationEnd.getTime() - b.probationEnd.getTime());
     return rows;
+  }
+
+  /**
+   * Legacy staff to mark as already-confirmed: not cleared, not terminal, NOT currently on probation,
+   * and joined more than `probationMonths` ago. (For the one-time applyHrPolicy confirm step.)
+   */
+  async legacyToConfirm(policyStartOverride?: Date | null): Promise<any[]> {
+    const settings = await getHrSettings();
+    const policyStart = policyStartOverride !== undefined ? policyStartOverride : (settings.probationPolicyStartDate ? startOfDay(new Date(settings.probationPolicyStartDate)) : null);
+    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - settings.probationMonths);
+    const emps = await prisma.employee.findMany({
+      where: { isDeleted: null, probationClearedAt: null, status: { notIn: ["FIRE", "RESIGNED"] } },
+      select: { id: true, code: true, name: true, surname: true, joiningDate: true, probationEndDate: true, probationClearedAt: true, status: true },
+    });
+    return emps.filter((e) => !this.isOnProbation(e, policyStart) && new Date(e.joiningDate) < cutoff);
+  }
+
+  /** Record a one-time "System, legacy" CONFIRM for an employee (no notification). */
+  async confirmLegacy(employeeId: string): Promise<void> {
+    await prisma.employee.update({ where: { id: employeeId }, data: { status: "ACTIVE", probationClearedAt: new Date() } });
+    await prisma.probationDecision.create({ data: { employeeId, decision: "CONFIRM", reason: "System, legacy — joined before probation policy", decidedById: null } });
   }
 
   /** Full probation history for an employee (newest first). */

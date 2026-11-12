@@ -368,6 +368,7 @@ model LeaveRequest {
   leaveType         String?          @default("CASUAL") @db.VarChar(50)
   image             String?
   location          String?
+  exceedsBalance    Boolean          @default(false) // B3: beyond remaining balance — needs HR (hr.policy.manage) to approve
   reviewNote        String?          // A1: approver's note when approving/rejecting
   createdAt         DateTime?        @default(now())
   updatedAt         DateTime?        @updatedAt

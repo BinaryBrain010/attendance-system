@@ -7,12 +7,17 @@ export interface HrSettings {
   probationMonths: number; // global default probation length (months) — default 3
   entitlementProRata: boolean; // pro-rate entitlement across a mid-year band crossing — default false
   hrManagerRoleName: string | null; // if set, this role's users are the HR managers notified; else hr.policy.manage.* holders
+  // Probation tracking applies only to genuine new hires: an employee is "on probation" if their
+  // status is PROBATION, or they joined ON/AFTER this date. Legacy staff (joined before it, status
+  // not PROBATION) are never tracked or alerted. null => only explicit PROBATION-status employees.
+  probationPolicyStartDate: string | null;
 }
 
 export const DEFAULT_HR_SETTINGS: HrSettings = {
   probationMonths: 3,
   entitlementProRata: false,
   hrManagerRoleName: null,
+  probationPolicyStartDate: null,
 };
 
 export async function getHrSettings(): Promise<HrSettings> {

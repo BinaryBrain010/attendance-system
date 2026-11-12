@@ -110,8 +110,9 @@ const leaveReqModel = prisma.$extends({
               if (leaveAllocation) {
               const leaveDays = calculateLeaveDays(requestStartDate, requestEndDate);
               const remainingDays = leaveAllocation.remainingDays ?? (leaveAllocation.assignedDays - (leaveAllocation.usedDays || 0));
+              // B3: do NOT block over-balance at create — flag it. Approval then requires HR (hr.policy.manage).
               if (remainingDays < leaveDays) {
-                throw new Error(`Insufficient leave balance. Available: ${remainingDays} days, Requested: ${leaveDays} days.`);
+                newData.exceedsBalance = true;
               }
                 newData.leaveAllocationId = leaveAllocation.id;
               }
@@ -121,6 +122,18 @@ const leaveReqModel = prisma.$extends({
           // If leaveAllocationId is not set, it's a casual leave (no link needed)
           if (!newData.leaveAllocationId) {
             newData.leaveType = newData.leaveType || 'CASUAL';
+          }
+
+          // B3 (unified): flag over-balance for ANY allocation-linked request — whether the allocation
+          // was resolved from leaveType above or passed directly (e.g. employee self-service). Flag only,
+          // never block; approval then requires HR (hr.policy.manage).
+          if (newData.leaveAllocationId && !newData.exceedsBalance) {
+            const alloc = await prisma.leaveAllocation.findFirst({ where: { id: newData.leaveAllocationId, isDeleted: null } });
+            if (alloc) {
+              const days = calculateLeaveDays(requestStartDate, requestEndDate);
+              const remaining = alloc.remainingDays ?? (alloc.assignedDays - (alloc.usedDays || 0));
+              if (remaining < days) newData.exceedsBalance = true;
+            }
           }
 
           const createdItem = await prisma.leaveRequest.create({
@@ -164,7 +177,7 @@ const leaveReqModel = prisma.$extends({
         return leaveReqModel.leaveRequest.gpCreate(data);
       },
 
-      async gpUpdateStatus(requestId: string, status: LeaveStatus, note?: string, userId?: string): Promise<void> {
+      async gpUpdateStatus(requestId: string, status: LeaveStatus, note?: string, userId?: string, allowOverBalance?: boolean): Promise<void> {
         const currentRequest = await prisma.leaveRequest.findUnique({
           where: { id: requestId },
         }) as any;
@@ -212,8 +225,9 @@ const leaveReqModel = prisma.$extends({
             const usedDays = await this.calculateUsedDaysForAllocation(currentRequest.leaveAllocationId, requestId);
             const remainingDays = allocation.assignedDays - usedDays;
 
-            // Check if enough remaining days are available (including current request)
-            if (remainingDays < leaveDays) {
+            // Check if enough remaining days are available (including current request). B3: an HR
+            // approver (hr.policy.manage) may knowingly approve over the balance (allowOverBalance).
+            if (remainingDays < leaveDays && !allowOverBalance) {
               throw new Error(`Insufficient leave balance. Available: ${remainingDays} days, Requested: ${leaveDays} days`);
             }
 
