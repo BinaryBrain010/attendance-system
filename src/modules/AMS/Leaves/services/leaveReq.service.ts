@@ -1,8 +1,10 @@
 import leaveReqModel from "../models/leaveReq.model";
-import { LeaveRequest, LeaveStatus } from "../types/leave";
+import { LeaveRequest } from "../types/leave";
+import { LeaveStatus } from "@prisma/client"; // runtime enum value (../types/leave is types-only, no .js)
 import { paginatedData } from "../../../../types/paginatedData";
 import prisma from "../../../../core/models/base.model";
 import { formatInTimeZone } from "date-fns-tz";
+import { notify, userIdsForEmployees } from "../../../Work/shared/workHelpers";
 
 /** Prisma expects ISO-8601 DateTime. Convert date-only "YYYY-MM-DD" to noon UTC. */
 function toDateTime(value: unknown): Date | unknown {
@@ -117,6 +119,20 @@ class LeaveReqService {
     userId?: string
   ): Promise<void> {
     await leaveReqModel.leaveRequest.gpUpdateStatus(requestId, status, note, userId);
+    await this.notifyLeaveDecision(requestId, status, note, userId);
+  }
+
+  /** Notify the requesting employee's user that their leave request was approved/rejected (best-effort). */
+  private async notifyLeaveDecision(requestId: string, status: LeaveStatus, note?: string, actorUserId?: string): Promise<void> {
+    if (status !== LeaveStatus.APPROVED && status !== LeaveStatus.REJECTED) return;
+    try {
+      const req = await prisma.leaveRequest.findUnique({ where: { id: requestId }, select: { employeeId: true } });
+      if (!req?.employeeId) return;
+      const targets = (await userIdsForEmployees([req.employeeId])).filter((u) => u !== actorUserId);
+      const decided = status === LeaveStatus.APPROVED ? "approved" : "rejected";
+      await notify(targets, "LEAVE_DECISION", `Leave ${decided}`,
+        (note && note.trim()) || `Your leave request was ${decided}.`, "LeaveRequest", requestId);
+    } catch { /* best-effort */ }
   }
 
   // Get total number of leave requests

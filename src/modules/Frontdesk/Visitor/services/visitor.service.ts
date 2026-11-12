@@ -111,9 +111,20 @@ class VisitorService {
     return created;
   }
 
-  /** 6b: host marks the visit attended. */
+  /** 6b: host marks the visit attended. Notifies the front-desk user who logged the visit. */
   async attendVisitor(visitorId: string, userId?: string, note?: string): Promise<Visitor> {
-    return await visitorModel.visitor.gpAttend(visitorId, userId, note);
+    const result = await visitorModel.visitor.gpAttend(visitorId, userId, note);
+    try {
+      const v = await prisma.visitor.findUnique({ where: { id: visitorId }, select: { name: true, createdById: true } });
+      // createdById is the User id of whoever logged the visitor (audit stamp).
+      if (v?.createdById && v.createdById !== userId) {
+        await notify([v.createdById], "VISITOR_ATTENDED", "Visitor attended",
+          `${v.name || "A visitor"} was received by the host.`, "Visitor", visitorId);
+      }
+    } catch (e) {
+      console.error("Failed to notify logger of attended visitor:", e);
+    }
+    return result;
   }
 
   async updateVisitor(visitorId: string, visitorData: Visitor): Promise<Visitor> {
