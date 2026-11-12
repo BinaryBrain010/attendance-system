@@ -5,6 +5,8 @@ import { paginatedData } from "../../../../types/paginatedData";
 import prisma from "../../../../core/models/base.model";
 import { formatInTimeZone } from "date-fns-tz";
 import { notify, userIdsForEmployees } from "../../../Work/shared/workHelpers";
+import accessModel from "../../../rbac/Access/models/access.model";
+import { AppError } from "../../../../core/errors/app.error";
 
 /** Prisma expects ISO-8601 DateTime. Convert date-only "YYYY-MM-DD" to noon UTC. */
 function toDateTime(value: unknown): Date | unknown {
@@ -118,7 +120,17 @@ class LeaveReqService {
     note?: string,
     userId?: string
   ): Promise<void> {
-    await leaveReqModel.leaveRequest.gpUpdateStatus(requestId, status, note, userId);
+    // B3: approving a leave that exceeds the remaining balance requires HR (hr.policy.manage).
+    let allowOverBalance = false;
+    if (status === LeaveStatus.APPROVED) {
+      const req = await prisma.leaveRequest.findUnique({ where: { id: requestId }, select: { exceedsBalance: true } });
+      if (req?.exceedsBalance) {
+        const isHr = userId ? await accessModel.user.checkUserPermission(userId, "hr.policy.manage.*") : false;
+        if (!isHr) throw new AppError(403, "This leave exceeds the remaining balance and needs HR approval (hr.policy.manage).");
+        allowOverBalance = true;
+      }
+    }
+    await leaveReqModel.leaveRequest.gpUpdateStatus(requestId, status, note, userId, allowOverBalance);
     await this.notifyLeaveDecision(requestId, status, note, userId);
   }
 

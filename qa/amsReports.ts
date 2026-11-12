@@ -106,12 +106,11 @@ async function main() {
       const viewIds = new Set(viewRows.rows.map((x) => x.employeeId));
       check("viewAll user sees BOTH unit-A and unit-B employees", viewIds.has(empA.id) && viewIds.has(empB.id));
 
-      // ---- Entitlement apply is idempotent ----
+      // ---- Entitlement apply is non-destructive (create-only) ----
       const hr = new HrPolicyService();
       const a1 = await hr.applyEntitlement(empA.id, YEAR);
-      ids.allocs.push(); // allocations cleaned by employee cascade below
       const a2 = await hr.applyEntitlement(empA.id, YEAR);
-      check("applyEntitlement creates then updates (idempotent, same assigned)", a1.assigned === 32 && a2.assigned === 32 && a2.action === "updated");
+      check("applyEntitlement creates POLICY then is non-destructive (skips existing)", a1.action === "created" && a1.policy === 32 && a2.action === "skipped");
     });
   } finally {
     await prisma.leaveAllocation.deleteMany({ where: { employeeId: { in: ids.emps } } }).catch(() => {});

@@ -12,7 +12,9 @@ import prisma from "../src/core/models/base.model";
 import { runWithContext } from "../src/core/context/requestContext";
 import { GOD_ID } from "../src/modules/CRM/shared/access";
 import HrPolicyService from "../src/modules/HR/Policy/services/hrPolicy.service";
+import LeaveReqService from "../src/modules/AMS/Leaves/services/leaveReq.service";
 import { completedServiceYears, applicableRule, entitlementForYear, probationDefaultEnd } from "../src/modules/HR/Policy/helper/policyCalc";
+import { LeaveStatus } from "@prisma/client";
 
 const TAG = `QA_HR_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -57,6 +59,9 @@ async function main() {
   const createdEmpIds: string[] = [];
   const createdUserIds: string[] = [];
   const createdFpIds: string[] = [];
+  const createdConfigIds: string[] = [];
+  const createdAllocIds: string[] = [];
+  const createdLeaveIds: string[] = [];
   const svc = new HrPolicyService();
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -98,7 +103,7 @@ async function main() {
       const hrEmp = await mkEmp("hrmgr", null);
       const hrUser = await prisma.user.create({ data: { username: `${TAG}.hr@test.local`, password: "x", employeeId: hrEmp.id } as any });
       createdUserIds.push(hrUser.id);
-      createdFpIds.push((await prisma.featurePermission.create({ data: { parentType: "User", parentId: hrUser.id, permissions: { allowedFeatures: ["login.admin.*", "hr.policy.manage.*"] } } as any })).id);
+      createdFpIds.push((await prisma.featurePermission.create({ data: { parentType: "User", parentId: hrUser.id, permissions: { allowedFeatures: ["login.admin.*", "hr.policy.manage.*", "ams.viewAll.unit.*", "employee.read.*"] } } as any })).id);
 
       const empDue = await mkEmp("due", today); // ends today -> dueInDays 0
       const res = await svc.runProbationAlerts();
@@ -109,9 +114,62 @@ async function main() {
       await svc.runProbationAlerts();
       const dupCount = await prisma.notification.count({ where: { userId: hrUser.id, type: "PROBATION_DUE", entityType: "Employee", entityId: empDue.id } });
       check("re-running the alert the same day does not duplicate", dupCount === 1, `count=${dupCount}`);
+
+      // ---- #1/#2: a LEGACY employee (ACTIVE, joined long ago, never a decision) is NEVER alerted ----
+      const legacyEmp = await prisma.employee.create({ data: { name: "QAHr", surname: "legacy", address: "QA", dob: new Date("1985-01-01"), joiningDate: new Date("2015-01-01"), bloodGroup: "O+", contactNo: "0300", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_legacy`, status: "ACTIVE", probationEndDate: new Date("2015-04-01") } as any });
+      createdEmpIds.push(legacyEmp.id);
+      const dueBefore = await svc.probationDue(undefined, 36500); // very wide window
+      check("legacy ACTIVE employee is NOT in the probation-due list (status PROBATION/new-hire only)", !dueBefore.some((r: any) => r.id === legacyEmp.id));
+      await svc.runProbationAlerts();
+      const legacyAlert = await prisma.notification.findFirst({ where: { type: "PROBATION_DUE", entityType: "Employee", entityId: legacyEmp.id } });
+      check("daily job sends ZERO alerts for the legacy employee", !legacyAlert);
+
+      // ---- #1: legacy confirm step marks them confirmed (System, legacy; no notification) ----
+      const toConfirm = await svc.legacyToConfirm(today);
+      check("legacyToConfirm includes the legacy employee", toConfirm.some((e: any) => e.id === legacyEmp.id));
+      await svc.confirmLegacy(legacyEmp.id);
+      const lc = await prisma.employee.findUnique({ where: { id: legacyEmp.id }, select: { status: true, probationClearedAt: true } });
+      const lcDec = await prisma.probationDecision.findFirst({ where: { employeeId: legacyEmp.id, decision: "CONFIRM" } });
+      check("confirmLegacy -> ACTIVE + cleared + 'System, legacy' CONFIRM (decidedById null)", lc?.status === "ACTIVE" && !!lc?.probationClearedAt && !!lcDec && /legacy/i.test(lcDec!.reason || "") && lcDec!.decidedById === null);
+      const noConfirmNotif = await prisma.notification.findFirst({ where: { entityType: "Employee", entityId: legacyEmp.id } });
+      check("legacy confirm creates no notification", !noConfirmNotif);
+
+      // ---- #3: B3 over-balance leave gate ----
+      const cfg = await prisma.leaveConfiguration.create({ data: { name: `${TAG}_ANNUAL`, maxDays: 32 } as any });
+      createdConfigIds.push(cfg.id);
+      const b3Emp = await mkEmp("b3", null);
+      const alloc = await prisma.leaveAllocation.create({ data: { employeeId: b3Emp.id, leaveConfigId: cfg.id, assignedDays: 2, usedDays: 0, remainingDays: 2, allocationStartDate: new Date(2026, 0, 1), allocationEndDate: new Date(2026, 11, 31) } as any });
+      createdAllocIds.push(alloc.id);
+      // request 5 days of a configured type with only 2 remaining -> flagged, NOT blocked
+      const leaveSvc = new LeaveReqService();
+      const created: any = await leaveSvc.createLeaveRequest({ employeeId: b3Emp.id, startDate: new Date(2026, 5, 1), endDate: new Date(2026, 5, 5), leaveType: `${TAG}_ANNUAL`, status: "PENDING" } as any);
+      const leaveReq = Array.isArray(created) ? created[0] : created;
+      createdLeaveIds.push(leaveReq.id);
+      check("over-balance leave is CREATED and flagged exceedsBalance (not blocked)", !!leaveReq?.id && leaveReq.exceedsBalance === true);
+
+      // non-HR approver is blocked
+      const nonHrEmp = await mkEmp("nonhr", null);
+      const nonHrUser = await prisma.user.create({ data: { username: `${TAG}.nonhr@test.local`, password: "x", employeeId: nonHrEmp.id } as any });
+      createdUserIds.push(nonHrUser.id);
+      createdFpIds.push((await prisma.featurePermission.create({ data: { parentType: "User", parentId: nonHrUser.id, permissions: { allowedFeatures: ["login.admin.*", "ams.viewAll.unit.*", "employee.read.*"] } } as any })).id);
+      let blockedNonHr = false;
+      try { await leaveSvc.updateLeaveRequestStatus(leaveReq.id, LeaveStatus.APPROVED, "ok", nonHrUser.id); } catch (e: any) { blockedNonHr = e?.statusCode === 403 || /HR approval/i.test(e?.message || ""); }
+      check("non-HR cannot approve an over-balance leave (needs hr.policy.manage)", blockedNonHr);
+      const stillPending = await prisma.leaveRequest.findUnique({ where: { id: leaveReq.id }, select: { status: true } });
+      check("over-balance leave stays PENDING after blocked approve", stillPending?.status === "PENDING");
+
+      // HR approver succeeds
+      let hrOk = true;
+      try { await leaveSvc.updateLeaveRequestStatus(leaveReq.id, LeaveStatus.APPROVED, "HR override", hrUser.id); } catch { hrOk = false; }
+      const afterHr = await prisma.leaveRequest.findUnique({ where: { id: leaveReq.id }, select: { status: true } });
+      check("HR (hr.policy.manage) CAN approve the over-balance leave", hrOk && afterHr?.status === "APPROVED");
     });
   } finally {
     for (const id of createdUserIds) await prisma.notification.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.notification.deleteMany({ where: { entityType: "Employee", entityId: { in: createdEmpIds } } }).catch(() => {});
+    for (const id of createdLeaveIds) await prisma.leaveRequest.delete({ where: { id } }).catch(() => {});
+    for (const id of createdAllocIds) await prisma.leaveAllocation.delete({ where: { id } }).catch(() => {});
+    for (const id of createdConfigIds) await prisma.leaveConfiguration.delete({ where: { id } }).catch(() => {});
     await prisma.probationDecision.deleteMany({ where: { employeeId: { in: createdEmpIds } } }).catch(() => {});
     for (const id of createdFpIds) await prisma.featurePermission.delete({ where: { id } }).catch(() => {});
     for (const id of createdUserIds) await prisma.user.delete({ where: { id } }).catch(() => {});
