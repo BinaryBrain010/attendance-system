@@ -9,6 +9,7 @@ import userModel from "../../../rbac/user/models/user.model";
 import { getActorId } from "../../../../core/context/requestContext";
 import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
 import { getAccessibleEmployeeIds, canAccessEmployee } from "../../Unit/helper/unitAccess.helper";
+import accessModel from "../../../rbac/Access/models/access.model";
 import { AppError } from "../../../../core/errors/app.error";
 
 // Phase 3c: employee states that terminate access. REJOINED stays active (and never auto-reactivates).
@@ -86,6 +87,23 @@ class EmployeeService {
   // Frontdesk "Referred To" suggestions.
   async getPresentTodayEmployees(userId?: string): Promise<any[]> {
     return await scopeRows(await employeeModel.employee.gpFindPresentToday(), userId);
+  }
+
+  /** Employee scope for the Frontdesk "Referred To" picker: all units if the caller holds
+   *  visitor.viewAll.unit.* OR ams.viewAll.unit.* (or god); otherwise their own units' employees. */
+  private async referredToScope(userId?: string): Promise<string[] | null> {
+    if (!userId) return [];
+    try { if (await accessModel.user.checkUserPermission(userId, "visitor.viewAll.unit.*")) return null; } catch { /* fall through */ }
+    return await getAccessibleEmployeeIds(userId); // null = ams.viewAll/god; else unit-scoped employee ids (+self)
+  }
+
+  /** 6a (rebuilt): server-side "Referred To" search — present-today by default, unit-scoped. */
+  async referredToSearch(userId: string | undefined, opts: { search?: string; present?: boolean; limit?: number }): Promise<any[]> {
+    const scope = await this.referredToScope(userId);
+    if (scope !== null && scope.length === 0) return [];
+    const present = opts.present !== false; // default: only those present today
+    const limit = Math.min(50, Math.max(1, Number(opts.limit) || 25));
+    return await employeeModel.employee.gpReferredToSearch({ search: opts.search || "", present, employeeIds: scope, limit });
   }
 
   async getEmployeeByUserId(userId:string){

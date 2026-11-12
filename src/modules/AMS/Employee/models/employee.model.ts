@@ -113,6 +113,50 @@ const employeeModel = prisma.$extends({
         return rows;
       },
 
+      /**
+       * Frontdesk "Referred To" search. Matches name / surname / code / designation (case-insensitive,
+       * partial). present=true -> only employees checked in today and not out; present=false -> every
+       * active employee, with a `present` flag + checkInAt. Scoped to `employeeIds` (null = all units).
+       * Returns the unit name (primary) + the cached photo thumbnail for the option row.
+       */
+      async gpReferredToSearch(this: any, opts: { search: string; present: boolean; employeeIds: string[] | null; limit: number }) {
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const end = new Date(); end.setHours(23, 59, 59, 999);
+        const params: any[] = [start, end];
+        let p = 3;
+        let where = `e."isDeleted" IS NULL AND e.status NOT IN ('RESIGNED','FIRE')`;
+        if (opts.employeeIds !== null) {
+          if (!opts.employeeIds.length) return [];
+          where += ` AND e.id = ANY($${p})`; params.push(opts.employeeIds); p++;
+        }
+        const term = (opts.search || "").trim();
+        if (term) {
+          where += ` AND (e.name ILIKE $${p} OR e.surname ILIKE $${p} OR e.code ILIKE $${p} OR e.designation ILIKE $${p})`;
+          params.push(`%${term}%`); p++;
+        }
+        const attJoin = opts.present ? "JOIN" : "LEFT JOIN";
+        const sql = `
+          SELECT e.id, e.code, e.name, e.surname, e.designation, e."imageThumb" AS "imageThumb",
+                 un.name AS unit, att."checkIn" AS "checkInAt", (att.id IS NOT NULL) AS present
+          FROM "Employee" e
+          ${attJoin} LATERAL (
+            SELECT a.id, a."checkIn" FROM "Attendance" a
+            WHERE a."employeeId" = e.id AND a."isDeleted" IS NULL AND a.date >= $1 AND a.date <= $2
+              AND a."checkIn" IS NOT NULL AND a."checkOut" IS NULL
+            ORDER BY a."checkIn" DESC LIMIT 1
+          ) att ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT u.name FROM "UnitEmployee" ue JOIN "Unit" u ON u.id = ue."unitId"
+            WHERE ue."employeeId" = e.id AND ue."isDeleted" IS NULL AND u."isDeleted" IS NULL
+            ORDER BY u.name ASC LIMIT 1
+          ) un ON TRUE
+          WHERE ${where}
+          ORDER BY (att.id IS NOT NULL) DESC, un.name ASC NULLS LAST, e.name ASC
+          LIMIT $${p}`;
+        params.push(opts.limit);
+        return await prisma.$queryRawUnsafe(sql, ...params) as any[];
+      },
+
       async gpFindFilterMany(this: any) {
         const data = await this.findMany({
           where: {

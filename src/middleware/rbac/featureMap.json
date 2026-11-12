@@ -904,6 +904,11 @@
     "feature": "employee.read.*",
     "kind": "read"
   },
+  "POST /employee/referredToSearch": {
+    "access": "feature",
+    "feature": "employee.read.*",
+    "kind": "read"
+  },
   "POST /employee/restore": {
     "access": "feature",
     "feature": "employee.restore.*",

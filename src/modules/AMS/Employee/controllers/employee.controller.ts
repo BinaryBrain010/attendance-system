@@ -383,6 +383,13 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Present employees retrieved successfully!" });
   }
 
+  /** Server-side search for the Frontdesk "Referred To" picker (present-today by default, unit-scoped). */
+  async referredToSearch(req: Request, res: Response) {
+    const { search, present, limit } = req.body || {};
+    const operation = () => this.service.referredToSearch((req as any).userId, { search, present, limit });
+    await this.handleRequest(operation, res, { successMessage: "Employees retrieved successfully!" });
+  }
+
   async getHistoryById(req: Request, res: Response) {
     const { id, filter, date } = req.body;
     
