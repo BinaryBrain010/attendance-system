@@ -27,6 +27,7 @@ const ROOT: Record<string, string> = {
   "/stats": "voucher", "/employee": "employee", "/attendance": "attendance", "/attendanceReq": "attendanceReq",
   "/leave": "leave", "/holiday": "holiday", "/unit": "unit", "/unitEmployee": "unit", "/shift": "shift",
   "/systemConfig": "systemConfig", "/analytics": "analytics", "/activityLog": "activityLog", "/visitor": "visitor",
+  "/amsReport": "ams.report",
   "/user": "user", "/role": "role", "/group": "group", "/userRole": "user", "/userGroup": "user",
   "/groupRole": "group", "/appFeature": "feature", "/featurePermission": "featurePermission", "/access": "access",
 };
@@ -71,6 +72,21 @@ const kindFromName = (p: string): string => {
 // pick the most specific existing feature for a route, else fall back to root.kind.*
 // Explicit per-route overrides (checked first). Fix routes the heuristic maps wrong.
 const OVERRIDE: Record<string, { feature: string; kind: string; access: string; note?: string }> = {
+  // HR Policy: single manage leaf gates every route (there is no hr.policy.read.* leaf).
+  "GET /hrPolicy/settings": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
+  "POST /hrPolicy/settings": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
+  "POST /hrPolicy/rules": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
+  "POST /hrPolicy/rules/save": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
+  "POST /hrPolicy/rules/remove": { feature: "hr.policy.manage.*", kind: "delete", access: "feature" },
+  "POST /hrPolicy/entitlement/preview": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
+  "POST /hrPolicy/entitlement/apply": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
+  "POST /hrPolicy/entitlement/adjust": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
+  "POST /hrPolicy/probation/due": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
+  "POST /hrPolicy/probation/history": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
+  "POST /hrPolicy/probation/decide": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
+  // Reports: the generic root logic maps /amsReport reads -> ams.report.read.*, exports -> ams.report.export.*.
+  // Explicit entries only where the last segment is ambiguous:
+  "POST /amsReport/monthly/remark": { feature: "ams.report.read.*", kind: "update", access: "feature", note: "HR remark; allowed for report readers" },
   "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
   "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
   "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },

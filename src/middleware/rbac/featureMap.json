@@ -69,6 +69,71 @@
     "feature": "activityLog.read.*",
     "kind": "read"
   },
+  "POST /amsReport/absentees": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/byUnit": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/daily": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/export": {
+    "access": "feature",
+    "feature": "ams.report.export.*",
+    "kind": "export"
+  },
+  "POST /amsReport/lateComers": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/leaveBalance": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/monthly": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/monthly/excel": {
+    "access": "feature",
+    "feature": "ams.report.export.*",
+    "kind": "export"
+  },
+  "POST /amsReport/monthly/pdf": {
+    "access": "feature",
+    "feature": "ams.report.export.*",
+    "kind": "export"
+  },
+  "POST /amsReport/monthly/remark": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "update"
+  },
+  "POST /amsReport/pdf": {
+    "access": "feature",
+    "feature": "ams.report.export.*",
+    "kind": "export"
+  },
+  "POST /amsReport/probation": {
+    "access": "feature",
+    "feature": "ams.report.read.*",
+    "kind": "read"
+  },
+  "POST /amsReport/slip/pdf": {
+    "access": "feature",
+    "feature": "ams.report.export.*",
+    "kind": "export"
+  },
   "GET /analytics/personalAttendance": {
     "access": "self",
     "feature": "analytics.read.*",
@@ -1282,6 +1347,61 @@
   "PUT /holiday/update": {
     "access": "feature",
     "feature": "holiday.update.*",
+    "kind": "update"
+  },
+  "POST /hrPolicy/entitlement/adjust": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "update"
+  },
+  "POST /hrPolicy/entitlement/apply": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "update"
+  },
+  "POST /hrPolicy/entitlement/preview": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "read"
+  },
+  "POST /hrPolicy/probation/decide": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "update"
+  },
+  "POST /hrPolicy/probation/due": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "read"
+  },
+  "POST /hrPolicy/probation/history": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "read"
+  },
+  "POST /hrPolicy/rules": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "read"
+  },
+  "POST /hrPolicy/rules/remove": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "delete"
+  },
+  "POST /hrPolicy/rules/save": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "update"
+  },
+  "GET /hrPolicy/settings": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
+    "kind": "read"
+  },
+  "POST /hrPolicy/settings": {
+    "access": "feature",
+    "feature": "hr.policy.manage.*",
     "kind": "update"
   },
   "GET /insights/catalog": {

@@ -34,6 +34,8 @@ import ShiftRoutes from "../src/modules/AMS/Shift/routes/shift.routes";
 import SystemConfigRoutes from "../src/modules/AMS/SystemConfig/routes/systemConfig.routes";
 import AnalyticsRoutes from "../src/modules/AMS/Analytics/routes/analytics.routes";
 import ActivityLogRoutes from "../src/modules/ActivityLog/routes/activityLog.routes";
+import HrPolicyRoutes from "../src/modules/HR/Policy/routes/hrPolicy.routes";
+import AmsReportRoutes from "../src/modules/AMS/Report/routes/amsReport.routes";
 import VisitorRoutes from "../src/modules/Frontdesk/Visitor/routes/visitor.routes";
 import CrmCategoryRoutes from "../src/modules/CRM/Catalogue/Category/routes/category.routes";
 import CrmBrandRoutes from "../src/modules/CRM/Catalogue/Brand/routes/brand.routes";
@@ -62,6 +64,7 @@ const authed: any[] = [
   FeaturePermissionRoutes, AccessRoutes, AppFeatureRoutes,
   EmployeeRoutes, LeaveRoutes, AttendanceReqRoutes, AttendanceRoutes, HolidayRoutes,
   UnitRoutes, UnitEmployeeRoutes, ShiftRoutes, SystemConfigRoutes, AnalyticsRoutes,
+  HrPolicyRoutes, AmsReportRoutes,
   ActivityLogRoutes, VisitorRoutes,
   CrmCategoryRoutes, CrmBrandRoutes, CrmProductRoutes, CrmPriceListRoutes, CrmBundleRoutes,
   SalesAgentRoutes, LeadRoutes, LeadActivityRoutes, LeadReviewRoutes, QuotationRoutes, SalesOrderRoutes, SalesReturnRoutes, CrmReportRoutes,

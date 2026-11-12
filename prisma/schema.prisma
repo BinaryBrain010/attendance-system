@@ -28,6 +28,13 @@ enum EmployeeStatus {
   RESIGNED
   REJOINED
   FIRE
+  PROBATION
+}
+
+enum ProbationDecisionType {
+  CONFIRM
+  EXTEND
+  TERMINATE
 }
 
 model Customer {
@@ -277,6 +284,8 @@ model Employee {
   notes              String?
   status             EmployeeStatus @default(ACTIVE)
   resignationDate    DateTime?
+  probationEndDate   DateTime?      // HR policy: end of probation (default joining + global months)
+  probationClearedAt DateTime?      // set when Confirmed (permanent); null while on probation
 
   company         Company
   image           String?
@@ -303,6 +312,8 @@ model Employee {
   unitEmployees      UnitEmployee[]
   visitorsReferred   Visitor[]           @relation("VisitorReferredTo")
   salesAgent         SalesAgent?
+  probationDecisions ProbationDecision[]
+  monthlyRemarks     MonthlyReportRemark[]
   createdById        String?             @db.VarChar(36)
   updatedById        String?             @db.VarChar(36)
   deletedById        String?             @db.VarChar(36)
@@ -424,6 +435,9 @@ model LeaveAllocation {
   usedDays            Int                 @default(0)
   remainingDays       Int                 @default(0)
   note                String?
+  source              String?             @default("MANUAL") @db.VarChar(16) // POLICY (auto from HR policy) | MANUAL
+  policyYear          Int?                // the entitlement year a POLICY allocation covers (idempotent apply)
+  manualReason        String?             // reason captured when HR adjusts a policy entitlement by hand (audited)
   allocationStartDate DateTime
   allocationEndDate   DateTime?
   createdAt           DateTime?           @default(now())
@@ -434,6 +448,64 @@ model LeaveAllocation {
   createdById   String?        @db.VarChar(36)
   updatedById   String?        @db.VarChar(36)
   deletedById   String?        @db.VarChar(36)
+}
+
+/// HR policy: leave/medical entitlement by length of service, versioned by effectiveFrom.
+model HrPolicyRule {
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  minYears        Int       // inclusive lower bound of completed service years
+  maxYears        Int?      // exclusive upper bound (null = no cap)
+  annualLeaveDays Int       @default(0)
+  leaveByType     Json?     @db.JsonB // optional per-type split, e.g. {"ANNUAL":32}
+  medicalEligible Boolean   @default(false)
+  notes           String?
+  effectiveFrom   DateTime  // policy version takes effect on/after this date
+  isActive        Boolean   @default(true)
+  createdAt       DateTime? @default(now())
+  updatedAt       DateTime? @updatedAt
+  isDeleted       DateTime?
+  createdById     String?   @db.VarChar(36)
+  updatedById     String?   @db.VarChar(36)
+  deletedById     String?   @db.VarChar(36)
+
+  @@index([effectiveFrom])
+}
+
+/// HR policy: an auditable probation decision (confirm / extend / terminate) on an employee.
+model ProbationDecision {
+  id              String                @id @default(uuid()) @db.VarChar(36)
+  employee        Employee              @relation(fields: [employeeId], references: [id])
+  employeeId      String                @db.VarChar(36)
+  decision        ProbationDecisionType
+  previousEndDate DateTime?
+  newEndDate      DateTime?             // for EXTEND
+  reason          String?
+  decidedById     String?               @db.VarChar(36) // User who decided
+  createdAt       DateTime?             @default(now())
+  isDeleted       DateTime?
+  createdById     String?               @db.VarChar(36)
+  updatedById     String?               @db.VarChar(36)
+  deletedById     String?               @db.VarChar(36)
+
+  @@index([employeeId])
+}
+
+/// A free-text HR remark on an employee for a given report month (one per employee/month).
+model MonthlyReportRemark {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  employeeId  String    @db.VarChar(36)
+  year        Int
+  month       Int // 1-12
+  remark      String
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+  isDeleted   DateTime?
+  createdById String?   @db.VarChar(36)
+  updatedById String?   @db.VarChar(36)
+  deletedById String?   @db.VarChar(36)
+
+  @@unique([employeeId, year, month])
 }
 
 enum ScheduleParent {

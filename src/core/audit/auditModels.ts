@@ -14,6 +14,7 @@ export const FULL: string[] = [
   "Shift", "ShiftAssignment", "Team", "Task", "DailyReport", "Holiday", "Unit", "Visitor",
   "Category", "Brand", "Product", "PriceList", "Bundle", "SalesAgent", "Lead", "Quotation", "SalesOrder", "SalesReturn",
   "LeadReview",
+  "HrPolicyRule", "ProbationDecision", "MonthlyReportRemark",
 ];
 
 // Append-only feeds: createdById only (immutable, no update/delete stamping).

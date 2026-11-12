@@ -275,6 +275,15 @@ export const features: AppFeature[] = [
 
 
   //shift
+  // Quick Mark Reports (ams.report.*) and HR Policy (hr.policy.*).
+  { name: "ams.*", label: "AMS" },
+  { name: "ams.report.*", parentFeatureId: "ams.*", label: "Reports" },
+  { name: "ams.report.read.*", parentFeatureId: "ams.report.*", label: "View reports" },
+  { name: "ams.report.export.*", parentFeatureId: "ams.report.*", label: "Export reports" },
+  { name: "hr.*", label: "HR" },
+  { name: "hr.policy.*", parentFeatureId: "hr.*", label: "HR Policy" },
+  { name: "hr.policy.manage.*", parentFeatureId: "hr.policy.*", label: "Manage HR policy" },
+
   { name: "shift.*", label: "Shift (Nav)" },
   { name: "shift.create.*", parentFeatureId: "shift.*", label: "Create" },
   { name: "shift.read.*", parentFeatureId: "shift.*", label: "Read" },
