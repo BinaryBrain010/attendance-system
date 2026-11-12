@@ -17,7 +17,9 @@ export type NotifType =
   // Frontdesk (6b): a visitor was referred to this employee; a referred visitor was attended.
   | "VISITOR" | "VISITOR_ATTENDED"
   // AMS: a leave / attendance-correction request the employee filed was approved or rejected.
-  | "LEAVE_DECISION" | "ATTENDANCE_DECISION";
+  | "LEAVE_DECISION" | "ATTENDANCE_DECISION"
+  // HR: an employee's probation is ending soon / today (sent to HR managers).
+  | "PROBATION_DUE";
 
 /** Create a notification for each recipient User id (deduped, skips empties). */
 export async function notify(userIds: (string | null | undefined)[], type: NotifType, title: string, body?: string, entityType?: string, entityId?: string): Promise<void> {

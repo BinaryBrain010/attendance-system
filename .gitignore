@@ -54,3 +54,5 @@ logs/
 # prod role-grants export (may contain prod config) — never commit
 qa/_roleGrants*.json
 qa/.notif-last.txt
+qa/.hrpolicy-last.txt
+qa/.amsreports-last.txt

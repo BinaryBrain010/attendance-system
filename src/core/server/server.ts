@@ -54,6 +54,11 @@ import SystemConfigRoutes from "../../modules/AMS/SystemConfig/routes/systemConf
 import AnalyticsRoutes from "../../modules/AMS/Analytics/routes/analytics.routes";
 import ActivityLogRoutes from "../../modules/ActivityLog/routes/activityLog.routes";
 
+//HR + Reports
+import HrPolicyRoutes from "../../modules/HR/Policy/routes/hrPolicy.routes";
+import AmsReportRoutes from "../../modules/AMS/Report/routes/amsReport.routes";
+import ProbationSchedulerHelper from "../../modules/HR/Policy/helper/probationSchedule.helper";
+
 //Frontdesk
 import VisitorRoutes from "../../modules/Frontdesk/Visitor/routes/visitor.routes";
 import SearchRoutes from "../../modules/Search/routes/search.routes";
@@ -101,6 +106,7 @@ class App {
     TokenCleanHelper;
     AttendanceSchedulerHelper;
     WorkSchedulerHelper;
+    ProbationSchedulerHelper;
     ensureSystemUser();
     auditBootCheck();
   }
@@ -249,6 +255,8 @@ class App {
       ShiftRoutes,
       SystemConfigRoutes,
       AnalyticsRoutes,
+      HrPolicyRoutes,
+      AmsReportRoutes,
 
       //ActivityLog
       ActivityLogRoutes,
