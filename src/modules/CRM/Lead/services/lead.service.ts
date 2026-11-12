@@ -255,8 +255,21 @@ class LeadService {
         await notify(managers.map((m) => m.userId), "LEAD_UNASSIGNED", `Unassigned lead: ${lead.customerName}`, "A lead was created without an agent. Please assign it.", "Lead", lead.id);
       } catch { /* best-effort */ }
     }
+    // Notify the agent a lead was assigned to on creation (skips self-assignment and unassigned).
+    if (!unassigned && lead?.id && data.agentId) await this.notifyLeadAssignment(userId, data.agentId, lead);
     if (lead?.id) await notifyMentions(userId, mentionIds, lead.id, lead.customerName || "a lead", data.notes);
     return created;
+  }
+
+  /** Notify the newly-assigned agent's user that a lead is now theirs (best-effort; skips self). */
+  private async notifyLeadAssignment(actorUserId: string, agentId: string, lead: any): Promise<void> {
+    if (!agentId || !lead?.id) return;
+    try {
+      const agent = await prisma.salesAgent.findFirst({ where: { id: agentId, isDeleted: null }, select: { userId: true } });
+      if (agent?.userId && agent.userId !== actorUserId) {
+        await notify([agent.userId], "LEAD_ASSIGNED", `Lead assigned: ${lead.customerName}`, "A lead was assigned to you.", "Lead", lead.id);
+      }
+    } catch { /* best-effort */ }
   }
 
   /** Replace a lead's interest-product links with the given set (idempotent; undefined = leave as is). */
@@ -287,8 +300,11 @@ class LeadService {
     }
     if (Object.prototype.hasOwnProperty.call(data, "stage")) delete data.stage; // stage only via /transition
     if (Object.prototype.hasOwnProperty.call(data, "phone")) data.phoneNormalized = normalizePhone(data.phone);
+    // Detect a genuine reassignment (after the canAssign resolution) so we can notify the new agent.
+    const reassignedTo = (Object.prototype.hasOwnProperty.call(data, "agentId") && data.agentId && data.agentId !== existing.agentId) ? data.agentId : null;
     const updated = await prisma.lead.gpUpdate(id, data);
     await this.setLeadProducts(id, productIds);
+    if (reassignedTo) await this.notifyLeadAssignment(userId, reassignedTo, existing);
     await notifyMentions(userId, mentionIds, id, existing.customerName || "a lead", data.notes);
     return updated;
   }

@@ -4,6 +4,8 @@ import { paginatedData } from "../../../../types/paginatedData";
 import { LeaveStatus } from "@prisma/client";
 import { compressImageDataUrl } from "../../../../core/utils/imageCompression";
 import { getAccessibleEmployeeIds } from "../../Unit/helper/unitAccess.helper";
+import prisma from "../../../../core/models/base.model";
+import { notify, userIdsForEmployees } from "../../../Work/shared/workHelpers";
 
 // Only these fields exist on Prisma AttendanceRequest model (no JOIN/alias fields).
 const ATTENDANCE_REQUEST_SCHEMA_KEYS = [
@@ -167,6 +169,20 @@ class LeaveReqService {
     userId?: string
   ): Promise<void> {
     await attendanceRequestModel.attendanceRequest.gpUpdateStatus(requestId, status, approvedBy, note, userId);
+    await this.notifyAttendanceDecision(requestId, status, note, userId);
+  }
+
+  /** Notify the requesting employee's user that their attendance-correction request was decided (best-effort). */
+  private async notifyAttendanceDecision(requestId: string, status: LeaveStatus, note?: string, actorUserId?: string): Promise<void> {
+    if (status !== LeaveStatus.APPROVED && status !== LeaveStatus.REJECTED) return;
+    try {
+      const req = await prisma.attendanceRequest.findUnique({ where: { id: requestId }, select: { employeeId: true } });
+      if (!req?.employeeId) return;
+      const targets = (await userIdsForEmployees([req.employeeId])).filter((u) => u !== actorUserId);
+      const decided = status === LeaveStatus.APPROVED ? "approved" : "rejected";
+      await notify(targets, "ATTENDANCE_DECISION", `Attendance request ${decided}`,
+        (note && note.trim()) || `Your attendance correction request was ${decided}.`, "AttendanceRequest", requestId);
+    } catch { /* best-effort */ }
   }
 
   // Get total number of leave requests
@@ -201,6 +217,7 @@ class LeaveReqService {
           undefined,
           userId
         );
+        await this.notifyAttendanceDecision(requestId, status, undefined, userId);
         results.successful++;
       } catch (error: any) {
         results.failed++;

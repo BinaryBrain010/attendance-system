@@ -701,10 +701,10 @@ model DailyReportComment {
 model Notification {
   id         String    @id @default(uuid()) @db.VarChar(36)
   userId     String    @db.VarChar(36) // recipient User id
-  type       String // ASSIGNED | DUE_SOON | OVERDUE | COMMENT | REPORT_MISSING
+  type       String // ASSIGNED|DUE_SOON|OVERDUE|COMMENT|REPORT_MISSING|LEAD_ASSIGNED|LEAD_UNASSIGNED|LEAD_TRANSFER|MENTION|LEAD_REVIEW*|VISITOR|VISITOR_ATTENDED|LEAVE_DECISION|ATTENDANCE_DECISION
   title      String
   body       String?
-  entityType String? // Task | DailyReport
+  entityType String? // Task | DailyReport | Lead | Visitor | LeaveRequest | AttendanceRequest
   entityId   String?   @db.VarChar(36)
   readAt     DateTime?
   createdAt  DateTime? @default(now())

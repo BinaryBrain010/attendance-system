@@ -11,11 +11,13 @@ export async function nextTaskCode(): Promise<string> {
 
 export type NotifType =
   | "ASSIGNED" | "DUE_SOON" | "OVERDUE" | "COMMENT" | "REPORT_MISSING"
-  // CRM (leads): unassigned-lead alert to managers, lead transfer, @mention, lead review.
-  | "LEAD_UNASSIGNED" | "LEAD_TRANSFER" | "MENTION"
+  // CRM (leads): assigned to you, unassigned-lead alert to managers, transfer, @mention, review.
+  | "LEAD_ASSIGNED" | "LEAD_UNASSIGNED" | "LEAD_TRANSFER" | "MENTION"
   | "LEAD_REVIEW" | "LEAD_REVIEW_DONE" | "LEAD_REVIEW_REOPEN"
-  // Frontdesk (6b): a visitor was referred to this employee.
-  | "VISITOR";
+  // Frontdesk (6b): a visitor was referred to this employee; a referred visitor was attended.
+  | "VISITOR" | "VISITOR_ATTENDED"
+  // AMS: a leave / attendance-correction request the employee filed was approved or rejected.
+  | "LEAVE_DECISION" | "ATTENDANCE_DECISION";
 
 /** Create a notification for each recipient User id (deduped, skips empties). */
 export async function notify(userIds: (string | null | undefined)[], type: NotifType, title: string, body?: string, entityType?: string, entityId?: string): Promise<void> {
