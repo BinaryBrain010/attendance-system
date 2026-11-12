@@ -73,10 +73,10 @@ class HrPolicyService {
     return { ...res, employeeId };
   }
 
-  /** Existing non-deleted allocations that overlap `year` (POLICY for the year, or any date-overlap). */
-  async allocationsForYear(employeeId: string, year: number): Promise<{ id: string; assignedDays: number; source: string | null }[]> {
+  /** Existing non-deleted allocations that overlap `year` (POLICY for the year, or any date-overlap), with type. */
+  async allocationsForYear(employeeId: string, year: number): Promise<{ id: string; assignedDays: number; source: string | null; leaveConfigId: string | null; leaveConfigName: string | null }[]> {
     const start = new Date(year, 0, 1); const end = new Date(year, 11, 31);
-    return prisma.leaveAllocation.findMany({
+    const rows = await prisma.leaveAllocation.findMany({
       where: {
         employeeId, isDeleted: null,
         OR: [
@@ -84,31 +84,56 @@ class HrPolicyService {
           { AND: [{ allocationStartDate: { lte: end } }, { OR: [{ allocationEndDate: null }, { allocationEndDate: { gte: start } }] }] },
         ],
       },
-      select: { id: true, assignedDays: true, source: true },
+      select: { id: true, assignedDays: true, source: true, leaveConfigId: true, leaveConfig: { select: { name: true } } },
     });
+    return rows.map((r) => ({ id: r.id, assignedDays: r.assignedDays, source: r.source, leaveConfigId: r.leaveConfigId, leaveConfigName: r.leaveConfig?.name ?? null }));
+  }
+
+  /** Is this allocation the same "type" as the policy's annual entitlement (so creating POLICY would double it)? */
+  private isAnnualType(a: { source: string | null; leaveConfigId: string | null; leaveConfigName: string | null }, annualConfigId: string | null): boolean {
+    if (a.source === "POLICY") return true;
+    if (annualConfigId) return a.leaveConfigId === annualConfigId;
+    return /annual/i.test(a.leaveConfigName || ""); // auto-detect when no annual config is configured
   }
 
   /**
-   * NON-DESTRUCTIVE policy apply: create a POLICY LeaveAllocation for `year` ONLY when the employee has
-   * no allocation for that year. NEVER updates, reduces or deletes an existing allocation. Where the
-   * policy entitlement is LESS than the current allocation, the row is left untouched and flagged for
-   * HR to decide. Returns a side-by-side summary.
+   * NON-DESTRUCTIVE, TYPE-AWARE policy apply: create a POLICY annual LeaveAllocation for `year` ONLY
+   * when the employee has NO annual-type allocation for that year (another POLICY one, or one linked to
+   * the configured/auto-detected annual leave type) — so annual balances never double. NEVER updates,
+   * reduces or deletes any allocation. When an annual allocation already exists it is left untouched and
+   * the policy-vs-current difference is flagged for HR. Returns a side-by-side summary.
    */
   async applyEntitlement(employeeId: string, year: number): Promise<any> {
     const ent = await this.previewEntitlement(employeeId, year);
+    const settings = await getHrSettings();
     const existing = await this.allocationsForYear(employeeId, year);
-    const currentTotal = existing.reduce((s, a) => s + (a.assignedDays || 0), 0);
-    if (existing.length) {
-      const policyBelowCurrent = ent.annualLeaveDays < currentTotal;
-      return { employeeId, year, action: "skipped", current: currentTotal, policy: ent.annualLeaveDays, policyBelowCurrent, flagged: policyBelowCurrent };
+    const sameType = existing.filter((a) => this.isAnnualType(a, settings.annualLeaveConfigId));
+    const currentSameType = sameType.reduce((s, a) => s + (a.assignedDays || 0), 0);
+    if (sameType.length) {
+      const policyBelowCurrent = ent.annualLeaveDays < currentSameType;
+      return { employeeId, year, action: "skipped", current: currentSameType, policy: ent.annualLeaveDays, policyBelowCurrent, flagged: ent.annualLeaveDays !== currentSameType };
     }
     await prisma.leaveAllocation.create({
       data: {
         employeeId, assignedDays: ent.annualLeaveDays, usedDays: 0, remainingDays: ent.annualLeaveDays,
-        source: "POLICY", policyYear: year, allocationStartDate: new Date(year, 0, 1), allocationEndDate: new Date(year, 11, 31), note: ent.detail,
+        source: "POLICY", policyYear: year, leaveConfigId: settings.annualLeaveConfigId ?? undefined,
+        allocationStartDate: new Date(year, 0, 1), allocationEndDate: new Date(year, 11, 31), note: ent.detail,
       },
     });
     return { employeeId, year, action: "created", current: 0, policy: ent.annualLeaveDays, policyBelowCurrent: false, flagged: false };
+  }
+
+  /** Read-only plan for `applyEntitlement` (no writes) — for the dry run. */
+  async planEntitlement(employeeId: string, year: number): Promise<{ action: "create" | "skip"; current: number; policy: number; flagged: boolean }> {
+    const ent = await this.previewEntitlement(employeeId, year);
+    const settings = await getHrSettings();
+    const existing = await this.allocationsForYear(employeeId, year);
+    const sameType = existing.filter((a) => this.isAnnualType(a, settings.annualLeaveConfigId));
+    if (sameType.length) {
+      const current = sameType.reduce((s, a) => s + (a.assignedDays || 0), 0);
+      return { action: "skip", current, policy: ent.annualLeaveDays, flagged: ent.annualLeaveDays !== current };
+    }
+    return { action: "create", current: 0, policy: ent.annualLeaveDays, flagged: false };
   }
 
   /** HR manually overrides a policy entitlement (reason required, audited). */

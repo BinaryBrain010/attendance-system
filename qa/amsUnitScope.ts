@@ -19,6 +19,7 @@ import {
 } from "../src/modules/AMS/Unit/helper/unitAccess.helper";
 import leaveReqModel from "../src/modules/AMS/Leaves/models/leaveReq.model";
 import EmployeeService from "../src/modules/AMS/Employee/services/employee.service";
+import employeeModel from "../src/modules/AMS/Employee/models/employee.model";
 
 const TAG = `QA_SCOPE_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -152,6 +153,22 @@ async function main() {
     const mgrEveryone = await svc.referredToSearch(uMgr.id, { search: "ali", present: false });
     const absentRow = mgrEveryone.find((r: any) => r.id === aliAbsentA.id);
     check("frontdesk 'show everyone' includes the absent unit-A Ali, marked not present", !!absentRow && absentRow.present === false);
+
+    // 7. Present-today window is correct at the midnight boundary (regression guard for the TZ bug).
+    //    Fake "now" = 2026-11-21 00:30 Asia/Karachi; only that PK day's check-in counts as present.
+    const fake0030 = new Date("2026-11-20T19:30:00.000Z");       // 2026-11-21 00:30 PKT
+    const yestInstant = new Date("2026-11-19T19:30:00.000Z");     // 2026-11-20 00:30 PKT (previous PK day)
+    const mk = (suffix: string) => prisma.employee.create({ data: { name: "QAScope", surname: suffix, address: "QA", dob: new Date("1990-01-01"), joiningDate: new Date("2020-01-01"), bloodGroup: "O+", contactNo: "0300", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_${suffix}` } as any });
+    const todayEmp = await mk("today0030");
+    const yestEmp = await mk("yest0030");
+    createdEmpIds.push(todayEmp.id, yestEmp.id);
+    const aT = await prisma.attendance.create({ data: { employeeId: todayEmp.id, date: fake0030, checkIn: fake0030, status: "PRESENT" } as any });
+    const aY = await prisma.attendance.create({ data: { employeeId: yestEmp.id, date: yestInstant, checkIn: yestInstant, status: "PRESENT" } as any });
+    createdAttIds.push(aT.id, aY.id);
+    const faked: any[] = await (employeeModel as any).employee.gpReferredToSearch({ search: "", present: true, employeeIds: [todayEmp.id, yestEmp.id], limit: 25, now: fake0030 });
+    const fakedIds = new Set(faked.map((r) => r.id));
+    check("present-today at 00:30 PKT INCLUDES today's check-in (midnight-window fix)", fakedIds.has(todayEmp.id));
+    check("present-today at 00:30 PKT EXCLUDES the previous day's check-in (window bounded to PK day)", !fakedIds.has(yestEmp.id));
   } finally {
     for (const id of createdAttIds) await prisma.attendance.delete({ where: { id } }).catch(() => {});
     // Cleanup (children first)
