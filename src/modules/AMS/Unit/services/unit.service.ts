@@ -7,6 +7,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { AttendanceStatus } from "@prisma/client";
 import { getAccessibleUnitIds, AMS_VIEW_ALL } from "../helper/unitAccess.helper";
 import { AppError } from "../../../../core/errors/app.error";
+import { toPgUtcTimestamp } from "../../../../core/utils/pakistanDay";
 
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
 
@@ -156,10 +157,12 @@ class UnitService {
     whereClause += employeeIds.map((id: string, index: number) => `$${index + 1}`).join(', ');
     whereClause += ')';
     whereClause += ` AND a."isDeleted" IS NULL`;
-    whereClause += ` AND a.date >= $${employeeIds.length + 1}`;
-    whereClause += ` AND a.date <= $${employeeIds.length + 2}`;
+    // ::timestamp + UTC-naive strings so the PKT day window matches the UTC-naive column at any hour
+    // (a raw Date param is serialized in local time by pg and mismatches near midnight).
+    whereClause += ` AND a.date >= $${employeeIds.length + 1}::timestamp`;
+    whereClause += ` AND a.date <= $${employeeIds.length + 2}::timestamp`;
 
-    const params: any[] = [...employeeIds, fromDate, toDate];
+    const params: any[] = [...employeeIds, toPgUtcTimestamp(fromDate), toPgUtcTimestamp(toDate)];
     let paramIndex = employeeIds.length + 3;
 
     if (filters?.status) {
@@ -211,10 +214,10 @@ class UnitService {
     statsWhereClause += employeeIds.map((id: string, index: number) => `$${index + 1}`).join(', ');
     statsWhereClause += ')';
     statsWhereClause += ` AND a."isDeleted" IS NULL`;
-    statsWhereClause += ` AND a.date >= $${employeeIds.length + 1}`;
-    statsWhereClause += ` AND a.date <= $${employeeIds.length + 2}`;
+    statsWhereClause += ` AND a.date >= $${employeeIds.length + 1}::timestamp`;
+    statsWhereClause += ` AND a.date <= $${employeeIds.length + 2}::timestamp`;
 
-    const statsParams: any[] = [...employeeIds, fromDate, toDate];
+    const statsParams: any[] = [...employeeIds, toPgUtcTimestamp(fromDate), toPgUtcTimestamp(toDate)];
 
     const statsData = await prisma.$queryRawUnsafe(`
       SELECT 

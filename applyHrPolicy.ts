@@ -47,25 +47,23 @@ async function main() {
     orderBy: { joiningDate: "asc" },
   });
 
-  console.log(`\n[applyHrPolicy] year=${yearArg}  mode=${APPLY ? "APPLY (writing)" : "DRY RUN"}  employees=${emps.length}  proRata=${settings.entitlementProRata}  policyStart=${settings.probationPolicyStartDate ?? "(unset -> today)"}\n`);
+  console.log(`\n[applyHrPolicy] year=${yearArg}  mode=${APPLY ? "APPLY (writing)" : "DRY RUN"}  employees=${emps.length}  proRata=${settings.entitlementProRata}  policyStart=${settings.probationPolicyStartDate ?? "(unset -> today)"}  annualType=${settings.annualLeaveConfigId ?? "(auto: name~annual)"}\n`);
   console.log("CODE        NAME                 SERVICE  BAND           POLICY  CURRENT  ACTION");
-  console.log("-".repeat(92));
+  console.log("-".repeat(96));
 
-  let toCreate = 0, flagged = 0;
+  let toCreate = 0, toSkip = 0, flagged = 0;
   for (const e of emps) {
     const years = completedServiceYears(e.joiningDate, new Date(yearArg, 0, 1));
     const band = bandLabel(applicableRule(rules, years, new Date(yearArg, 0, 1)));
-    const ent = await svc.previewEntitlement(e.id, yearArg);
-    const existing = await svc.allocationsForYear(e.id, yearArg);
-    const current = existing.reduce((s, a) => s + (a.assignedDays || 0), 0);
-    const willCreate = existing.length === 0;
-    const policyBelow = existing.length > 0 && ent.annualLeaveDays < current;
-    if (willCreate) toCreate++;
-    if (policyBelow) flagged++;
-    const action = willCreate ? "create POLICY" : (policyBelow ? `KEEP current — policy ${ent.annualLeaveDays} < current ${current} (HR decide)` : "keep (has allocation)");
+    const plan = await svc.planEntitlement(e.id, yearArg); // read-only, type-aware
+    if (plan.action === "create") toCreate++; else toSkip++;
+    if (plan.flagged) flagged++;
+    const action = plan.action === "create"
+      ? "create POLICY"
+      : `SKIP — annual allocation exists (policy ${plan.policy} vs current ${plan.current})${plan.flagged ? " — FLAG for HR" : ""}`;
     const name = `${e.name} ${e.surname || ""}`.trim().slice(0, 20).padEnd(20);
-    console.log(`${(e.code || "").padEnd(11)} ${name} ${(years + "y").padEnd(7)} ${band.padEnd(14)} ${String(ent.annualLeaveDays).padStart(6)}  ${String(current).padStart(7)}  ${action}`);
-    if (APPLY) await svc.applyEntitlement(e.id, yearArg); // create-only; never reduces/deletes
+    console.log(`${(e.code || "").padEnd(11)} ${name} ${(years + "y").padEnd(7)} ${band.padEnd(14)} ${String(plan.policy).padStart(6)}  ${String(plan.current).padStart(7)}  ${action}`);
+    if (APPLY) await svc.applyEntitlement(e.id, yearArg); // type-aware create-only; never reduces/deletes
   }
 
   // Legacy confirmation (one-time).
@@ -83,8 +81,8 @@ async function main() {
     }
   }
 
-  console.log(`\nSummary: ${toCreate} POLICY allocation(s) ${APPLY ? "created" : "to create"}; ${flagged} flagged (policy < current, left untouched); ${legacy.length} legacy staff ${APPLY ? "confirmed" : "to confirm"}.`);
-  console.log(APPLY ? "APPLIED — no existing allocation was reduced or deleted." : "DRY RUN — nothing was written. Re-run with --apply.");
+  console.log(`\nSummary: ${toCreate} POLICY allocation(s) ${APPLY ? "created" : "to create"}; ${toSkip} skipped (annual allocation already exists); ${flagged} flagged (policy != current — HR to decide); ${legacy.length} legacy staff ${APPLY ? "confirmed" : "to confirm"}.`);
+  console.log(APPLY ? "APPLIED — no existing allocation was reduced or deleted; annual balances cannot double." : "DRY RUN — nothing was written. Re-run with --apply.");
   await prisma.$disconnect();
 }
 runAsSystem(() => main()).catch((e) => { console.error(e); process.exit(1); });

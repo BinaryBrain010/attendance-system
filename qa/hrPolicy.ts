@@ -163,11 +163,36 @@ async function main() {
       try { await leaveSvc.updateLeaveRequestStatus(leaveReq.id, LeaveStatus.APPROVED, "HR override", hrUser.id); } catch { hrOk = false; }
       const afterHr = await prisma.leaveRequest.findUnique({ where: { id: leaveReq.id }, select: { status: true } });
       check("HR (hr.policy.manage) CAN approve the over-balance leave", hrOk && afterHr?.status === "APPROVED");
+
+      // ---- #2: applyEntitlement is TYPE-AWARE — never doubles the annual balance ----
+      const annualCfg = await prisma.leaveConfiguration.create({ data: { name: `${TAG}_AnnualLeave`, maxDays: 32 } as any });
+      const sickCfg = await prisma.leaveConfiguration.create({ data: { name: `${TAG}_SickLeave`, maxDays: 10 } as any });
+      createdConfigIds.push(annualCfg.id, sickCfg.id);
+
+      // (a) Already has an ANNUAL allocation for 2026 -> apply SKIPS (no second allocation), flags the diff.
+      //     Joined 2020 -> 3+ band -> policy 32 (vs the existing 20) so the flag is a real difference.
+      const empAnnual = await prisma.employee.create({ data: { name: "QAHr", surname: "hasAnnual", address: "QA", dob: new Date("1985-01-01"), joiningDate: new Date("2020-01-01"), bloodGroup: "O+", contactNo: "0300", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_hasAnnual`, status: "ACTIVE" } as any });
+      createdEmpIds.push(empAnnual.id);
+      const annualAlloc = await prisma.leaveAllocation.create({ data: { employeeId: empAnnual.id, leaveConfigId: annualCfg.id, assignedDays: 20, usedDays: 0, remainingDays: 20, allocationStartDate: new Date(2026, 0, 1), allocationEndDate: new Date(2026, 11, 31) } as any });
+      createdAllocIds.push(annualAlloc.id);
+      const applyA = await svc.applyEntitlement(empAnnual.id, 2026);
+      const countA = await prisma.leaveAllocation.count({ where: { employeeId: empAnnual.id, isDeleted: null } });
+      check("existing annual allocation -> apply SKIPS (no second allocation, balance can't double)", applyA.action === "skipped" && countA === 1);
+      check("skipped annual case flags policy(32) vs current(20) for HR", applyA.flagged === true && applyA.policy === 32 && applyA.current === 20);
+
+      // (b) Only a SICK allocation -> the annual POLICY IS created (different leave type).
+      const empSick = await mkEmp("sickOnly", null);
+      const sickAlloc = await prisma.leaveAllocation.create({ data: { employeeId: empSick.id, leaveConfigId: sickCfg.id, assignedDays: 10, usedDays: 0, remainingDays: 10, allocationStartDate: new Date(2026, 0, 1), allocationEndDate: new Date(2026, 11, 31) } as any });
+      createdAllocIds.push(sickAlloc.id);
+      const applyS = await svc.applyEntitlement(empSick.id, 2026);
+      const polS = await prisma.leaveAllocation.findFirst({ where: { employeeId: empSick.id, source: "POLICY", policyYear: 2026, isDeleted: null } });
+      check("only a sick allocation -> annual POLICY IS created (different type, no double)", applyS.action === "created" && !!polS);
     });
   } finally {
     for (const id of createdUserIds) await prisma.notification.deleteMany({ where: { userId: id } }).catch(() => {});
     await prisma.notification.deleteMany({ where: { entityType: "Employee", entityId: { in: createdEmpIds } } }).catch(() => {});
     for (const id of createdLeaveIds) await prisma.leaveRequest.delete({ where: { id } }).catch(() => {});
+    await prisma.leaveAllocation.deleteMany({ where: { employeeId: { in: createdEmpIds } } }).catch(() => {}); // incl. auto-created POLICY
     for (const id of createdAllocIds) await prisma.leaveAllocation.delete({ where: { id } }).catch(() => {});
     for (const id of createdConfigIds) await prisma.leaveConfiguration.delete({ where: { id } }).catch(() => {});
     await prisma.probationDecision.deleteMany({ where: { employeeId: { in: createdEmpIds } } }).catch(() => {});

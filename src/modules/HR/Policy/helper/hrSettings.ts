@@ -11,6 +11,10 @@ export interface HrSettings {
   // status is PROBATION, or they joined ON/AFTER this date. Legacy staff (joined before it, status
   // not PROBATION) are never tracked or alerted. null => only explicit PROBATION-status employees.
   probationPolicyStartDate: string | null;
+  // The LeaveConfiguration the policy's ANNUAL entitlement represents. When set, the POLICY allocation
+  // is created with this leaveConfigId, and apply skips (never doubles) when an allocation of this
+  // type already exists for the year. null => auto-detect by config name containing "annual".
+  annualLeaveConfigId: string | null;
 }
 
 export const DEFAULT_HR_SETTINGS: HrSettings = {
@@ -18,6 +22,7 @@ export const DEFAULT_HR_SETTINGS: HrSettings = {
   entitlementProRata: false,
   hrManagerRoleName: null,
   probationPolicyStartDate: null,
+  annualLeaveConfigId: null,
 };
 
 export async function getHrSettings(): Promise<HrSettings> {

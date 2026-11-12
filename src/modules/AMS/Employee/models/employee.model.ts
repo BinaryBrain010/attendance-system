@@ -1,6 +1,7 @@
 import { Prisma, Company } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
 import { uploadPath } from "../../../../core/paths";
+import { getStartOfDayPakistan, getEndOfDayPakistan, toPgUtcTimestamp } from "../../../../core/utils/pakistanDay";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcrypt";
@@ -93,17 +94,18 @@ async function createUserForEmployee(employeeId: string, name: string, surname: 
 const employeeModel = prisma.$extends({
   model: {
     employee: {
-      // 6a: employees present right now — have a check-in today with no check-out yet.
-      async gpFindPresentToday(this: any) {
-        const start = new Date(); start.setHours(0, 0, 0, 0);
-        const end = new Date(); end.setHours(23, 59, 59, 999);
+      // 6a: employees present right now — have a check-in today (Pakistan day) with no check-out yet.
+      async gpFindPresentToday(this: any, now: Date = new Date()) {
+        // UTC-naive strings + ::timestamp so the PKT-day window matches the UTC-naive column at any hour.
+        const start = toPgUtcTimestamp(getStartOfDayPakistan(now));
+        const end = toPgUtcTimestamp(getEndOfDayPakistan(now));
         const rows: any[] = await prisma.$queryRawUnsafe(
           `SELECT DISTINCT e.id, e.code, e.name, e.surname, e.designation, e.department
            FROM "Employee" e
            JOIN "Attendance" a ON a."employeeId" = e.id
            WHERE e."isDeleted" IS NULL
              AND a."isDeleted" IS NULL
-             AND a.date >= $1 AND a.date <= $2
+             AND a.date >= $1::timestamp AND a.date <= $2::timestamp
              AND a."checkIn" IS NOT NULL
              AND a."checkOut" IS NULL
            ORDER BY e.name ASC`,
@@ -119,9 +121,10 @@ const employeeModel = prisma.$extends({
        * active employee, with a `present` flag + checkInAt. Scoped to `employeeIds` (null = all units).
        * Returns the unit name (primary) + the cached photo thumbnail for the option row.
        */
-      async gpReferredToSearch(this: any, opts: { search: string; present: boolean; employeeIds: string[] | null; limit: number }) {
-        const start = new Date(); start.setHours(0, 0, 0, 0);
-        const end = new Date(); end.setHours(23, 59, 59, 999);
+      async gpReferredToSearch(this: any, opts: { search: string; present: boolean; employeeIds: string[] | null; limit: number; now?: Date }) {
+        // UTC-naive strings + ::timestamp so "present today" (Pakistan day) is correct at any hour.
+        const start = toPgUtcTimestamp(getStartOfDayPakistan(opts.now ?? new Date()));
+        const end = toPgUtcTimestamp(getEndOfDayPakistan(opts.now ?? new Date()));
         const params: any[] = [start, end];
         let p = 3;
         let where = `e."isDeleted" IS NULL AND e.status NOT IN ('RESIGNED','FIRE')`;
@@ -141,7 +144,7 @@ const employeeModel = prisma.$extends({
           FROM "Employee" e
           ${attJoin} LATERAL (
             SELECT a.id, a."checkIn" FROM "Attendance" a
-            WHERE a."employeeId" = e.id AND a."isDeleted" IS NULL AND a.date >= $1 AND a.date <= $2
+            WHERE a."employeeId" = e.id AND a."isDeleted" IS NULL AND a.date >= $1::timestamp AND a.date <= $2::timestamp
               AND a."checkIn" IS NOT NULL AND a."checkOut" IS NULL
             ORDER BY a."checkIn" DESC LIMIT 1
           ) att ON TRUE
