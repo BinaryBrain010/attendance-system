@@ -18,6 +18,7 @@ import {
   canAccessEmployee,
 } from "../src/modules/AMS/Unit/helper/unitAccess.helper";
 import leaveReqModel from "../src/modules/AMS/Leaves/models/leaveReq.model";
+import EmployeeService from "../src/modules/AMS/Employee/services/employee.service";
 
 const TAG = `QA_SCOPE_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -49,6 +50,7 @@ async function main() {
   const createdEmpIds: string[] = [];
   const createdUnitIds: string[] = [];
   const createdLeaveIds: string[] = [];
+  const createdAttIds: string[] = [];
   try {
     // Units A and B
     const unitA = await prisma.unit.create({ data: { name: `${TAG}_UNIT_A`, type: "OFFICE" } as any });
@@ -121,7 +123,37 @@ async function main() {
     } catch { viewOk = false; }
     const afterView = await prisma.leaveRequest.findUnique({ where: { id: lr.id }, select: { status: true } });
     check("viewAll holder CAN reject unit-B leave", viewOk && afterView?.status === "REJECTED");
+
+    // 6. Frontdesk "Referred To" search is unit-scoped + present-filtered (referredToSearch).
+    //    "Ali" present in unit A and in unit B; "Ali" absent in unit A.
+    const now = new Date();
+    const aliA = await prisma.employee.create({ data: { name: "Ali", surname: "PresentA", address: "QA", dob: new Date("1990-01-01"), joiningDate: new Date("2020-01-01"), bloodGroup: "O+", contactNo: "0300-0000000", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_aliA` } as any });
+    const aliB = await prisma.employee.create({ data: { name: "Ali", surname: "PresentB", address: "QA", dob: new Date("1990-01-01"), joiningDate: new Date("2020-01-01"), bloodGroup: "O+", contactNo: "0300-0000000", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_aliB` } as any });
+    const aliAbsentA = await prisma.employee.create({ data: { name: "Ali", surname: "AbsentA", address: "QA", dob: new Date("1990-01-01"), joiningDate: new Date("2020-01-01"), bloodGroup: "O+", contactNo: "0300-0000000", designation: "QA", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_aliAbsA` } as any });
+    createdEmpIds.push(aliA.id, aliB.id, aliAbsentA.id);
+    for (const [uId, eId] of [[unitA.id, aliA.id], [unitB.id, aliB.id], [unitA.id, aliAbsentA.id]] as const) {
+      const ue = await prisma.unitEmployee.create({ data: { unitId: uId, employeeId: eId } as any });
+      createdUeIds.push(ue.id);
+    }
+    for (const eId of [aliA.id, aliB.id]) { // present today (checked in, not out); aliAbsentA is absent
+      const a = await prisma.attendance.create({ data: { employeeId: eId, date: now, checkIn: now, status: "PRESENT" } as any });
+      createdAttIds.push(a.id);
+    }
+    const svc = new EmployeeService();
+    const mgrRef = await svc.referredToSearch(uMgr.id, { search: "ali", present: true });
+    const mgrRefIds = new Set(mgrRef.map((r: any) => r.id));
+    check("frontdesk(unitA) referredTo 'ali' present: sees unit-A Ali", mgrRefIds.has(aliA.id));
+    check("frontdesk(unitA) referredTo 'ali' present: does NOT see unit-B Ali", !mgrRefIds.has(aliB.id));
+    check("frontdesk(unitA) referredTo 'ali' present: excludes the absent Ali", !mgrRefIds.has(aliAbsentA.id));
+    check("referredTo present option carries a unit + checkInAt", mgrRef.every((r: any) => !!r.unit && !!r.checkInAt));
+    const viewRef = await svc.referredToSearch(uView.id, { search: "ali", present: true });
+    const viewRefIds = new Set(viewRef.map((r: any) => r.id));
+    check("viewAll referredTo 'ali' present: sees unit-A AND unit-B Ali", viewRefIds.has(aliA.id) && viewRefIds.has(aliB.id));
+    const mgrEveryone = await svc.referredToSearch(uMgr.id, { search: "ali", present: false });
+    const absentRow = mgrEveryone.find((r: any) => r.id === aliAbsentA.id);
+    check("frontdesk 'show everyone' includes the absent unit-A Ali, marked not present", !!absentRow && absentRow.present === false);
   } finally {
+    for (const id of createdAttIds) await prisma.attendance.delete({ where: { id } }).catch(() => {});
     // Cleanup (children first)
     for (const id of createdLeaveIds) await prisma.leaveRequest.delete({ where: { id } }).catch(() => {});
     for (const id of createdFpIds) await prisma.featurePermission.delete({ where: { id } }).catch(() => {});
