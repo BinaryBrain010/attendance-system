@@ -82,11 +82,13 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /hrPolicy/entitlement/apply": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
   "POST /hrPolicy/entitlement/adjust": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
   "POST /hrPolicy/probation/due": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
+  "POST /hrPolicy/probation/status": { feature: "employee.read.*", kind: "read", access: "self", note: "probation banner on the employee page; own employee else employee.read.*" },
   "POST /hrPolicy/probation/history": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
   "POST /hrPolicy/probation/decide": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
   // Reports: the generic root logic maps /amsReport reads -> ams.report.read.*, exports -> ams.report.export.*.
   // Explicit entries only where the last segment is ambiguous:
   "POST /amsReport/monthly/remark": { feature: "ams.report.read.*", kind: "update", access: "feature", note: "HR remark; allowed for report readers" },
+  "POST /amsReport/leaveSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year leave summary; own employee else employee.leaves.*" },
   "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
   "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
   "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },

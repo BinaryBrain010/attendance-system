@@ -95,6 +95,19 @@ async function main() {
       }
       check("totals aggregate present days across set >= 10", totals.presentDays >= 10, `got ${totals.presentDays}`);
 
+      // ---- Leave summary (shared calc) matches the monthly report, BEFORE apply ----
+      const ls = await svc.leaveSummary(undefined, empA.id, YEAR);
+      check("leaveSummary.taken matches monthly report leavesTakenYear", r != null && ls.taken === r.leavesTakenYear, `ls ${ls.taken} vs rpt ${r?.leavesTakenYear}`);
+      check("leaveSummary.entitled matches monthly report entitlement (32)", ls.entitled === 32 && (r == null || ls.entitled === r.leaveEntitlementYear));
+      check("leaveSummary before apply: not applied, allocated 0, remaining = entitled - taken", ls.entitledApplied === false && ls.allocated === 0 && ls.remaining === Math.max(0, 32 - ls.taken), `applied=${ls.entitledApplied} alloc=${ls.allocated} rem=${ls.remaining}`);
+      const casual = (ls.byType || []).find((t: any) => t.type === "CASUAL");
+      check("leaveSummary byType has CASUAL with taken = total taken", !!casual && casual.taken === ls.taken, `casual ${casual?.taken}`);
+      check("leaveSummary monthly strip (12) sums to taken", Array.isArray(ls.monthly) && ls.monthly.length === 12 && ls.monthly.reduce((s: number, n: number) => s + n, 0) === ls.taken);
+      let lsBlocked = false; try { await svc.leaveSummary(uMgr.id, empB.id, YEAR); } catch { lsBlocked = true; }
+      check("leaveSummary: unit-A manager blocked from unit-B employee", lsBlocked);
+      const lsOwn = await svc.leaveSummary(uMgr.id, empMgr.id, YEAR).then(() => true).catch(() => false);
+      check("leaveSummary: user can read their own employee summary", lsOwn);
+
       // ---- Unit scoping ----
       const mgrRows = await svc.monthlyRows(uMgr.id, { year: YEAR, month: MONTH });
       const mgrIds = new Set(mgrRows.rows.map((x) => x.employeeId));
@@ -111,6 +124,10 @@ async function main() {
       const a1 = await hr.applyEntitlement(empA.id, YEAR);
       const a2 = await hr.applyEntitlement(empA.id, YEAR);
       check("applyEntitlement creates POLICY then is non-destructive (skips existing)", a1.action === "created" && a1.policy === 32 && a2.action === "skipped");
+
+      // ---- Leave summary AFTER apply reflects the POLICY allocation ----
+      const lsApplied = await svc.leaveSummary(undefined, empA.id, YEAR);
+      check("leaveSummary after apply: applied, allocated 32, remaining = 32 - taken", lsApplied.entitledApplied === true && lsApplied.allocated === 32 && lsApplied.remaining === Math.max(0, 32 - lsApplied.taken), `applied=${lsApplied.entitledApplied} alloc=${lsApplied.allocated} rem=${lsApplied.remaining}`);
     });
   } finally {
     await prisma.leaveAllocation.deleteMany({ where: { employeeId: { in: ids.emps } } }).catch(() => {});

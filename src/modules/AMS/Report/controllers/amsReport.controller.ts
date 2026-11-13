@@ -3,11 +3,14 @@ import BaseController from "../../../../core/controllers/base.controller";
 import AmsReportService from "../services/amsReport.service";
 import { sendTableExport, EXPORT_CAP, ExportCol } from "../../../../core/export/tableExport";
 import { ReportPDF } from "../../../../pdf/report";
-import { pdfContentDisposition } from "../../../../core/http/pdfHeaders";
+import { sendPdf } from "../../../../core/http/pdfHeaders";
 import { buildMonthlyExcel, buildMonthlyPdf, buildSlipPdf, toDisplayRow, monthTitle } from "../exports/amsReportExports";
 
 const uid = (req: Request) => (req as any).userId as string | undefined;
 const nowY = () => new Date().getFullYear();
+const MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** e.g. "Nov-2026" for filenames. */
+const monthTag = (year: number, month: number) => `${MON_SHORT[month - 1] || month}-${year}`;
 
 /** Registry of the "simpler" reports: how to fetch rows + the export columns + a title. */
 const SIMPLE: Record<string, { fetch: (svc: AmsReportService, userId: string | undefined, b: any) => Promise<any[]>; columns: ExportCol[]; title: string; filename: string; align?: Record<string, string> }> = {
@@ -64,8 +67,9 @@ class AmsReportController extends BaseController<AmsReportService> {
     const f = { year: Number(b.year) || nowY(), month: Number(b.month) || new Date().getMonth() + 1, unitId: b.unitId, department: b.department, company: b.company, status: b.status };
     const { rows, totals } = await this.service.monthlyRows(uid(req), f);
     const buf = await buildMonthlyExcel(rows, totals, f);
-    res.setHeader("Content-Disposition", `attachment; filename="monthly-report-${f.year}-${String(f.month).padStart(2, "0")}.xlsx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="Monthly-Report_${monthTag(f.year, f.month)}.xlsx"`);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
     res.send(buf);
   }
 
@@ -74,10 +78,7 @@ class AmsReportController extends BaseController<AmsReportService> {
     const f = { year: Number(b.year) || nowY(), month: Number(b.month) || new Date().getMonth() + 1, unitId: b.unitId, department: b.department, company: b.company, status: b.status };
     const { rows, totals } = await this.service.monthlyRows(uid(req), f);
     const doc = buildMonthlyPdf(rows, totals, f);
-    doc.getBuffer((buffer: Buffer) => {
-      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `monthly-report-${f.year}-${String(f.month).padStart(2, "0")}.pdf`), "Content-Length": buffer.length });
-      res.end(buffer);
-    });
+    doc.getBuffer((buffer: Buffer) => sendPdf(req, res, buffer, `Monthly-Report_${monthTag(f.year, f.month)}.pdf`));
   }
 
   async monthlySlip(req: Request, res: Response) {
@@ -86,10 +87,14 @@ class AmsReportController extends BaseController<AmsReportService> {
     const row = await this.service.monthlySlip(uid(req), b.employeeId, year, month);
     if (!row) { res.status(404).json({ success: false, message: "Employee not found in your scope." }); return; }
     const doc = buildSlipPdf(row, { year, month });
-    doc.getBuffer((buffer: Buffer) => {
-      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `slip-${row.code}-${year}-${String(month).padStart(2, "0")}.pdf`), "Content-Length": buffer.length });
-      res.end(buffer);
-    });
+    // Filename the client should save it as, e.g. Slip_SOL-223_Nov-2026.pdf
+    doc.getBuffer((buffer: Buffer) => sendPdf(req, res, buffer, `Slip_${row.code}_${monthTag(year, month)}.pdf`));
+  }
+
+  /** Employee year leave summary (policy band, entitled/allocated/taken/pending/remaining + per-type). */
+  async leaveSummary(req: Request, res: Response) {
+    const b = req.body || {};
+    await this.handleRequest(() => this.service.leaveSummary(uid(req), b.employeeId, Number(b.year) || nowY()), res, { successMessage: "Leave summary retrieved!" });
   }
 
   async saveRemark(req: Request, res: Response) {
@@ -124,10 +129,7 @@ class AmsReportController extends BaseController<AmsReportService> {
     const cols = def.columns.map((c) => ({ header: c.header, key: c.key }));
     const sub = req.body?.from && req.body?.to ? `${req.body.from} — ${req.body.to}` : (req.body?.year ? monthTitle(Number(req.body.year), Number(req.body.month) || 1) : "");
     const doc = new ReportPDF().generate(def.title, cols, rows, sub);
-    doc.getBuffer((buffer: Buffer) => {
-      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": pdfContentDisposition(req, `${def.filename}.pdf`), "Content-Length": buffer.length });
-      res.end(buffer);
-    });
+    doc.getBuffer((buffer: Buffer) => sendPdf(req, res, buffer, `${def.filename}.pdf`));
   }
 }
 

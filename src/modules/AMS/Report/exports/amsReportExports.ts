@@ -125,35 +125,105 @@ export function buildMonthlyPdf(rows: any[], totals: any, meta: { year: number; 
   return pdfMake.createPdf(doc);
 }
 
-/** One-page monthly slip for a single employee. */
+/**
+ * One-page A4 portrait monthly attendance slip for a single employee: logo + company, an employee
+ * block, the month's attendance summary, the year's leave block, a remarks box and HR/employee
+ * signature lines. Clean and plain. All numbers come from the shared monthly calc (no math here).
+ */
 export function buildSlipPdf(row: any, meta: { year: number; month: number }): any {
   (pdfMake as any).fonts = fonts;
   const d = toDisplayRow(row);
-  const line = (label: string, val: any) => [{ text: label, style: "k" }, { text: fmt(val), style: "v" }];
+  const company = (row.company || "").toString().trim() || "Power Highway";
+
+  // Light two-column label/value grid (no vertical lines, hairline row separators).
+  const field = (label: string, val: any) => [{ text: label, style: "k" }, { text: fmt(val) || "—", style: "v" }];
+  const gridLayout = { hLineWidth: () => 0.4, vLineWidth: () => 0, hLineColor: () => "#E3E6EA", paddingTop: () => 4, paddingBottom: () => 4, paddingLeft: () => 0, paddingRight: () => 8 };
+
+  const sectionHead = (text: string) => ({ text: text.toUpperCase(), style: "section", margin: [0, 14, 0, 6] });
+
+  // Year-leave stat tiles (Entitlement / Taken / Remaining / Medical).
+  const tile = (label: string, val: any) => ({ stack: [{ text: String(val), style: "statVal" }, { text: label, style: "statLabel" }], margin: [6, 7, 6, 7] });
+  const tileLayout = {
+    hLineWidth: () => 0.6, vLineWidth: (i: number, node: any) => (i === 0 || i === node.table.widths.length ? 0.6 : 0.6),
+    hLineColor: () => "#D8DEE6", vLineColor: () => "#D8DEE6",
+    fillColor: () => "#F6F8FA",
+  };
+
+  const sig = (label: string) => ({
+    width: "*",
+    stack: [
+      { text: " ", margin: [0, 22, 0, 0] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 190, y2: 0, lineWidth: 0.7, lineColor: "#8A94A6" }] },
+      { text: label, style: "sigLabel", margin: [0, 4, 0, 0] },
+    ],
+  });
+
   const doc: any = {
-    pageSize: "A4", pageMargins: [40, 90, 40, 40],
+    pageSize: "A4", pageMargins: [44, 92, 44, 54],
     header: {
-      margin: [40, 24, 40, 0],
-      columns: [logoOrEmpty(), { stack: [{ text: "Monthly Attendance Slip", style: "brand" }, { text: monthTitle(meta.year, meta.month), style: "period" }], alignment: "right" }],
+      margin: [44, 22, 44, 0],
+      columns: [
+        logoOrEmpty(),
+        { stack: [{ text: company, style: "brand" }, { text: "Monthly Attendance Slip", style: "docType" }, { text: monthTitle(meta.year, meta.month), style: "period" }], alignment: "right" },
+      ],
     },
+    footer: (cur: number, total: number) => ({ columns: [
+      { text: `Generated ${new Date().toISOString().slice(0, 10)}`, style: "foot", margin: [44, 0, 0, 0] },
+      { text: `Page ${cur} of ${total}`, style: "foot", alignment: "right", margin: [0, 0, 44, 0] },
+    ] }),
     content: [
-      { text: `${row.name} (${row.code})`, style: "title", margin: [0, 0, 0, 2] },
-      { text: `${row.designation || ""}${row.department ? " · " + row.department : ""}${row.unit ? " · " + row.unit : ""}`, style: "sub", margin: [0, 0, 0, 12] },
-      { table: { widths: ["40%", "60%"], body: [
-        line("Joining date", d.joining), line("Service length", row.serviceLength), line("Policy group", row.policyGroup),
-        line("Present days", row.presentDays), line("Late days", row.lateDays), line("Total late minutes", row.totalLateMinutes),
-        line("Half days", row.halfDays), line("Absent days", row.absentDays), line("On leave (days)", row.onLeaveDays),
-        line("Leaves this month", d.leaveTypes), line("Leaves taken this year", row.leavesTakenYear),
-        line("Leave entitlement (year)", row.leaveEntitlementYear), line("Remaining leave (year)", row.remainingLeaveYear),
-        line("Medical eligible", d.medical), line("Holidays / weekly offs", row.holidaysWeeklyOffs), line("Short / early leaves", row.shortEarlyLeaves),
-        line("Remark", row.remark || "—"),
-      ] }, layout: { hLineWidth: () => 0.4, vLineWidth: () => 0, hLineColor: () => "#DDDDDD", paddingTop: () => 5, paddingBottom: () => 5 } },
+      // Employee identity
+      { text: row.name, style: "title" },
+      { text: `${row.code}${row.designation ? "  ·  " + row.designation : ""}`, style: "sub", margin: [0, 1, 0, 0] },
+
+      sectionHead("Employee"),
+      { columns: [
+        { width: "50%", table: { widths: ["42%", "58%"], body: [
+          field("Code", row.code), field("Department", row.department), field("Unit", row.unit), field("Policy band", row.policyGroup),
+        ] }, layout: gridLayout },
+        { width: "50%", table: { widths: ["42%", "58%"], body: [
+          field("Designation", row.designation), field("Joining date", d.joining), field("Service length", row.serviceLength), field("Status", row.status),
+        ] }, layout: gridLayout },
+      ], columnGap: 20 },
+
+      sectionHead(`Attendance — ${monthTitle(meta.year, meta.month)}`),
+      { columns: [
+        { width: "50%", table: { widths: ["60%", "40%"], body: [
+          field("Present days", row.presentDays), field("Late days", row.lateDays), field("Late minutes", row.totalLateMinutes), field("Half days", row.halfDays),
+        ] }, layout: gridLayout },
+        { width: "50%", table: { widths: ["60%", "40%"], body: [
+          field("Absent days", row.absentDays), field("On leave (days)", row.onLeaveDays), field("Holidays / weekly offs", row.holidaysWeeklyOffs), field("Short / early leaves", row.shortEarlyLeaves),
+        ] }, layout: gridLayout },
+      ], columnGap: 20 },
+      { table: { widths: ["21%", "79%"], body: [field("Leaves this month", d.leaveTypes)] }, layout: gridLayout, margin: [0, 2, 0, 0] },
+
+      sectionHead(`Annual leave — ${meta.year}`),
+      { table: { widths: ["25%", "25%", "25%", "25%"], body: [[
+        tile("Entitlement", row.leaveEntitlementYear), tile("Taken", row.leavesTakenYear), tile("Remaining", row.remainingLeaveYear), tile("Medical eligible", d.medical),
+      ]] }, layout: tileLayout },
+
+      sectionHead("Remarks"),
+      { table: { widths: ["*"], body: [[{ text: row.remark && String(row.remark).trim() ? String(row.remark) : "—", style: "remark", margin: [8, 8, 8, 18] }]] },
+        layout: { hLineWidth: () => 0.6, vLineWidth: () => 0.6, hLineColor: () => "#D8DEE6", vLineColor: () => "#D8DEE6" } },
+
+      { columns: [sig("HR / Manager"), { width: 36, text: "" }, sig("Employee")], margin: [0, 30, 0, 0] },
     ],
     styles: {
-      brand: { fontSize: 14, bold: true, color: "#2C3E50" }, period: { fontSize: 9, color: "#555555" },
-      title: { fontSize: 15, bold: true }, sub: { fontSize: 9, color: "#666666" },
-      k: { fontSize: 9, bold: true, color: "#444444" }, v: { fontSize: 9, color: "#111111" },
+      brand: { fontSize: 15, bold: true, color: "#2C3E50" },
+      docType: { fontSize: 10, color: "#3A4658", bold: true },
+      period: { fontSize: 9, color: "#6B7280" },
+      title: { fontSize: 17, bold: true, color: "#1F2937" },
+      sub: { fontSize: 9.5, color: "#6B7280" },
+      section: { fontSize: 9, bold: true, color: "#2C3E50", characterSpacing: 0.6 },
+      k: { fontSize: 9, color: "#5A6472" },
+      v: { fontSize: 9, bold: true, color: "#1F2937" },
+      statVal: { fontSize: 15, bold: true, color: "#2C3E50", alignment: "center" },
+      statLabel: { fontSize: 7.5, color: "#6B7280", alignment: "center", margin: [0, 2, 0, 0] },
+      remark: { fontSize: 9.5, color: "#1F2937" },
+      sigLabel: { fontSize: 8.5, color: "#5A6472", bold: true },
+      foot: { fontSize: 7, color: "#9AA3B2" },
     },
+    defaultStyle: { font: "Roboto" },
   };
   return pdfMake.createPdf(doc);
 }
