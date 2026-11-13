@@ -99,6 +99,11 @@
     "feature": "ams.report.read.*",
     "kind": "read"
   },
+  "POST /amsReport/leaveSummary": {
+    "access": "self",
+    "feature": "employee.leaves.*",
+    "kind": "read"
+  },
   "POST /amsReport/monthly": {
     "access": "feature",
     "feature": "ams.report.read.*",
@@ -1377,6 +1382,11 @@
   "POST /hrPolicy/probation/history": {
     "access": "feature",
     "feature": "hr.policy.manage.*",
+    "kind": "read"
+  },
+  "POST /hrPolicy/probation/status": {
+    "access": "self",
+    "feature": "employee.read.*",
     "kind": "read"
   },
   "POST /hrPolicy/rules": {

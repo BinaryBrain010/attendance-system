@@ -23,6 +23,8 @@ class AmsReportRoutes {
     this.router.post("/monthly/pdf", this.controller.monthlyPdf.bind(this.controller));
     this.router.post("/slip/pdf", this.controller.monthlySlip.bind(this.controller));
     this.router.post("/monthly/remark", this.controller.saveRemark.bind(this.controller));
+    // Employee year leave summary (shared policy calc; own employee or employee.leaves.*)
+    this.router.post("/leaveSummary", this.controller.leaveSummary.bind(this.controller));
     // Other reports (JSON)
     this.router.post("/daily", this.simple("daily"));
     this.router.post("/lateComers", this.simple("lateComers"));

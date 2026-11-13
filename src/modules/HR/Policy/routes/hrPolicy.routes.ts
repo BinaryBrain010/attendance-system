@@ -24,6 +24,7 @@ class HrPolicyRoutes {
     this.router.post("/entitlement/adjust", this.controller.adjustEntitlement.bind(this.controller));
     // Probation
     this.router.post("/probation/due", this.controller.probationDue.bind(this.controller));
+    this.router.post("/probation/status", this.controller.probationStatus.bind(this.controller));
     this.router.post("/probation/history", this.controller.probationHistory.bind(this.controller));
     this.router.post("/probation/decide", this.controller.probationDecide.bind(this.controller));
   }

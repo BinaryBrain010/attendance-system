@@ -45,6 +45,9 @@ class HrPolicyController extends BaseController<HrPolicyService> {
     const within = req.body?.withinDays != null ? Number(req.body.withinDays) : 7;
     await this.handleRequest(() => this.service.probationDue(uid(req), within), res, { successMessage: "Probation list retrieved!" });
   }
+  async probationStatus(req: Request, res: Response) {
+    await this.handleRequest(() => this.service.probationStatus(uid(req), req.body?.employeeId), res, { successMessage: "Probation status retrieved!" });
+  }
   async probationHistory(req: Request, res: Response) {
     await this.handleRequest(() => this.service.probationHistory(req.body?.employeeId), res, { successMessage: "Probation history retrieved!" });
   }

@@ -124,6 +124,12 @@ async function main() {
       const legacyAlert = await prisma.notification.findFirst({ where: { type: "PROBATION_DUE", entityType: "Employee", entityId: legacyEmp.id } });
       check("daily job sends ZERO alerts for the legacy employee", !legacyAlert);
 
+      // ---- probationStatus (employee-page banner source): on-probation vs legacy ----
+      const stDue = await svc.probationStatus(undefined, empDue.id);
+      check("probationStatus: PROBATION employee is onProbation, dueInDays 0 (ends today)", stDue.onProbation === true && stDue.dueInDays === 0 && !!stDue.probationEnd, `onProb=${stDue.onProbation} due=${stDue.dueInDays}`);
+      const stLegacy = await svc.probationStatus(undefined, legacyEmp.id);
+      check("probationStatus: legacy ACTIVE employee is NOT onProbation (legacy-safe)", stLegacy.onProbation === false && stLegacy.dueInDays === null);
+
       // ---- #1: legacy confirm step marks them confirmed (System, legacy; no notification) ----
       const toConfirm = await svc.legacyToConfirm(today);
       check("legacyToConfirm includes the legacy employee", toConfirm.some((e: any) => e.id === legacyEmp.id));
@@ -198,6 +204,7 @@ async function main() {
     await prisma.probationDecision.deleteMany({ where: { employeeId: { in: createdEmpIds } } }).catch(() => {});
     for (const id of createdFpIds) await prisma.featurePermission.delete({ where: { id } }).catch(() => {});
     for (const id of createdUserIds) await prisma.user.delete({ where: { id } }).catch(() => {});
+    await prisma.attendance.deleteMany({ where: { employeeId: { in: createdEmpIds } } }).catch(() => {}); // RESTRICT FK: clear before employee delete
     for (const id of createdEmpIds) await prisma.employee.delete({ where: { id } }).catch(() => {});
   }
 

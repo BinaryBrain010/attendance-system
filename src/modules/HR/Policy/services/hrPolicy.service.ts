@@ -202,22 +202,27 @@ class HrPolicyService {
     };
     if (scope !== null) where.id = { in: scope };
     const emps = await prisma.employee.findMany({
-      where, select: { id: true, code: true, name: true, surname: true, designation: true, department: true, joiningDate: true, probationEndDate: true, probationClearedAt: true, status: true },
+      where, select: { id: true, code: true, name: true, surname: true, designation: true, department: true, image: true, joiningDate: true, probationEndDate: true, probationClearedAt: true, status: true },
     });
     const today = startOfDay(new Date());
     const horizon = addDays(today, withinDays);
+    const due = emps.filter((e) => this.isOnProbation(e, policyStart) && startOfDay(e.probationEndDate ?? probationDefaultEnd(e.joiningDate, settings.probationMonths)) <= horizon);
+    // Attach a unit name (first unit) for the HR decisions dialog.
+    const unitByEmp = new Map<string, string>();
+    if (due.length) {
+      const links = await prisma.unitEmployee.findMany({ where: { employeeId: { in: due.map((e) => e.id) }, isDeleted: null, unit: { isDeleted: null } }, select: { employeeId: true, unit: { select: { name: true } } } });
+      for (const l of links) if (l.unit && !unitByEmp.has(l.employeeId)) unitByEmp.set(l.employeeId, l.unit.name);
+    }
     const rows: any[] = [];
-    for (const e of emps) {
-      if (!this.isOnProbation(e, policyStart)) continue; // legacy / already-confirmed never appear
+    for (const e of due) {
       const end = startOfDay(e.probationEndDate ?? probationDefaultEnd(e.joiningDate, settings.probationMonths));
-      if (end <= horizon) {
-        rows.push({
-          ...e,
-          probationEnd: end,
-          dueInDays: Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)),
-          overdue: end < today,
-        });
-      }
+      rows.push({
+        ...e,
+        unit: unitByEmp.get(e.id) || null,
+        probationEnd: end,
+        dueInDays: Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)),
+        overdue: end < today,
+      });
     }
     rows.sort((a, b) => a.probationEnd.getTime() - b.probationEnd.getTime());
     return rows;
@@ -242,6 +247,39 @@ class HrPolicyService {
   async confirmLegacy(employeeId: string): Promise<void> {
     await prisma.employee.update({ where: { id: employeeId }, data: { status: "ACTIVE", probationClearedAt: new Date() } });
     await prisma.probationDecision.create({ data: { employeeId, decision: "CONFIRM", reason: "System, legacy — joined before probation policy", decidedById: null } });
+  }
+
+  /**
+   * Legacy-safe probation status for a single employee — powers the banner/chip on the employee page.
+   * Own employee is always allowed (read-only); otherwise the caller needs unit access. Returns whether
+   * they are genuinely on probation (new hire, not legacy/cleared/terminal), the end date, and days left.
+   */
+  async probationStatus(userId: string | undefined, employeeId: string): Promise<any> {
+    if (!employeeId) throw new AppError(400, "employeeId is required.");
+    if (userId) {
+      const own = await prisma.user.findFirst({ where: { id: userId, isDeleted: null }, select: { employeeId: true } });
+      const isOwn = !!own?.employeeId && own.employeeId === employeeId;
+      if (!isOwn) {
+        const { canAccessEmployee } = await import("../../../AMS/Unit/helper/unitAccess.helper");
+        if (!(await canAccessEmployee(userId, employeeId))) throw new AppError(403, "This employee is outside your units.");
+      }
+    }
+    const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true, status: true, joiningDate: true, probationEndDate: true, probationClearedAt: true } });
+    if (!emp || !emp.joiningDate) throw new AppError(404, "Employee not found.");
+    const settings = await getHrSettings();
+    const policyStart = settings.probationPolicyStartDate ? startOfDay(new Date(settings.probationPolicyStartDate)) : null;
+    const onProbation = this.isOnProbation(emp as any, policyStart);
+    const end = startOfDay(emp.probationEndDate ?? probationDefaultEnd(emp.joiningDate, settings.probationMonths));
+    const today = startOfDay(new Date());
+    return {
+      employeeId: emp.id,
+      status: emp.status,
+      onProbation,
+      probationEnd: onProbation ? end : (emp.probationEndDate ?? null),
+      dueInDays: onProbation ? Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)) : null,
+      overdue: onProbation ? end < today : false,
+      clearedAt: emp.probationClearedAt ?? null,
+    };
   }
 
   /** Full probation history for an employee (newest first). */
