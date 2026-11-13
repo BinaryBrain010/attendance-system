@@ -388,12 +388,15 @@ const holidayModel = prisma.$extends({
         for (let i = 0; i < missingEmployeeIds.length; i += CREATE_ATTENDANCE_CHUNK) {
           const chunk = missingEmployeeIds.slice(i, i + CREATE_ATTENDANCE_CHUNK);
           await prisma.attendance.createMany({
+            // skipDuplicates: the day guard (one active row per employee per PK-day) means a row may
+            // already exist for this day from another path — skip it rather than aborting the batch.
             data: chunk.map((employeeId) => ({
               employeeId,
               date: dateStart,
               status: AttendanceStatus.HOLIDAYS,
               createdAt: now,
             })),
+            skipDuplicates: true,
           });
         }
       },

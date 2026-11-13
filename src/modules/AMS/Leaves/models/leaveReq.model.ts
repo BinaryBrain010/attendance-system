@@ -314,19 +314,33 @@ const leaveReqModel = prisma.$extends({
                 } as any,
               });
             } else {
-              await prisma.attendance.create({
-                data: {
-                  employeeId: currentRequest.employeeId,
-                  date: dayStart,
-                  status: "ON_LEAVE",
-                  checkIn: null,
-                  checkOut: null,
-                  comment: currentRequest.reason || "",
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  previousUpdates: [],
-                } as any,
-              });
+              try {
+                await prisma.attendance.create({
+                  data: {
+                    employeeId: currentRequest.employeeId,
+                    date: dayStart,
+                    status: "ON_LEAVE",
+                    checkIn: null,
+                    checkOut: null,
+                    comment: currentRequest.reason || "",
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    previousUpdates: [],
+                  } as any,
+                });
+              } catch (e: any) {
+                // Day guard: a row already exists for this employee+day (race). Flip it to ON_LEAVE.
+                if (e?.code !== "P2002") throw e;
+                const w = await prisma.attendance.findFirst({
+                  where: { employeeId: currentRequest.employeeId, date: { gte: dayStart, lte: dayEnd }, isDeleted: null },
+                }) as any;
+                if (w && w.status !== "ON_LEAVE") {
+                  await prisma.attendance.update({
+                    where: { id: w.id },
+                    data: { status: "ON_LEAVE", checkIn: null, checkOut: null, comment: currentRequest.reason || w.comment || "", updatedAt: new Date() } as any,
+                  });
+                }
+              }
             }
           }
         }

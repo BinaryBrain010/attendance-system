@@ -504,19 +504,47 @@ const attendanceModel = prisma.$extends({
 
           // If no existing attendance, proceed to create with normalized date
           const clearTimesOnCreate = shouldClearTimes(effectiveStatus);
-          const newAttendance = await tx.attendance.create({
-            data: {
-              ...attendanceFields,
-              status: effectiveStatus,
-              date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
-              checkIn: clearTimesOnCreate
-                ? null
-                : normalizedCheckIn ?? new Date(),
-              comment: attendanceFields.comment || '',
-              createdBy: createdByUserId || null,
-              previousUpdates: [],
-            } as any,
-          });
+          const createData = {
+            ...attendanceFields,
+            status: effectiveStatus,
+            date: normalizedDate, // Use normalized date (start of day in Pakistan timezone)
+            checkIn: clearTimesOnCreate
+              ? null
+              : normalizedCheckIn ?? new Date(),
+            comment: attendanceFields.comment || '',
+            createdBy: createdByUserId || null,
+            previousUpdates: [],
+          } as any;
+          let newAttendance;
+          try {
+            newAttendance = await tx.attendance.create({ data: createData });
+          } catch (e: any) {
+            // Lost a race to a concurrent writer (e.g. the absent-cron) for this employee+day: the
+            // findFirst above saw nothing, both tried to create, and the unique day guard rejected the
+            // loser. Re-fetch the row that won and reconcile — if ours is a real presence (has a
+            // check-in) and theirs is an auto ABSENT/leave/holiday, upgrade it instead of duplicating.
+            if (e?.code !== 'P2002') throw e;
+            const winner = await tx.attendance.findFirst({
+              where: { employeeId: attendanceFields.employeeId, date: { gte: todayStart, lt: todayEnd }, isDeleted: null },
+            });
+            if (!winner) throw e;
+            if (createData.checkIn && ['ABSENT', 'ON_LEAVE', 'HOLIDAYS'].includes(winner.status)) {
+              newAttendance = await tx.attendance.update({
+                where: { id: winner.id },
+                data: {
+                  status: effectiveStatus,
+                  checkIn: createData.checkIn,
+                  checkOut: createData.checkOut ?? null,
+                  comment: createData.comment,
+                  location: createData.location ?? winner.location,
+                  updatedBy: updatedByUserId || null,
+                  updatedAt: new Date(),
+                } as any,
+              });
+            } else {
+              newAttendance = winner;
+            }
+          }
 
           // If status is ON_LEAVE and createLeaveRequest is true, create a leave request
           if (attendanceFields.status === 'ON_LEAVE' && createLeaveRequest) {
@@ -652,16 +680,30 @@ const attendanceModel = prisma.$extends({
               });
             } else {
               // Create new attendance record as ON_LEAVE
-              const newAttendance = await prisma.attendance.create({
-                data: {
-                  employeeId,
-                  date: normalizedDate,
-                  status: AttendanceStatus.ON_LEAVE,
-                  comment: reason || '',
-                  createdBy: createdByUserId || null,
-                  createdAt: new Date(),
-                } as any,
-              });
+              let newAttendance;
+              try {
+                newAttendance = await prisma.attendance.create({
+                  data: {
+                    employeeId,
+                    date: normalizedDate,
+                    status: AttendanceStatus.ON_LEAVE,
+                    comment: reason || '',
+                    createdBy: createdByUserId || null,
+                    createdAt: new Date(),
+                  } as any,
+                });
+              } catch (e: any) {
+                // Day guard: a row already exists for this employee+day (race). Update it to ON_LEAVE.
+                if (e?.code !== 'P2002') throw e;
+                const w = await prisma.attendance.findFirst({
+                  where: { employeeId, date: { gte: dateStart, lte: dateEnd }, isDeleted: null },
+                });
+                if (!w) throw e;
+                newAttendance = await prisma.attendance.update({
+                  where: { id: w.id },
+                  data: { status: AttendanceStatus.ON_LEAVE, comment: reason || w.comment || '', updatedBy: createdByUserId || null, updatedAt: new Date() } as any,
+                });
+              }
 
               results.push({
                 employeeId,
@@ -1237,11 +1279,20 @@ ORDER BY
             previousUpdates: [],
           };
 
-          const createdItem = await this.create({
-            data: newData as any,
-          });
-
-          createdItems.push(createdItem);
+          try {
+            const createdItem = await this.create({ data: newData as any });
+            createdItems.push(createdItem);
+          } catch (e: any) {
+            // Day guard: a row already exists for this employee+PK-day. Skip the duplicate create and
+            // return the existing row instead of erroring (this is the no-dedup /attendance/create path).
+            if (e?.code !== 'P2002') throw e;
+            const d = newData.date ? new Date(newData.date) : new Date();
+            const existing = await prisma.attendance.findFirst({
+              where: { employeeId: newData.employeeId, date: { gte: getStartOfDayPakistan(d), lt: getEndOfDayPakistan(d) }, isDeleted: null },
+            });
+            if (!existing) throw e;
+            createdItems.push(existing);
+          }
         }
 
         return createdItems;

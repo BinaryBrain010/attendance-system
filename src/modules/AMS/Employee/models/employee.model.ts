@@ -664,8 +664,9 @@ const employeeModel = prisma.$extends({
                 createdAt: now,
               };
             });
-            // New employee has no attendance yet, so a plain createMany is safe.
-            await prisma.attendance.createMany({ data: rows as any });
+            // New employee has no attendance yet, but skipDuplicates keeps this safe against the
+            // day guard (one active row per employee per PK-day) if a holiday row already landed.
+            await prisma.attendance.createMany({ data: rows as any, skipDuplicates: true });
           }
         } catch (err: any) {
           console.error(
