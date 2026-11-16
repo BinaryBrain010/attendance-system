@@ -81,46 +81,166 @@ function logoOrEmpty(): any {
   try { return { image: getLogoDataURL(LOGO_PATH), width: 54 }; } catch { return { text: "" }; }
 }
 
-export function buildMonthlyPdf(rows: any[], totals: any, meta: { year: number; month: number }): any {
+const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "05 Mar 2019" — never wraps. */
+function fmtDay(d: any): string {
+  if (!d) return "";
+  const x = new Date(d);
+  if (isNaN(x.getTime())) return "";
+  return `${String(x.getDate()).padStart(2, "0")} ${MON3[x.getMonth()]} ${x.getFullYear()}`;
+}
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
+/**
+ * Monthly Employee Report — A4 LANDSCAPE, full-width 15-column table. The report groups rows by
+ * department (bold subheading) so the Department column is dropped (implied), which keeps it to 15
+ * readable columns under a grouped "Employee | This month | Leave balance" header. Numeric columns
+ * have fixed widths; Name + Designation share the remaining width. Nothing wraps mid-word; codes,
+ * dates and numbers never wrap. Header + summary strip appear once up top; the column header repeats
+ * on every page; the footer carries "Page x of y" + the generated date. The Excel export keeps ALL
+ * fields (see MONTHLY_COLUMNS) — only the PDF trims to what reads well on a page.
+ */
+export function buildMonthlyPdf(rows: any[], totals: any, meta: { year: number; month: number; generatedBy?: string; filterLabel?: string }): any {
   (pdfMake as any).fonts = fonts;
-  const cols = MONTHLY_COLUMNS;
-  const header = cols.map((c) => ({ text: c.header, style: "th", alignment: c.align || "left" }));
-  const body = [
-    header,
-    ...rows.map(toDisplayRow).map((d) => cols.map((c) => ({ text: fmt(d[c.key]), style: "td", alignment: c.align || "left" }))),
-    cols.map((c, i) => {
-      if (i === 0) return { text: "TOTAL", style: "tdBold" };
-      if (c.key === "name") return { text: `${totals.employees} employees`, style: "tdBold" };
-      if (TOTAL_KEYS.includes(c.key)) return { text: fmt(totals[c.key]), style: "tdBold", alignment: c.align || "left" };
-      return { text: "", style: "tdBold" };
-    }),
-  ];
-  const doc: any = {
-    pageSize: "A4", pageOrientation: "landscape", pageMargins: [24, 70, 24, 36],
-    header: {
-      margin: [24, 16, 24, 0],
-      columns: [
-        logoOrEmpty(),
-        { stack: [{ text: "Monthly Employee Report", style: "brand" }, { text: monthTitle(meta.year, meta.month), style: "period" }], alignment: "right" },
-      ],
-    },
-    content: [
-      { table: { headerRows: 1, widths: cols.map((c) => c.width), body }, layout: {
-        hLineWidth: (i: number, node: any) => (i === 0 || i === 1 || i === node.table.body.length ? 0.8 : 0.3),
-        vLineWidth: () => 0, hLineColor: () => "#AAAAAA",
-        fillColor: (ri: number, node: any) => (ri === 0 ? "#2C3E50" : ri === node.table.body.length - 1 ? "#E8EDF2" : null),
-        paddingTop: () => 2, paddingBottom: () => 2, paddingLeft: () => 3, paddingRight: () => 3,
-      } },
+  const today = new Date().toISOString().slice(0, 10);
+  const company = (rows[0]?.company || "").toString().trim() || "Power Highway";
+
+  // Column widths: fixed for everything except Name + Designation ("*"), which share the slack so the
+  // table spans the full printable width (A4 landscape 842 − 48 margins = 794pt).
+  const widths = [42, "*", "*", 50, 54, 38, 30, 38, 30, 34, 54, 44, 32, 44, 88];
+  //              Code Name Desig Unit  Join Serv Pres Late Half Abs  Leav Enti Takn Rem  Remarks
+  const HEAD = ["Code", "Name", "Designation", "Unit", "Joined", "Service", "Present", "Late", "Half day", "Absent", "Leave", "Entitled", "Taken", "Remaining", "Remarks"];
+  const ALIGN = ["left", "left", "left", "left", "left", "center", "center", "center", "center", "center", "center", "center", "center", "center", "left"];
+
+  // Grouped header row (colSpans must be padded with empty cells).
+  const groupRow: any[] = [];
+  const grp = (text: string, span: number) => { groupRow.push({ text, colSpan: span, style: "thg", alignment: "center" }); for (let i = 1; i < span; i++) groupRow.push({}); };
+  grp("Employee", 6); grp("This month", 5); grp("Leave balance", 3); groupRow.push({ text: "", style: "thg" });
+  const headRow = HEAD.map((h, i) => ({ text: h, style: "th", alignment: ALIGN[i] }));
+
+  const GREY0 = "#BFC5CE"; // zero / empty values in light grey
+  const INK = "#333333";
+  const z = (v: any) => Number(v) === 0;
+  const numCell = (v: any, opts: { bold?: boolean } = {}) => ({ text: String(v ?? 0), alignment: "center", style: "td", noWrap: true, bold: !!opts.bold, color: opts.bold ? "#111827" : (z(v) ? GREY0 : INK) });
+
+  const dataRow = (r: any): any[] => {
+    const lateCell = r.totalLateMinutes > 0
+      ? { stack: [{ text: String(r.lateDays), alignment: "center", color: z(r.lateDays) ? GREY0 : INK }, { text: `${r.totalLateMinutes}m`, style: "sub", alignment: "center" }] }
+      : numCell(r.lateDays);
+    const types = Object.entries(r.leavesThisMonthByType || {}).map(([t, n]) => `${titleCase(t)} ${n}`).join(", ");
+    const leaveCell = { stack: [{ text: String(r.onLeaveDays), alignment: "center", color: z(r.onLeaveDays) ? GREY0 : INK }, ...(types ? [{ text: types, style: "sub", alignment: "center" }] : [])] };
+    const ent = `${r.leaveEntitlementYear}${r.medicalEligible ? " +M" : ""}`;
+    const remarkParts: string[] = [];
+    if (r.remark && String(r.remark).trim()) remarkParts.push(String(r.remark).trim());
+    if (r.shortEarlyLeaves > 0) remarkParts.push(`Early out: ${r.shortEarlyLeaves}`);
+    const remark = remarkParts.join("  ·  ");
+    return [
+      { text: r.code || "", style: "td", noWrap: true },
+      { text: r.name || "", style: "td" },
+      { text: r.designation || "", style: "td" },
+      { text: r.unit || "—", style: "td", noWrap: true },
+      { text: fmtDay(r.joiningDate), style: "td", noWrap: true },
+      { text: r.serviceLength || "", style: "td", alignment: "center", noWrap: true },
+      numCell(r.presentDays),
+      lateCell,
+      numCell(r.halfDays),
+      numCell(r.absentDays, { bold: r.absentDays > 0 }),
+      leaveCell,
+      { text: ent, style: "td", alignment: "center", noWrap: true, color: r.leaveEntitlementYear === 0 ? GREY0 : INK },
+      numCell(r.leavesTakenYear),
+      numCell(r.remainingLeaveYear, { bold: r.remainingLeaveYear <= 0 }),
+      { text: remark || "—", style: remark ? "td" : "tdMuted" },
+    ];
+  };
+
+  // Body: grouped header (2 rows) + department subheadings + data rows (rows already sorted dept,name).
+  const body: any[] = [groupRow, headRow];
+  const kinds: string[] = ["group", "head"]; // parallel to body, drives fill striping
+  let lastDept: string | null = null;
+  let parity = 0;
+  for (const r of rows) {
+    const dept = (r.department || "—").toString();
+    if (dept !== lastDept) {
+      lastDept = dept;
+      parity = 0;
+      body.push([{ text: dept, colSpan: 15, style: "dept" }, ...Array(14).fill({})]);
+      kinds.push("dept");
+    }
+    body.push(dataRow(r));
+    kinds.push((parity++ % 2 === 1) ? "zebra" : "data");
+  }
+
+  const headerBlock = {
+    columns: [
+      { width: 60, ...logoOrEmpty() },
+      { width: "*", alignment: "right", stack: [
+        { text: company, style: "brand" },
+        { text: "Monthly Employee Report", style: "docType" },
+        { text: `${monthTitle(meta.year, meta.month)}${meta.filterLabel ? "    ·    " + meta.filterLabel : ""}`, style: "period" },
+        { text: `Generated ${today}${meta.generatedBy ? " by " + meta.generatedBy : ""}`, style: "gen" },
+      ] },
     ],
-    footer: (cur: number, total: number) => ({ text: `Page ${cur} of ${total}`, alignment: "center", fontSize: 7, color: "#888888", margin: [0, 6, 0, 0] }),
-    styles: {
-      brand: { fontSize: 13, bold: true, color: "#2C3E50" },
-      period: { fontSize: 9, color: "#555555" },
-      th: { fontSize: 6.5, bold: true, color: "#FFFFFF" },
-      td: { fontSize: 6.5, color: "#222222" },
-      tdBold: { fontSize: 6.5, bold: true, color: "#222222" },
+  };
+
+  const stat = (label: string, val: any) => ({ stack: [{ text: String(val ?? 0), style: "statVal", alignment: "center" }, { text: label, style: "statLbl", alignment: "center" }] });
+  const summaryStrip = {
+    margin: [0, 12, 0, 10] as any,
+    table: { widths: Array(7).fill("*"), body: [[
+      stat("Employees", totals.employees), stat("Working days", totals.workingDays), stat("Holidays / offs", totals.holidaysWeeklyOffs),
+      stat("Present", totals.presentDays), stat("Late", totals.lateDays), stat("Absent", totals.absentDays), stat("Leave days", totals.onLeaveDays),
+    ]] },
+    layout: {
+      hLineWidth: (i: number, node: any) => (i === 0 || i === node.table.body.length ? 0.8 : 0),
+      vLineWidth: () => 0, hLineColor: () => "#D8DEE6", paddingTop: () => 6, paddingBottom: () => 6,
     },
-    defaultStyle: { fontSize: 7 },
+  };
+
+  const doc: any = {
+    pageSize: "A4", pageOrientation: "landscape", pageMargins: [24, 24, 24, 30],
+    content: [
+      headerBlock,
+      summaryStrip,
+      {
+        table: { headerRows: 2, dontBreakRows: true, widths, body },
+        layout: {
+          hLineWidth: (i: number, node: any) => (i === 0 ? 0 : i === 2 ? 0.9 : i === node.table.body.length ? 0.6 : 0.3),
+          vLineWidth: () => 0.3,
+          hLineColor: (i: number) => (i === 2 ? "#9AA3B2" : "#E6E9ED"),
+          vLineColor: () => "#ECEEF1",
+          fillColor: (ri: number) => {
+            const k = kinds[ri];
+            if (k === "group" || k === "head") return "#EEF1F4";
+            if (k === "dept") return "#E2E6EB";
+            if (k === "zebra") return "#F7F8FA";
+            return null;
+          },
+          paddingTop: () => 1.3, paddingBottom: () => 1.3, paddingLeft: () => 3, paddingRight: () => 3,
+        },
+      },
+    ],
+    footer: (cur: number, total: number) => ({
+      margin: [0, 6, 0, 0] as any,
+      columns: [
+        { text: `Generated ${today}`, style: "foot", margin: [24, 0, 0, 0] },
+        { text: `Page ${cur} of ${total}`, style: "foot", alignment: "right", margin: [0, 0, 24, 0] },
+      ],
+    }),
+    styles: {
+      brand: { fontSize: 13, bold: true, color: "#1F2937" },
+      docType: { fontSize: 10, bold: true, color: "#374151" },
+      period: { fontSize: 8.5, color: "#6B7280" },
+      gen: { fontSize: 7.5, color: "#9AA3B2" },
+      statVal: { fontSize: 12.5, bold: true, color: "#1F2937" },
+      statLbl: { fontSize: 7, color: "#6B7280", margin: [0, 1, 0, 0] },
+      thg: { fontSize: 7, bold: true, color: "#374151" },
+      th: { fontSize: 6.5, bold: true, color: "#374151" },
+      td: { fontSize: 7, color: INK },
+      tdMuted: { fontSize: 7, color: GREY0 },
+      sub: { fontSize: 5, color: "#9AA3B2" },
+      dept: { fontSize: 7.5, bold: true, color: "#1F2937" },
+      foot: { fontSize: 7, color: "#9AA3B2" },
+    },
+    defaultStyle: { font: "Roboto", fontSize: 7 },
   };
   return pdfMake.createPdf(doc);
 }

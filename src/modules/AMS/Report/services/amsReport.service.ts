@@ -108,6 +108,12 @@ class AmsReportService {
 
     const rows: any[] = [];
     const totals = this.emptyTotals();
+    // Month-level figures for the report header strip (same for every employee).
+    const daysInMonth = new Date(f.year, f.month, 0).getDate();
+    totals.monthHolidays = monthHolidayDates.length;
+    totals.monthSundays = sundays;
+    totals.holidaysWeeklyOffs = monthHolidayDates.length + sundays;
+    totals.workingDays = Math.max(0, daysInMonth - sundays - monthHolidayDates.length);
 
     for (const e of list) {
       const att = attByEmp.get(e.id) || [];
@@ -201,7 +207,22 @@ class AmsReportService {
   }
 
   private emptyTotals() {
-    return { employees: 0, presentDays: 0, lateDays: 0, totalLateMinutes: 0, halfDays: 0, absentDays: 0, onLeaveDays: 0, leavesThisMonth: 0, leavesTakenYear: 0, leaveEntitlementYear: 0, remainingLeaveYear: 0, shortEarlyLeaves: 0 };
+    return { employees: 0, presentDays: 0, lateDays: 0, totalLateMinutes: 0, halfDays: 0, absentDays: 0, onLeaveDays: 0, leavesThisMonth: 0, leavesTakenYear: 0, leaveEntitlementYear: 0, remainingLeaveYear: 0, shortEarlyLeaves: 0, workingDays: 0, holidaysWeeklyOffs: 0, monthHolidays: 0, monthSundays: 0 };
+  }
+
+  /** Header meta for the monthly PDF: who generated it and a human label for the active filters. */
+  async monthlyReportMeta(userId: string | undefined, f: MonthlyFilters): Promise<{ generatedBy: string; filterLabel: string }> {
+    let generatedBy = "—";
+    if (userId) {
+      const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } }).catch(() => null);
+      generatedBy = u?.username || "—";
+    }
+    const parts: string[] = [];
+    if (f.unitId) { const un = await prisma.unit.findUnique({ where: { id: f.unitId }, select: { name: true } }).catch(() => null); if (un?.name) parts.push(`Unit: ${un.name}`); }
+    if (f.department) parts.push(`Dept: ${f.department}`);
+    if (f.company) parts.push(`Company: ${f.company}`);
+    if (f.status) parts.push(`Status: ${f.status}`);
+    return { generatedBy, filterLabel: parts.join("   ·   ") || "All units" };
   }
   private sundaysInMonth(year: number, month: number): number {
     const { end } = monthRange(year, month);
