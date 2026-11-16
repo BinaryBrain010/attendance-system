@@ -69,8 +69,17 @@ class AmsReportService {
   private async scopedEmployees(
     userId: string | undefined,
     f: { unitId?: string; department?: string; company?: string; status?: string },
-    opts?: { monthWindow?: { start: Date; end: Date } },
+    opts?: { monthWindow?: { start: Date; end: Date }; forceEmployeeIds?: string[] },
   ): Promise<any[]> {
+    // Self path (e.g. an employee's own slip): an explicit, pre-authorised id set bypasses unit scope
+    // and the active/former filter (the caller already owns these rows).
+    if (opts?.forceEmployeeIds) {
+      return prisma.employee.findMany({
+        where: { id: { in: opts.forceEmployeeIds }, isDeleted: null },
+        select: { id: true, code: true, name: true, surname: true, department: true, designation: true, company: true, joiningDate: true, status: true, resignationDate: true, probationEndDate: true, probationClearedAt: true },
+        orderBy: [{ department: "asc" }, { name: "asc" }],
+      });
+    }
     const scope = userId ? await getAccessibleEmployeeIds(userId) : null;
     if (scope !== null && scope.length === 0) return [];
     const where: any = { isDeleted: null };
@@ -104,9 +113,9 @@ class AmsReportService {
 
   // ====== 1. MONTHLY EMPLOYEE REPORT ============================================================
   /** Compute every monthly row for the filtered set (used for screen pagination AND export). */
-  async monthlyRows(userId: string | undefined, f: MonthlyFilters): Promise<{ rows: any[]; totals: any; capped: boolean }> {
+  async monthlyRows(userId: string | undefined, f: MonthlyFilters, opts?: { forceEmployeeIds?: string[] }): Promise<{ rows: any[]; totals: any; capped: boolean }> {
     const { start, end } = monthRange(f.year, f.month);
-    const emps = await this.scopedEmployees(userId, f, { monthWindow: { start, end } });
+    const emps = await this.scopedEmployees(userId, f, { monthWindow: { start, end }, forceEmployeeIds: opts?.forceEmployeeIds });
     const capped = emps.length > EXPORT_CAP;
     const list = capped ? emps.slice(0, EXPORT_CAP) : emps;
     if (!list.length) return { rows: [], totals: this.emptyTotals(), capped };
@@ -218,6 +227,15 @@ class AmsReportService {
     const p = Math.max(1, page), ps = Math.min(200, Math.max(1, pageSize));
     const startIdx = (p - 1) * ps;
     return { data: rows.slice(startIdx, startIdx + ps), totalSize: rows.length, totals, capped, page: p, pageSize: ps };
+  }
+
+  /** Part 2: the caller's OWN monthly slip (self — employeeId derived from the user, no unit scope). */
+  async mySlip(userId: string | undefined, year: number, month: number): Promise<any> {
+    if (!userId) throw new AppError(401, "Not authenticated.");
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { employeeId: true } });
+    if (!me?.employeeId) throw new AppError(404, "Your login is not linked to an employee.");
+    const { rows } = await this.monthlyRows(undefined, { year, month } as any, { forceEmployeeIds: [me.employeeId] });
+    return rows.find((r) => r.employeeId === me.employeeId) || null;
   }
 
   /** One employee's monthly slip (for the per-employee download). */

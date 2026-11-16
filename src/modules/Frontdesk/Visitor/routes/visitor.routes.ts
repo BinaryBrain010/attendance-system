@@ -73,6 +73,10 @@ class VisitorRoutes {
      *         description: Visitor retrieved successfully
      */
     this.router.get("/getById", this.controller.getVisitorById.bind(this.controller));
+    // Part 1a / Part 2: self/host visitor detail + respond + my-visitors list (enforced in the service).
+    this.router.get("/mine", this.controller.getMyVisitor.bind(this.controller));
+    this.router.get("/myVisitors", this.controller.getMyVisitors.bind(this.controller));
+    this.router.post("/respond", this.controller.respondVisitor.bind(this.controller));
 
     /**
      * @swagger

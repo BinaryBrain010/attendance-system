@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-577 routes walked from the live routers. Real DB users counted: 181.
+582 routes walked from the live routers. Real DB users counted: 181.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,7 +11,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 16. God-only: 4. Token-only: 20. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 16. God-only: 4. Token-only: 25. Open: 6.
 
 | Method | Path | Kind | Access | Feature | Registered | Held by (of 181) | Note |
 |---|---|---|---|---|---|---|---|
@@ -40,6 +40,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /amsReport/monthly/excel | export | feature | `ams.report.export.*` | yes | 1 |  |
 | POST | /amsReport/monthly/pdf | export | feature | `ams.report.export.*` | yes | 1 |  |
 | POST | /amsReport/monthly/remark | update | feature | `ams.report.read.*` | yes | 1 | HR remark; allowed for report readers |
+| POST | /amsReport/mySlip | read | token | `-` | - | - | Part 2: caller's own monthly slip (self; employeeId derived from the user) |
 | POST | /amsReport/pdf | export | feature | `ams.report.export.*` | yes | 1 |  |
 | POST | /amsReport/probation | read | feature | `ams.report.read.*` | yes | 1 |  |
 | POST | /amsReport/slip/pdf | export | feature | `ams.report.export.*` | yes | 1 |  |
@@ -208,6 +209,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /employee/getFaceRecognitionData | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getHistoryById | history | feature | `employee.viewPreviousUpdate.*` | yes | 22 |  |
 | POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
+| POST | /employee/myFiles | read | token | `-` | - | - | Part 2: caller's own documents (self; employeeId derived from the user) |
 | POST | /employee/overview | read | feature | `employee.read.*` | yes | 22 |  |
 | GET | /employee/photo | read | feature | `employee.read.*` | yes | 22 |  |
 | GET | /employee/presentToday | read | feature | `employee.read.*` | yes | 22 | employees currently present |
@@ -574,8 +576,11 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /visitor/getHistoryById | history | feature | `visitor.viewPreviousUpdate.*` | yes | 1 |  |
 | POST | /visitor/import | import | feature | `visitor.import.*` | yes | 1 |  |
 | POST | /visitor/lookup | read | feature | `visitor.read.*` | yes | 1 |  |
+| GET | /visitor/mine | read | token | `-` | - | - | Part 1a: self/host visitor detail; host OR frontdesk enforced in the service |
+| GET | /visitor/myVisitors | read | token | `-` | - | - | Part 2: the caller's own referred visits (self) |
 | POST | /visitor/personHistory | read | feature | `visitor.read.*` | yes | 1 |  |
 | GET | /visitor/present | read | feature | `visitor.read.*` | yes | 1 |  |
+| POST | /visitor/respond | update | token | `-` | - | - | Part 1a: host (or frontdesk) responds ATTEND/WAIT/DECLINE; enforced in the service |
 | POST | /visitor/restore | restore | feature | `visitor.restore.*` | yes | 1 |  |
 | POST | /visitor/search | read | feature | `visitor.read.*` | yes | 1 |  |
 | POST | /visitor/stats | read | feature | `visitor.read.*` | yes | 1 |  |

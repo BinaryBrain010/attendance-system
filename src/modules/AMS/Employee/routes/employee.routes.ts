@@ -840,6 +840,7 @@ class EmployeeRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/files',this.controller.getFiles.bind(this.controller));
+    this.router.post('/myFiles',this.controller.getMyFiles.bind(this.controller)); // Part 2: own documents (self)
     
     /**
      * @swagger

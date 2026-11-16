@@ -122,6 +122,14 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
     return await employeeModel.employee.getFiles(id);
   }
 
+  /** Part 2: the caller's OWN documents (self — employeeId derived from the user). */
+  async getMyFiles(userId?: string): Promise<any> {
+    if (!userId) return [];
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { employeeId: true } });
+    if (!me?.employeeId) return [];
+    return await employeeModel.employee.getFiles(me.employeeId);
+  }
+
   async getDeletedEmployees(
     page: number,
     pageSize: number
@@ -145,12 +153,29 @@ return await employeeModel.employee.gpFindEmployeeByUserId(userId);
   ): Promise<any> {
     const compressed = await this.withCompressedImage(employeeData);
     const result = await employeeModel.employee.gpUpdate(employeeId, compressed);
-    // Phase 3c: when an employee becomes resigned/terminated, auto-suspend their linked user.
-    if ((employeeData as any)?.status && TERMINAL_EMPLOYEE_STATUSES.has(String((employeeData as any).status))) {
+    // Phase 3c / Part 3: react to a status change on the linked user.
+    const newStatus = (employeeData as any)?.status ? String((employeeData as any).status) : null;
+    if (newStatus && TERMINAL_EMPLOYEE_STATUSES.has(newStatus)) {
+      // resigned/terminated → auto-suspend the login.
       const u = await this.linkedUser(employeeId);
-      await this.autoSuspendUser(u, `employee status ${(employeeData as any).status}`);
+      await this.autoSuspendUser(u, `employee status ${newStatus}`);
+    } else if (newStatus === "REJOINED") {
+      // re-joined → lift the auto-suspension so they can log in again.
+      await this.autoUnsuspendUser(employeeId, "employee status REJOINED");
     }
     return result;
+  }
+
+  /** Part 3: clear a suspended linked user's suspension when the employee re-joins. Audited. */
+  private async autoUnsuspendUser(employeeId: string, reason: string): Promise<void> {
+    try {
+      const user = await prisma.user.findFirst({ where: { employeeId, isDeleted: null, suspendedAt: { not: null } }, select: { id: true } });
+      if (!user) return;
+      await userModel.user.gpReactivate(user.id);
+      await logActivity({ userId: getActorId(), action: "AUTO_UNSUSPEND", entityType: "User", entityId: user.id, description: `Auto-unsuspended: ${reason}` } as any);
+    } catch (e: any) {
+      console.warn("[autoUnsuspend] failed:", e?.message || e);
+    }
   }
 
   /** The user linked to an employee (active, not already suspended) — null otherwise. */

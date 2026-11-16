@@ -26,6 +26,7 @@ class AmsReportRoutes {
     // Employee year leave summary (shared policy calc; own employee or employee.leaves.*)
     this.router.post("/leaveSummary", this.controller.leaveSummary.bind(this.controller));
     this.router.post("/yearSummary", this.controller.yearSummary.bind(this.controller));
+    this.router.post("/mySlip", this.controller.mySlip.bind(this.controller));
     // Other reports (JSON)
     this.router.post("/daily", this.simple("daily"));
     this.router.post("/lateComers", this.simple("lateComers"));

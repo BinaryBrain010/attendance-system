@@ -124,6 +124,11 @@
     "feature": "ams.report.read.*",
     "kind": "update"
   },
+  "POST /amsReport/mySlip": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
   "POST /amsReport/pdf": {
     "access": "feature",
     "feature": "ams.report.export.*",
@@ -962,6 +967,11 @@
   "POST /employee/getLinkedUser": {
     "access": "self",
     "feature": "employee.read.*",
+    "kind": "read"
+  },
+  "POST /employee/myFiles": {
+    "access": "token",
+    "feature": "-",
     "kind": "read"
   },
   "POST /employee/overview": {
@@ -2794,6 +2804,16 @@
     "feature": "visitor.read.*",
     "kind": "read"
   },
+  "GET /visitor/mine": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
+  "GET /visitor/myVisitors": {
+    "access": "token",
+    "feature": "-",
+    "kind": "read"
+  },
   "POST /visitor/personHistory": {
     "access": "feature",
     "feature": "visitor.read.*",
@@ -2803,6 +2823,11 @@
     "access": "feature",
     "feature": "visitor.read.*",
     "kind": "read"
+  },
+  "POST /visitor/respond": {
+    "access": "token",
+    "feature": "-",
+    "kind": "update"
   },
   "POST /visitor/restore": {
     "access": "feature",

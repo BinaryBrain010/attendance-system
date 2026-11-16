@@ -14,8 +14,9 @@ export type NotifType =
   // CRM (leads): assigned to you, unassigned-lead alert to managers, transfer, @mention, review.
   | "LEAD_ASSIGNED" | "LEAD_UNASSIGNED" | "LEAD_TRANSFER" | "MENTION"
   | "LEAD_REVIEW" | "LEAD_REVIEW_DONE" | "LEAD_REVIEW_REOPEN"
-  // Frontdesk (6b): a visitor was referred to this employee; a referred visitor was attended.
-  | "VISITOR" | "VISITOR_ATTENDED"
+  // Frontdesk (6b): a visitor was referred to this employee; a referred visitor was attended;
+  // the host responded (wait/decline) to a referral (Part 1a).
+  | "VISITOR" | "VISITOR_ATTENDED" | "VISITOR_RESPONSE"
   // AMS: a leave / attendance-correction request the employee filed was approved or rejected.
   | "LEAVE_DECISION" | "ATTENDANCE_DECISION"
   // HR: an employee's probation is ending soon / today (sent to HR managers).

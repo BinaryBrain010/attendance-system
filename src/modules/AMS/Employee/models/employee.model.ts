@@ -41,7 +41,7 @@ async function getUpdatedByName(updatedBy: string | null): Promise<string | null
 }
 
 // Helper function to generate username from employee name and surname
-function generateUsername(name: string, surname: string): string {
+export function generateUsername(name: string, surname: string): string {
   // Convert to lowercase, replace spaces with underscores
   const firstName = name.toLowerCase().trim().replace(/\s+/g, '_');
   const lastName = surname.toLowerCase().trim().replace(/\s+/g, '_');
@@ -49,47 +49,59 @@ function generateUsername(name: string, surname: string): string {
 }
 
 // Helper function to create user for employee
-async function createUserForEmployee(employeeId: string, name: string, surname: string, contactNo: string): Promise<any> {
-  try {
-    // Generate username
-    const username = generateUsername(name, surname);
-    
-    // Check if username already exists (handle duplicates)
-    let finalUsername = username;
-    let counter = 1;
-    while (true) {
-      const existingUser = await prisma.user.findUnique({
-        where: { username: finalUsername },
-      });
-      
-      if (!existingUser) {
-        break; // Username is available
-      }
-      
-      // If username exists, append number
-      const baseUsername = username.replace('@phw', '');
-      finalUsername = `${baseUsername}${counter}@phw`;
-      counter++;
-    }
-    
-    // Hash password (use contactNo as password)
-    const hashedPassword = await bcrypt.hash(contactNo, 10);
-    
-    // Create user
-    const createdUser = await prisma.user.create({
-      data: {
-        username: finalUsername,
-        password: hashedPassword,
-        employeeId: employeeId,
-        createdAt: new Date(),
-      },
-    });
-    
-    return createdUser;
-  } catch (error: any) {
-    console.error(`Error creating user for employee ${employeeId}:`, error);
-    throw error;
+/** The seeded group every auto-created employee login joins (see seedEmployeeRole.ts). */
+export const EMPLOYEES_GROUP_NAME = "Employees";
+
+/** A readable temporary password (no ambiguous chars). Shown ONCE to the creator, never logged. */
+export function generateTempPassword(len = 10): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = require("crypto").randomBytes(len) as Buffer;
+  let s = "";
+  for (let i = 0; i < len; i++) s += chars[bytes[i] % chars.length];
+  return s;
+}
+
+/** Add a user to the "Employees" group (idempotent). Silently skips if the group isn't seeded yet. */
+async function addToEmployeesGroup(userId: string): Promise<void> {
+  const group = await prisma.group.findFirst({ where: { name: EMPLOYEES_GROUP_NAME, isDeleted: null }, select: { id: true } });
+  if (!group) return;
+  const existing = await prisma.userGroup.findFirst({ where: { userId, groupId: group.id, isDeleted: null } });
+  if (!existing) await prisma.userGroup.create({ data: { userId, groupId: group.id, active: true, createdAt: new Date() } as any });
+}
+
+export type EmployeeUserResult = { userId: string; username: string; tempPassword: string | null; created: boolean; linked: boolean };
+
+/**
+ * Ensure an employee has a login. Links an existing user (by employee, or by the exact unlinked
+ * email) instead of creating a duplicate; otherwise creates `firstname_lastname@phw` (deduped with a
+ * number), a generated temp password, mustChangePassword=true, and membership of the Employees group.
+ * Returns the temp password ONLY when a new account was created (shown once to the creator).
+ */
+export async function createUserForEmployee(employeeId: string, name: string, surname: string, _contactNo?: string): Promise<EmployeeUserResult> {
+  // 1) Already linked to this employee → just ensure group membership.
+  const byEmployee = await prisma.user.findFirst({ where: { employeeId, isDeleted: null }, select: { id: true, username: true } });
+  if (byEmployee) { await addToEmployeesGroup(byEmployee.id); return { userId: byEmployee.id, username: byEmployee.username, tempPassword: null, created: false, linked: true }; }
+
+  // 2) The exact email exists but is unlinked → adopt it (link + group), keep its password.
+  const base = generateUsername(name, surname);
+  const exact = await prisma.user.findUnique({ where: { username: base }, select: { id: true, employeeId: true } });
+  if (exact && !exact.employeeId) {
+    await prisma.user.update({ where: { id: exact.id }, data: { employeeId } as any });
+    await addToEmployeesGroup(exact.id);
+    return { userId: exact.id, username: base, tempPassword: null, created: false, linked: true };
   }
+
+  // 3) Create a fresh account with a unique email + temp password.
+  let finalUsername = base; let counter = 1;
+  while (await prisma.user.findUnique({ where: { username: finalUsername } })) { finalUsername = `${base.replace("@phw", "")}${counter}@phw`; counter++; }
+  const tempPassword = generateTempPassword();
+  const hashed = await bcrypt.hash(tempPassword, 10);
+  const createdUser = await prisma.user.create({ data: { username: finalUsername, password: hashed, employeeId, createdAt: new Date() } as any });
+  // mustChangePassword via raw SQL (the local Prisma client may predate the column; schema+migration
+  // carry it to prod). Never log the password.
+  await prisma.$executeRawUnsafe(`UPDATE "User" SET "mustChangePassword" = true WHERE id = $1`, createdUser.id);
+  await addToEmployeesGroup(createdUser.id);
+  return { userId: createdUser.id, username: finalUsername, tempPassword, created: true, linked: false };
 }
 
 const employeeModel = prisma.$extends({
@@ -609,17 +621,15 @@ const employeeModel = prisma.$extends({
           createdData[0].code = finalCode;
         }
 
-        // Automatically create user for employee if not provided
+        // Automatically create user for employee if not provided. The one-time temp password (only
+        // when a NEW account was created) is attached to the returned row so the controller can show
+        // it ONCE to the creator; it is never persisted on the employee or logged.
         if (!userId) {
           try {
             const employee = createdData[0];
-            if (employee.name && employee.surname && employee.contactNo) {
-              await createUserForEmployee(
-                employee.id,
-                employee.name,
-                employee.surname,
-                employee.contactNo
-              );
+            if (employee.name && employee.surname) {
+              const cred = await createUserForEmployee(employee.id, employee.name, employee.surname, employee.contactNo);
+              createdData[0].__newUserCredentials = { username: cred.username, tempPassword: cred.tempPassword, created: cred.created };
             }
           } catch (err: any) {
             console.error(`Error auto-creating user for employee ${createdData[0].id}:`, err);

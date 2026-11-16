@@ -1,5 +1,5 @@
 import prisma from "../../../../core/models/base.model";
-import { resolveScope, assertRowInScope, resolveAssignment } from "../../shared/scope";
+import { resolveScope, assertRowInScope, resolveAssignment, rowInScope, ScopeResult } from "../../shared/scope";
 import { getFeatureSet, holds, isGod } from "../../shared/access";
 import { notify } from "../../../Work/shared/workHelpers";
 import { logActivity } from "../../../ActivityLog/helper/activityLog.helper";
@@ -207,11 +207,32 @@ class LeadService {
     return rows;
   }
 
+  /**
+   * A user who was @mentioned on a lead (or has replied in its thread) is a PARTICIPANT and may READ
+   * the lead and reply, even when the lead's agent is outside their scope. This is the durable signal
+   * behind the "You were mentioned …" notification (MENTION notification for the lead) OR an activity
+   * they authored. Part of the lead access check — NOT a separate bypass.
+   */
+  private async isLeadParticipant(userId: string, leadId: string): Promise<boolean> {
+    const [mention, authored] = await Promise.all([
+      prisma.notification.findFirst({ where: { userId, entityType: "Lead", entityId: leadId, type: "MENTION" }, select: { id: true } }),
+      prisma.leadActivity.findFirst({ where: { leadId, createdBy: userId, isDeleted: null }, select: { id: true } }),
+    ]);
+    return !!mention || !!authored;
+  }
+
+  /** Read access = within scope OR a participant (mentioned/replied). Throws 403 otherwise. */
+  private async assertLeadReadable(userId: string, scope: ScopeResult, lead: { id: string; agentId?: string | null; createdById?: string | null }): Promise<boolean> {
+    if (rowInScope(scope, lead)) return true;
+    if (await this.isLeadParticipant(userId, lead.id)) return false; // readable, but not in scope (limited)
+    throw new ForbiddenError("Lead is outside your scope");
+  }
+
   async getById(userId: string, id: string) {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id }, include: LIST_INCLUDE });
     if (!lead || lead.isDeleted) return null;
-    assertRowInScope(scope, lead, "Lead");
+    await this.assertLeadReadable(userId, scope, lead);
     const row = withComputed(lead);
     await attachProducts([row]);
     row.productIds = (row.products || []).map((p: any) => p.id).filter(Boolean); // for the edit form
@@ -437,7 +458,14 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
     if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
-    assertRowInScope(scope, lead, "Lead");
+    if (!rowInScope(scope, lead)) {
+      // A participant (mentioned / previously replied) may reply with a NOTE, but not move the stage,
+      // mark it lost, or log a contact outcome — those stay scope-only.
+      if (!(await this.isLeadParticipant(userId, lead.id))) throw new ForbiddenError("Lead is outside your scope");
+      if (toStage || markLost || !["NOTE", "OTHER"].includes(type)) {
+        throw new ForbiddenError("You can reply with a note on this lead, but not change its stage.");
+      }
+    }
     if (!type) throw new ValidationError("An activity type is required.");
     // A contact activity, a stage move, or marking lost must state an outcome/response; a bare
     // note/other activity need not.
@@ -526,7 +554,7 @@ class LeadService {
     const scope = await resolveScope(userId, "lead");
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead || lead.isDeleted) throw new NotFoundError("Lead");
-    assertRowInScope(scope, lead, "Lead");
+    await this.assertLeadReadable(userId, scope, lead);
 
     const [acts, legacy, audit] = await Promise.all([
       prisma.leadActivity.findMany({ where: { leadId: id, isDeleted: null } }),
