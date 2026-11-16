@@ -472,6 +472,13 @@ class AttendanceController extends BaseController<AttendanceService> {
     const operation = () => this.service.getAttendanceSummary(from, to, userId);
     await this.handleRequest(operation, res, { successMessage: "Attendance summary retrieved successfully!" });
   }
+
+  /** Part 3/4: active in-scope employees + today's mark status (for the picker + "Not marked yet"). */
+  async getMarkableEmployees(req: Request, res: Response) {
+    const b = req.body || {};
+    const userId = (req as Request & { userId?: string }).userId;
+    await this.handleRequest(() => this.service.getMarkableEmployees(userId, { search: b.search, department: b.department, unitId: b.unitId }), res, { successMessage: "Employees retrieved!" });
+  }
 }
 
 export default AttendanceController;

@@ -4,6 +4,8 @@ import { AttendanceStatus } from "@prisma/client";
 import { paginatedData } from "../../../../types/paginatedData";
 import prisma from "../../../../core/models/base.model";
 import { getAccessibleEmployeeIds, canAccessEmployee } from "../../Unit/helper/unitAccess.helper";
+import { activeEmployeeWhere } from "../../Employee/helper/employeeStatus.helper";
+import { getStartOfDayPakistan, getEndOfDayPakistan } from "../../../../core/utils/pakistanDay";
 import { AppError } from "../../../../core/errors/app.error";
 import ExcelValidator from "../helper/excelValidator";
 import accessModel from "../../../rbac/Access/models/access.model";
@@ -271,6 +273,47 @@ return await attendanceModel.attendance.markFaceAttendance(image);
 
   async getHistoryById(attendanceId: string, filter?: boolean, date?: string): Promise<any> {
     return await attendanceModel.attendance.getHistoryById(attendanceId, filter, date);
+  }
+
+  /**
+   * Active, in-scope employees for the attendance picker (Manual entry + the "Not marked yet" list),
+   * each with today's mark status so the UI can badge "Marked today: Present 10:32" and offer
+   * "Select all not marked". Light payload (no photos — the client lazy-loads thumbnails by id).
+   */
+  async getMarkableEmployees(userId: string | undefined, opts: { search?: string; department?: string; unitId?: string } = {}): Promise<any[]> {
+    const ids = await getAccessibleEmployeeIds(userId, "attendance");
+    if (Array.isArray(ids) && ids.length === 0) return [];
+    const where: any = activeEmployeeWhere();
+    if (Array.isArray(ids)) where.id = { in: ids };
+    if (opts.department) where.department = opts.department;
+    if (opts.unitId) where.unitEmployees = { some: { unitId: opts.unitId, isDeleted: null } };
+    const term = (opts.search || "").trim();
+    if (term) {
+      where.AND = term.split(/\s+/).filter(Boolean).map((t) => ({
+        OR: [{ name: { contains: t, mode: "insensitive" } }, { surname: { contains: t, mode: "insensitive" } }, { code: { contains: t, mode: "insensitive" } }, { department: { contains: t, mode: "insensitive" } }],
+      }));
+    }
+    const emps = await prisma.employee.findMany({
+      where,
+      select: {
+        id: true, code: true, name: true, surname: true, department: true, designation: true,
+        unitEmployees: { where: { isDeleted: null, unit: { isDeleted: null } }, select: { unit: { select: { name: true } } }, take: 1 },
+      },
+      orderBy: [{ name: "asc" }],
+      take: 1000,
+    });
+    const empIds = emps.map((e) => e.id);
+    const start = getStartOfDayPakistan(new Date()); const end = getEndOfDayPakistan(new Date());
+    const att = empIds.length ? await prisma.attendance.findMany({ where: { employeeId: { in: empIds }, isDeleted: null, date: { gte: start, lte: end } }, select: { employeeId: true, status: true, checkIn: true } }) : [];
+    const byEmp = new Map(att.map((a) => [a.employeeId, a]));
+    return emps.map((e) => {
+      const a = byEmp.get(e.id);
+      return {
+        id: e.id, code: e.code, name: `${e.name} ${e.surname || ""}`.trim(), department: e.department || null,
+        designation: e.designation || null, unit: (e.unitEmployees?.[0] as any)?.unit?.name || null,
+        markedToday: a ? { status: a.status, checkIn: a.checkIn } : null,
+      };
+    });
   }
 
   async getAttendanceSummary(

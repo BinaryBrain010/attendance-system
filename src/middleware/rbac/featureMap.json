@@ -289,6 +289,11 @@
     "feature": "attendance.excelImport.*",
     "kind": "import"
   },
+  "POST /attendance/markableEmployees": {
+    "access": "feature",
+    "feature": "attendance.read.*",
+    "kind": "read"
+  },
   "POST /attendance/markAttendance": {
     "access": "self",
     "feature": "attendance.markAttendance.*",
@@ -1610,6 +1615,11 @@
     "kind": "import"
   },
   "POST /lead/mentionables": {
+    "access": "feature",
+    "feature": "crm.lead.read.own.*",
+    "kind": "read"
+  },
+  "POST /lead/myDay": {
     "access": "feature",
     "feature": "crm.lead.read.own.*",
     "kind": "read"

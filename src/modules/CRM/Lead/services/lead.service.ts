@@ -89,12 +89,16 @@ function filterWhere(f: LeadFilters = {}): Record<string, any> {
     if (f.to) w.dateReceived.lte = new Date(f.to);
   }
   // Follow-up due preset (SQL, so paging/totals are correct). All require a nextFollowUpAt except NONE.
+  // A follow-up only makes sense for an OPEN lead — WON/LOST are closed, so they never appear in the
+  // date-based presets (fixes closed leads showing up in My Day / Overdue).
   if (f.followUp) {
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
-    if (f.followUp === "OVERDUE") w.nextFollowUpAt = { lt: start };
-    else if (f.followUp === "DUE_TODAY") w.nextFollowUpAt = { gte: start, lte: endToday };
-    else if (f.followUp === "THIS_WEEK") { const wk = new Date(start); wk.setDate(wk.getDate() + 7); w.nextFollowUpAt = { gte: start, lte: wk }; }
+    const notClosed = () => { w.stage = { notIn: ["WON", "LOST"] }; };
+    if (f.followUp === "OVERDUE") { w.nextFollowUpAt = { lt: start }; notClosed(); }
+    else if (f.followUp === "DUE_TODAY") { w.nextFollowUpAt = { gte: start, lte: endToday }; notClosed(); }
+    else if (f.followUp === "THIS_WEEK") { const wk = new Date(start); wk.setDate(wk.getDate() + 7); w.nextFollowUpAt = { gte: start, lte: wk }; notClosed(); }
+    else if (f.followUp === "UPCOMING") { const t1 = new Date(start); t1.setDate(t1.getDate() + 1); const wk = new Date(start); wk.setDate(wk.getDate() + 7); w.nextFollowUpAt = { gte: t1, lte: wk }; notClosed(); }
     else if (f.followUp === "NONE") w.nextFollowUpAt = null;
   } else if (f.fuFrom || f.fuTo) {
     // Explicit next-follow-up date range (only when no preset above is set — same column).
@@ -185,6 +189,28 @@ class LeadService {
   async total(userId: string, filters: LeadFilters = {}) {
     const scope = await resolveScope(userId, "lead");
     return prisma.lead.count({ where: { AND: [{ isDeleted: null }, filterWhere(filters), scope.where] } });
+  }
+
+  /** My Day summary strip: Overdue, Due today, Next 7 days, Contacted today, Won this month, and open
+   *  pipeline value — all scoped to the caller and excluding closed (WON/LOST) leads from follow-ups. */
+  async myDaySummary(userId: string) {
+    const scope = await resolveScope(userId, "lead");
+    const base: any = { AND: [{ isDeleted: null }, scope.where] };
+    const open = (extra: any) => ({ AND: [{ isDeleted: null }, scope.where, { stage: { notIn: ["WON", "LOST"] } }, extra] });
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
+    const t1 = new Date(start); t1.setDate(t1.getDate() + 1);
+    const wk = new Date(start); wk.setDate(wk.getDate() + 7);
+    const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
+    const [overdue, dueToday, next7, contactedToday, wonThisMonth, pipe] = await Promise.all([
+      prisma.lead.count({ where: open({ nextFollowUpAt: { lt: start } }) }),
+      prisma.lead.count({ where: open({ nextFollowUpAt: { gte: start, lte: endToday } }) }),
+      prisma.lead.count({ where: open({ nextFollowUpAt: { gte: t1, lte: wk } }) }),
+      prisma.lead.count({ where: { AND: [...base.AND, { lastContactAt: { gte: start, lte: endToday } }] } }),
+      prisma.lead.count({ where: { AND: [...base.AND, { stage: "WON" }, { updatedAt: { gte: monthStart } }] } }),
+      prisma.lead.aggregate({ _sum: { estimatedValue: true }, where: open({}) }),
+    ]);
+    return { overdue, dueToday, next7, contactedToday, wonThisMonth, openPipelineValue: pipe._sum.estimatedValue || 0 };
   }
 
   /** All leads matching the current filters + sort (scope-respecting), capped at EXPORT_CAP + 1 so the

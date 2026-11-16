@@ -56,6 +56,9 @@ class LeadController extends BaseController<LeadService> {
   async total(req: Request, res: Response) {
     await this.handleRequest(() => this.service.total((req as any).userId, req.body || {}), res, { successMessage: "Total leads retrieved successfully!" });
   }
+  async myDaySummary(req: Request, res: Response) {
+    await this.handleRequest(() => this.service.myDaySummary((req as any).userId), res, { successMessage: "My Day summary retrieved!" });
+  }
   async getById(req: Request, res: Response) {
     const { id } = req.body;
     await this.handleRequest(() => this.service.getById((req as any).userId, id), res, { successMessage: "Lead retrieved successfully!" });

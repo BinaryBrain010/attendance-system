@@ -1127,6 +1127,7 @@ class AttendanceRoutes {
      *         $ref: '#/components/responses/401'
      */
     this.router.post('/summary', this.controller.getAttendanceSummary.bind(this.controller));
+    this.router.post('/markableEmployees', this.controller.getMarkableEmployees.bind(this.controller)); // Part 3/4 picker
 
     /**
      * @swagger

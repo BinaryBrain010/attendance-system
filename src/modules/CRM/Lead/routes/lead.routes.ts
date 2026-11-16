@@ -22,6 +22,7 @@ class LeadRoutes {
     this.router.post("/export", this.controller.export.bind(this.controller));
     this.router.post("/filtered", validate(schemas.readList), this.controller.filtered.bind(this.controller));
     this.router.post("/total", validate(schemas.readList), this.controller.total.bind(this.controller));
+    this.router.post("/myDay", this.controller.myDaySummary.bind(this.controller));
     this.router.post("/getById", validate(schemas.idOnly), this.controller.getById.bind(this.controller));
     this.router.post("/create", validate(schemas.lead.create), this.controller.create.bind(this.controller));
     this.router.put("/update", validate(schemas.lead.update), this.controller.update.bind(this.controller));

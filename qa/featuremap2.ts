@@ -91,6 +91,8 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /amsReport/leaveSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year leave summary; own employee else employee.leaves.*" },
   "POST /amsReport/yearSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year attendance+leave summary cards; own employee else employee.leaves.*" },
   "POST /amsReport/mySlip": { feature: "-", kind: "read", access: "token", note: "Part 2: caller's own monthly slip (self; employeeId derived from the user)" },
+  "POST /lead/myDay": { feature: "crm.lead.read.own.*", kind: "read", access: "feature", note: "My Day summary strip (read, scoped to the caller)" },
+  "POST /attendance/markableEmployees": { feature: "attendance.read.*", kind: "read", access: "feature", note: "Part 3/4: active in-scope employees + today's mark for the attendance picker" },
   "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
   "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
   "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },

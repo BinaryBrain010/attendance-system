@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-582 routes walked from the live routers. Real DB users counted: 181.
+584 routes walked from the live routers. Real DB users counted: 181.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -73,6 +73,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /attendance/getEmployeeAttendance | self | self | `attendance.read.*` | - | 22 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /attendance/history | read | feature | `attendance.read.*` | yes | 22 |  |
 | POST | /attendance/import | import | feature | `attendance.excelImport.*` | yes | 22 |  |
+| POST | /attendance/markableEmployees | read | feature | `attendance.read.*` | yes | 22 | Part 3/4: active in-scope employees + today's mark for the attendance picker |
 | POST | /attendance/markAttendance | self | self | `attendance.markAttendance.*` | - | 22 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /attendance/pdf | export | feature | `attendance.export.*` | yes | 22 |  |
 | GET | /attendance/requestSummary | read | feature | `attendance.read.*` | yes | 22 |  |
@@ -338,6 +339,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /lead/getById | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/import | import | feature | `crm.lead.import.*` | yes | 1 | lead register CSV import (dry-run default) |
 | POST | /lead/mentionables | read | feature | `crm.lead.read.own.*` | yes | 3 | users the caller may @mention (team, or everyone for managers) |
+| POST | /lead/myDay | read | feature | `crm.lead.read.own.*` | yes | 3 | My Day summary strip (read, scoped to the caller) |
 | POST | /lead/restore | restore | feature | `crm.lead.restore.*` | yes | 1 |  |
 | POST | /lead/timeline | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
 | POST | /lead/total | read | feature | `crm.lead.read.own.*` | yes | 3 | scope from read.{own,team,all}.* leaf (cumulative) |
