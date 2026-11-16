@@ -1,6 +1,6 @@
 # Phase 3 mapping v2 (from runtime Express routers)
 
-576 routes walked from the live routers. Real DB users counted: 209.
+577 routes walked from the live routers. Real DB users counted: 181.
 
 **Access kinds:** open (no auth) · token (any logged-in user) · self (caller's own employee, else the read feature) · feature (requires the listed feature) · dynamic (feature depends on request body, e.g. parentType) · god (god only) · unmapped (DENY under RBAC_ENFORCE=on).
 
@@ -11,9 +11,9 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 15. God-only: 4. Token-only: 20. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 16. God-only: 4. Token-only: 20. Open: 6.
 
-| Method | Path | Kind | Access | Feature | Registered | Held by (of 209) | Note |
+| Method | Path | Kind | Access | Feature | Registered | Held by (of 181) | Note |
 |---|---|---|---|---|---|---|---|
 | POST | /access/checkPermission | read | token | `-` | - | - | internal permission check |
 | POST | /access/checkPermissions | read | token | `-` | - | - | internal permission check |
@@ -43,6 +43,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /amsReport/pdf | export | feature | `ams.report.export.*` | yes | 1 |  |
 | POST | /amsReport/probation | read | feature | `ams.report.read.*` | yes | 1 |  |
 | POST | /amsReport/slip/pdf | export | feature | `ams.report.export.*` | yes | 1 |  |
+| POST | /amsReport/yearSummary | read | self | `employee.leaves.*` | - | 22 | employee year attendance+leave summary cards; own employee else employee.leaves.* |
 | GET | /analytics/personalAttendance | self | self | `analytics.read.*` | - | 38 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /analytics/personalAttendance | read | feature | `analytics.read.*` | yes | 38 |  |
 | GET | /analytics/topAttendance | read | feature | `analytics.read.*` | yes | 38 |  |

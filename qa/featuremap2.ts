@@ -89,6 +89,7 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   // Explicit entries only where the last segment is ambiguous:
   "POST /amsReport/monthly/remark": { feature: "ams.report.read.*", kind: "update", access: "feature", note: "HR remark; allowed for report readers" },
   "POST /amsReport/leaveSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year leave summary; own employee else employee.leaves.*" },
+  "POST /amsReport/yearSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year attendance+leave summary cards; own employee else employee.leaves.*" },
   "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
   "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
   "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },

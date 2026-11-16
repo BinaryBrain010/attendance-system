@@ -3,6 +3,7 @@ import { startOfDay, endOfDay } from "date-fns";
 import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 import { AttendanceStatus } from "@prisma/client";
 import { getCurrentTimeInPST } from "../../../../helper/date.helper";
+import { FORMER_EMPLOYEE_STATUSES } from "../../Employee/helper/employeeStatus.helper";
 
 // Pakistan timezone constant
 const PAKISTAN_TIMEZONE = 'Asia/Karachi';
@@ -62,9 +63,7 @@ const attendanceScheduleModel = prisma.$extends({
           select: { id: true },
           where: {
             isDeleted: null,
-            status: {
-              notIn: ["RESIGNED", "FIRE"],
-            },
+            status: { notIn: FORMER_EMPLOYEE_STATUSES },
           },
         });
 
@@ -105,9 +104,7 @@ const attendanceScheduleModel = prisma.$extends({
           select: { id: true },
           where: {
             isDeleted: null,
-            status: {
-              notIn: ["RESIGNED", "FIRE"],
-            },
+            status: { notIn: FORMER_EMPLOYEE_STATUSES },
           },
         });
 

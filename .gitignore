@@ -56,3 +56,4 @@ qa/_roleGrants*.json
 qa/.notif-last.txt
 qa/.hrpolicy-last.txt
 qa/.amsreports-last.txt
+qa/.former-last.txt

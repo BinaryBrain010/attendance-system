@@ -1,5 +1,6 @@
 import { Prisma, Company } from "@prisma/client";
 import prisma from "../../../../core/models/base.model";
+import { FORMER_EMPLOYEE_STATUSES, FORMER_STATUS_SQL } from "../helper/employeeStatus.helper";
 import { uploadPath } from "../../../../core/paths";
 import { getStartOfDayPakistan, getEndOfDayPakistan, toPgUtcTimestamp } from "../../../../core/utils/pakistanDay";
 import path from "path";
@@ -104,6 +105,7 @@ const employeeModel = prisma.$extends({
            FROM "Employee" e
            JOIN "Attendance" a ON a."employeeId" = e.id
            WHERE e."isDeleted" IS NULL
+             AND e.status NOT IN (${FORMER_STATUS_SQL})
              AND a."isDeleted" IS NULL
              AND a.date >= $1::timestamp AND a.date <= $2::timestamp
              AND a."checkIn" IS NOT NULL
@@ -127,7 +129,7 @@ const employeeModel = prisma.$extends({
         const end = toPgUtcTimestamp(getEndOfDayPakistan(opts.now ?? new Date()));
         const params: any[] = [start, end];
         let p = 3;
-        let where = `e."isDeleted" IS NULL AND e.status NOT IN ('RESIGNED','FIRE')`;
+        let where = `e."isDeleted" IS NULL AND e.status NOT IN (${FORMER_STATUS_SQL})`;
         if (opts.employeeIds !== null) {
           if (!opts.employeeIds.length) return [];
           where += ` AND e.id = ANY($${p})`; params.push(opts.employeeIds); p++;
@@ -165,7 +167,7 @@ const employeeModel = prisma.$extends({
           where: {
             isDeleted: null,
             status: {
-              notIn: ["RESIGNED", "FIRE"],
+              notIn: FORMER_EMPLOYEE_STATUSES,
             },
           },
           select: {
@@ -768,13 +770,18 @@ const employeeModel = prisma.$extends({
 
         // Check if filter is "true" for limited field selection (e.g. dropdowns)
         const isFilterMode = filter === "true";
+        const norm = (filter || "").toString().trim().toLowerCase();
 
-        // In filter mode, exclude resigned/fired so only assignable employees are returned
+        // Default to CURRENT employees (exclude resigned/fired). "all" shows everyone (HR history view);
+        // "active" is the explicit default; any other value is a single status (ACTIVE/RESIGNED/…).
         if (isFilterMode) {
-          where.status = { notIn: ["RESIGNED", "FIRE"] };
-        } else if (filter) {
-          // Explicit status filter (e.g. ACTIVE, RESIGNED)
-          where.status = filter;
+          where.status = { notIn: FORMER_EMPLOYEE_STATUSES };
+        } else if (norm === "all") {
+          // no status filter — include former employees
+        } else if (norm === "active" || norm === "") {
+          where.status = { notIn: FORMER_EMPLOYEE_STATUSES };
+        } else {
+          where.status = filter; // explicit single status
         }
 
         // Add search filter if provided (multi-term sequential filtering)
