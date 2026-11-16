@@ -565,9 +565,14 @@ class UserController extends BaseController<UserService> {
       const decoded = jwt.decode(token as string) as { exp?: number } | null;
       const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null;
 
+      // Part 3: auto-provisioned accounts must change their temp password on first login. Read via raw
+      // SQL (the column may post-date the local Prisma client); the frontend forces the change screen.
+      let mustChangePassword = false;
+      try { const r: any[] = await prisma.$queryRawUnsafe(`SELECT "mustChangePassword" FROM "User" WHERE id = $1`, user.id); mustChangePassword = !!r?.[0]?.mustChangePassword; } catch { /* column absent pre-migration */ }
+
       // Always include permissions array and unitIds in response
       if (employee) {
-        return res.json({ token, employee, permissions, unitIds, expiresIn, expiresAt });
+        return res.json({ token, employee, permissions, unitIds, expiresIn, expiresAt, mustChangePassword });
       }
 
       // Log login activity
@@ -591,7 +596,7 @@ class UserController extends BaseController<UserService> {
         console.error("Error logging login activity:", logError);
       }
 
-      return res.json({ token, permissions, unitIds, expiresIn, expiresAt });
+      return res.json({ token, permissions, unitIds, expiresIn, expiresAt, mustChangePassword });
     } else {
       return res
         .status(401)
