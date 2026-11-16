@@ -140,6 +140,8 @@ model User {
   // Phase 3b: suspension (blocks login + revokes sessions). Null = active.
   suspendedAt     DateTime?
   suspendedById   String?          @db.VarChar(36)
+  // Part 3: force a password change on next login (set for auto-generated employee accounts).
+  mustChangePassword Boolean       @default(false)
   // 8d/8e: per-user preferences (theme, font size, notification sound, default landing app, date
   // format) + app-launcher order. One JSON blob the owner reads/writes.
   preferences     Json?            @db.JsonB

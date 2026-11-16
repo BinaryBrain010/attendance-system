@@ -90,6 +90,7 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /amsReport/monthly/remark": { feature: "ams.report.read.*", kind: "update", access: "feature", note: "HR remark; allowed for report readers" },
   "POST /amsReport/leaveSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year leave summary; own employee else employee.leaves.*" },
   "POST /amsReport/yearSummary": { feature: "employee.leaves.*", kind: "read", access: "self", note: "employee year attendance+leave summary cards; own employee else employee.leaves.*" },
+  "POST /amsReport/mySlip": { feature: "-", kind: "read", access: "token", note: "Part 2: caller's own monthly slip (self; employeeId derived from the user)" },
   "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
   "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
   "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
@@ -133,6 +134,9 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "GET /employee/presentToday": { feature: "employee.read.*", kind: "read", access: "feature", note: "employees currently present" },
   // Phase 6b: host marks a referred visit attended.
   "POST /visitor/attend": { feature: "visitor.update.*", kind: "update", access: "feature", note: "mark a visit attended" },
+  "GET /visitor/mine": { feature: "-", kind: "read", access: "token", note: "Part 1a: self/host visitor detail; host OR frontdesk enforced in the service" },
+  "GET /visitor/myVisitors": { feature: "-", kind: "read", access: "token", note: "Part 2: the caller's own referred visits (self)" },
+  "POST /visitor/respond": { feature: "-", kind: "update", access: "token", note: "Part 1a: host (or frontdesk) responds ATTEND/WAIT/DECLINE; enforced in the service" },
   // A10: global top-bar search — token access, permission-aware per entity inside the service.
   "GET /search/global": { feature: "-", kind: "read", access: "token", note: "global search (permission-aware per type)" },
   // Lead Review: reviewer actions gate on crm.lead.review.*; owner/read actions gate on lead read
@@ -146,6 +150,7 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /leadReview/reply": { feature: "crm.lead.read.own.*", kind: "update", access: "feature", note: "owner marks a review done" },
   // Phase 8d/8e: "Me" app — own profile + preferences (token access, own data only).
   "GET /user/me": { feature: "-", kind: "read", access: "token", note: "own profile for the Me app" },
+  "POST /employee/myFiles": { feature: "-", kind: "read", access: "token", note: "Part 2: caller's own documents (self; employeeId derived from the user)" },
   "POST /user/refreshSession": { feature: "-", kind: "update", access: "token", note: "sliding-session renewal (Stay signed in)" },
   "GET /user/preferences": { feature: "-", kind: "read", access: "token", note: "own preferences" },
   "POST /user/preferences": { feature: "-", kind: "update", access: "token", note: "save own preferences" },

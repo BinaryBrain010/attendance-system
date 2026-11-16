@@ -61,6 +61,28 @@ class VisitorController extends BaseController<VisitorService> {
     await this.handleRequest(operation, res, { successMessage: "Visitor retrieved successfully!" });
   }
 
+  /** Part 2: the caller's own referred visits (self). */
+  async getMyVisitors(req: Request, res: Response) {
+    const userId = (req as Request & { userId?: string }).userId;
+    const page = parseInt((req.query.page as string) || "1", 10) || 1;
+    const pageSize = parseInt((req.query.pageSize as string) || "20", 10) || 20;
+    await this.handleRequest(() => this.service.getMyVisitors(userId, page, pageSize), res, { successMessage: "Visitors retrieved successfully!" });
+  }
+
+  /** Part 1a: host (or frontdesk) self visitor detail for the "A visitor is here to see you" notif. */
+  async getMyVisitor(req: Request, res: Response) {
+    const id = (req.query.id as string) || (req.params.id as string);
+    const userId = (req as Request & { userId?: string }).userId;
+    await this.handleRequest(() => this.service.getMyVisitor(userId, id), res, { successMessage: "Visitor retrieved successfully!" });
+  }
+
+  /** Part 1a: host (or frontdesk) responds to a referral — ATTEND / WAIT / DECLINE. */
+  async respondVisitor(req: Request, res: Response) {
+    const { visitorId, action, note } = req.body || {};
+    const userId = (req as Request & { userId?: string }).userId;
+    await this.handleRequest(() => this.service.respondVisitor(userId, visitorId, action, note), res, { successMessage: "Response recorded!" });
+  }
+
   async getTotalVisitors(req: Request, res: Response) {
     const operation = () => this.service.getTotalVisitors();
     await this.handleRequest(operation, res, { successMessage: "Total visitors count retrieved successfully!" });

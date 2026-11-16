@@ -5,9 +5,12 @@ import { VisitorExcelUtility } from "../../../../excel/visitor";
 import prisma from "../../../../core/models/base.model";
 import { getAccessibleUnitIds } from "../../../AMS/Unit/helper/unitAccess.helper";
 import { notify } from "../../../Work/shared/workHelpers";
+import accessModel from "../../../rbac/Access/models/access.model";
+import { AppError, NotFoundError, ForbiddenError } from "../../../../core/errors/app.error";
 
 // 6c: holders of this feature see visitors from every unit; everyone else is scoped to their units.
 const VISITOR_VIEW_ALL = "visitor.viewAll.unit.*";
+const VISITOR_READ = "visitor.read.*";
 
 class VisitorService {
   private excelUtility = new VisitorExcelUtility();
@@ -109,6 +112,68 @@ class VisitorService {
       }
     }
     return created;
+  }
+
+  /**
+   * Part 1a: the host (the referred-to employee's user) OR a front-desk reader may open/respond to a
+   * referral. 403 for anyone else. This backs the "A visitor is here to see you" notification so the
+   * host — who has no frontdesk permission — can still open the visit and respond.
+   */
+  private async assertHostOrFrontdesk(userId: string | undefined, visitor: { referredToEmployeeId?: string | null }): Promise<{ isHost: boolean }> {
+    if (!userId) throw new AppError(401, "Not authenticated.");
+    try {
+      if (await accessModel.user.checkUserPermission(userId, VISITOR_READ)) return { isHost: false };
+      if (await accessModel.user.checkUserPermission(userId, VISITOR_VIEW_ALL)) return { isHost: false };
+    } catch { /* fall through to host check */ }
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { employeeId: true } });
+    if (me?.employeeId && visitor.referredToEmployeeId && me.employeeId === visitor.referredToEmployeeId) return { isHost: true };
+    throw new ForbiddenError("You are not the host of this visit.");
+  }
+
+  /** Part 2 "My visitors": visits referred to the caller's own employee (self — derived from the user). */
+  async getMyVisitors(userId: string | undefined, page = 1, pageSize = 20): Promise<paginatedData> {
+    if (!userId) throw new AppError(401, "Not authenticated.");
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { employeeId: true } });
+    if (!me?.employeeId) return { data: [], totalSize: 0 } as any;
+    const where = { referredToEmployeeId: me.employeeId, isDeleted: null };
+    const take = Math.min(100, Math.max(1, pageSize));
+    const [rows, totalSize] = await Promise.all([
+      prisma.visitor.findMany({ where, orderBy: { visitDate: "desc" }, skip: (Math.max(1, page) - 1) * take, take,
+        select: { id: true, name: true, company: true, phone: true, purpose: true, visitDate: true, timeIn: true, timeOut: true, referredAt: true, attendedAt: true, attendedNote: true } }),
+      prisma.visitor.count({ where }),
+    ]);
+    const data = rows.map((v) => ({ ...v, arrivalTime: v.timeIn || v.referredAt || v.visitDate, status: v.timeOut ? "CHECKED_OUT" : v.attendedAt ? "ATTENDED" : "WAITING" }));
+    return { data, totalSize } as any;
+  }
+
+  /** Self/host visitor detail for the referral notification (host OR frontdesk). Minimal, safe fields. */
+  async getMyVisitor(userId: string | undefined, visitorId: string): Promise<any> {
+    if (!visitorId) throw new AppError(400, "visitorId is required.");
+    const v = await prisma.visitor.findFirst({
+      where: { id: visitorId, isDeleted: null },
+      select: { id: true, name: true, company: true, phone: true, purpose: true, visitDate: true, timeIn: true, timeOut: true, referredAt: true, attendedAt: true, attendedNote: true, referredToEmployeeId: true, referredToText: true },
+    });
+    if (!v) throw new NotFoundError("Visitor");
+    const { isHost } = await this.assertHostOrFrontdesk(userId, v);
+    const status = v.timeOut ? "CHECKED_OUT" : v.attendedAt ? "ATTENDED" : "WAITING";
+    const { referredToEmployeeId, ...rest } = v as any;
+    return { ...rest, arrivalTime: v.timeIn || v.referredAt || v.visitDate, status, isHost };
+  }
+
+  /** Host (or frontdesk) responds: ATTEND (accept), WAIT (ask to wait), DECLINE. Notifies the logger. */
+  async respondVisitor(userId: string | undefined, visitorId: string, action: string, note?: string): Promise<any> {
+    if (!visitorId) throw new AppError(400, "visitorId is required.");
+    const v = await prisma.visitor.findFirst({ where: { id: visitorId, isDeleted: null } });
+    if (!v) throw new NotFoundError("Visitor");
+    await this.assertHostOrFrontdesk(userId, v);
+    const act = String(action || "").toUpperCase();
+    if (act === "ATTEND" || act === "ACCEPT") return await this.attendVisitor(visitorId, userId, note);
+    if (act !== "WAIT" && act !== "DECLINE") throw new AppError(400, "action must be ATTEND, WAIT or DECLINE.");
+    const label = act === "WAIT" ? "asked the visitor to wait" : "declined the visit";
+    const hostNote = `${act === "WAIT" ? "Asked to wait" : "Declined"}${note ? `: ${note}` : ""}`;
+    const updated = await prisma.visitor.update({ where: { id: visitorId }, data: { attendedNote: hostNote, updatedAt: new Date(), updatedBy: userId || null } as any });
+    try { if (v.createdById) await notify([v.createdById], "VISITOR_RESPONSE", "Visitor response", `The host ${label}${note ? `: ${note}` : ""}.`, "Visitor", visitorId); } catch { /* best effort */ }
+    return updated;
   }
 
   /** 6b: host marks the visit attended. Notifies the front-desk user who logged the visit. */

@@ -94,6 +94,16 @@ class AmsReportController extends BaseController<AmsReportService> {
     doc.getBuffer((buffer: Buffer) => sendPdf(req, res, buffer, `Slip_${row.code}_${monthTag(year, month)}.pdf`));
   }
 
+  /** Part 2: the caller's OWN monthly slip (self). */
+  async mySlip(req: Request, res: Response) {
+    const b = req.body || {};
+    const year = Number(b.year) || nowY(); const month = Number(b.month) || new Date().getMonth() + 1;
+    const row = await this.service.mySlip(uid(req), year, month);
+    if (!row) { res.status(404).json({ success: false, message: "No slip available." }); return; }
+    const doc = buildSlipPdf(row, { year, month });
+    doc.getBuffer((buffer: Buffer) => sendPdf(req, res, buffer, `Slip_${row.code}_${monthTag(year, month)}.pdf`));
+  }
+
   /** Employee year leave summary (policy band, entitled/allocated/taken/pending/remaining + per-type). */
   async leaveSummary(req: Request, res: Response) {
     const b = req.body || {};

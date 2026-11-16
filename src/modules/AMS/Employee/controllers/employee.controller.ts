@@ -157,6 +157,12 @@ class EmployeeController extends BaseController<EmployeeService> {
     await this.handleRequest(operation, res, { successMessage: "Files retrieved successfully!" });
   }
 
+  /** Part 2: the caller's OWN documents (self — employeeId derived from the user). */
+  async getMyFiles(req: Request, res: Response) {
+    const userId = (req as Request & { userId?: string }).userId;
+    await this.handleRequest(() => this.service.getMyFiles(userId), res, { successMessage: "Files retrieved successfully!" });
+  }
+
   async updateFiles(req: Request, res: Response) {
     const { employeeId, employeeName } = req.body;
 

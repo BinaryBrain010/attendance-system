@@ -40,6 +40,7 @@
     "qa:hrpolicy": "ts-node qa/hrPolicy.ts",
     "qa:reports": "ts-node qa/amsReports.ts",
     "qa:former": "ts-node qa/formerEmployees.ts",
+    "qa:notiftargets": "ts-node qa/notificationTargets.ts",
     "seed:hr": "ts-node seedHrAndReports.ts",
     "qa:enforceprep": "ts-node qa/enforcePreflight.ts",
     "qa:exportgrants": "ts-node qa/exportRoleGrants.ts"
