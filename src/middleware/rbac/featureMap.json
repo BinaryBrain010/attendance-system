@@ -139,6 +139,11 @@
     "feature": "ams.report.export.*",
     "kind": "export"
   },
+  "POST /amsReport/yearSummary": {
+    "access": "self",
+    "feature": "employee.leaves.*",
+    "kind": "read"
+  },
   "GET /analytics/personalAttendance": {
     "access": "self",
     "feature": "analytics.read.*",

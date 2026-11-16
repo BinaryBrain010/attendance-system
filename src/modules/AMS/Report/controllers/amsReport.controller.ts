@@ -100,6 +100,12 @@ class AmsReportController extends BaseController<AmsReportService> {
     await this.handleRequest(() => this.service.leaveSummary(uid(req), b.employeeId, Number(b.year) || nowY()), res, { successMessage: "Leave summary retrieved!" });
   }
 
+  /** Employee year summary for the detail overview cards (attendance + leave, shared calc). */
+  async yearSummary(req: Request, res: Response) {
+    const b = req.body || {};
+    await this.handleRequest(() => this.service.employeeYearSummary(uid(req), b.employeeId, Number(b.year) || nowY()), res, { successMessage: "Year summary retrieved!" });
+  }
+
   async saveRemark(req: Request, res: Response) {
     const { employeeId, year, month, remark } = req.body || {};
     await this.handleRequest(() => this.service.saveRemark(uid(req), employeeId, Number(year) || nowY(), Number(month) || new Date().getMonth() + 1, remark || ""), res, { successMessage: "Remark saved!" });

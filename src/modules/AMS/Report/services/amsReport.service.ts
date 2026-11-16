@@ -7,6 +7,7 @@ import prisma from "../../../../core/models/base.model";
 import { formatInTimeZone } from "date-fns-tz";
 import { AppError } from "../../../../core/errors/app.error";
 import { getAccessibleEmployeeIds, getAccessibleUnitIds } from "../../Unit/helper/unitAccess.helper";
+import { FORMER_EMPLOYEE_STATUSES, activeEmployeeRelation, isFormerEmployee } from "../../Employee/helper/employeeStatus.helper";
 import SystemConfigService from "../../SystemConfig/services/systemConfig.service";
 import HrPolicyService from "../../../HR/Policy/services/hrPolicy.service";
 import { EXPORT_CAP } from "../../../../core/export/tableExport";
@@ -28,6 +29,20 @@ function monthRange(year: number, month: number): { start: Date; end: Date } {
 function yearRange(year: number): { start: Date; end: Date } {
   return { start: new Date(year, 0, 1, 0, 0, 0, 0), end: new Date(year, 11, 31, 23, 59, 59, 999) };
 }
+const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "dd MMM yyyy" (e.g. 05 Mar 2026). */
+function fmtExitDate(d: Date): string {
+  const x = new Date(d);
+  return `${String(x.getDate()).padStart(2, "0")} ${MON3[x.getMonth()]} ${x.getFullYear()}`;
+}
+/** For a former employee included in a past month (exit in window), prefix the remark "Left on …". */
+function leftNote(e: { status?: string | null; resignationDate?: Date | null }, remark: string): string {
+  if (isFormerEmployee(e.status) && e.resignationDate) {
+    const note = `Left on ${fmtExitDate(e.resignationDate)}`;
+    return remark ? `${note}  ·  ${remark}` : note;
+  }
+  return remark;
+}
 function serviceLength(joining: Date, asOf: Date): string {
   let months = (asOf.getFullYear() - joining.getFullYear()) * 12 + (asOf.getMonth() - joining.getMonth());
   if (asOf.getDate() < joining.getDate()) months -= 1;
@@ -45,21 +60,42 @@ function timeOnDate(date: Date, timeOfDay: Date): Date {
 class AmsReportService {
   private hr = new HrPolicyService();
 
-  /** Resolve the scoped + filtered employee set for a report (returns null-safe id list + records). */
-  private async scopedEmployees(userId: string | undefined, f: { unitId?: string; department?: string; company?: string; status?: string }): Promise<any[]> {
+  /**
+   * Resolve the scoped + filtered employee set for a report (returns null-safe id list + records).
+   * Former employees (resigned/fired) are excluded by default from every report. The MONTHLY report
+   * passes `monthWindow` to make one exception: a former employee is still included if their exit
+   * (resignationDate) falls inside that month — see monthlyRows, which then stamps "Left on …".
+   */
+  private async scopedEmployees(
+    userId: string | undefined,
+    f: { unitId?: string; department?: string; company?: string; status?: string },
+    opts?: { monthWindow?: { start: Date; end: Date } },
+  ): Promise<any[]> {
     const scope = userId ? await getAccessibleEmployeeIds(userId) : null;
     if (scope !== null && scope.length === 0) return [];
     const where: any = { isDeleted: null };
     if (scope !== null) where.id = { in: scope };
     if (f.department) where.department = f.department;
     if (f.company) where.company = f.company;
-    if (f.status) where.status = f.status;
     if (f.unitId) where.unitEmployees = { some: { unitId: f.unitId, isDeleted: null } };
+    if (f.status) {
+      // An explicit status filter wins (e.g. HR viewing a specific status), honoured as-is.
+      where.status = f.status;
+    } else if (opts?.monthWindow) {
+      // Monthly report: active employees, PLUS anyone who left during this month (exit date in window).
+      where.OR = [
+        { status: { notIn: FORMER_EMPLOYEE_STATUSES } },
+        { status: { in: FORMER_EMPLOYEE_STATUSES }, resignationDate: { gte: opts.monthWindow.start, lte: opts.monthWindow.end } },
+      ];
+    } else {
+      // Every other report: current employees only.
+      where.status = { notIn: FORMER_EMPLOYEE_STATUSES };
+    }
     return prisma.employee.findMany({
       where,
       select: {
         id: true, code: true, name: true, surname: true, department: true, designation: true, company: true,
-        joiningDate: true, status: true, probationEndDate: true, probationClearedAt: true,
+        joiningDate: true, status: true, resignationDate: true, probationEndDate: true, probationClearedAt: true,
       },
       orderBy: [{ department: "asc" }, { name: "asc" }],
       take: EXPORT_CAP + 1,
@@ -69,12 +105,12 @@ class AmsReportService {
   // ====== 1. MONTHLY EMPLOYEE REPORT ============================================================
   /** Compute every monthly row for the filtered set (used for screen pagination AND export). */
   async monthlyRows(userId: string | undefined, f: MonthlyFilters): Promise<{ rows: any[]; totals: any; capped: boolean }> {
-    const emps = await this.scopedEmployees(userId, f);
+    const { start, end } = monthRange(f.year, f.month);
+    const emps = await this.scopedEmployees(userId, f, { monthWindow: { start, end } });
     const capped = emps.length > EXPORT_CAP;
     const list = capped ? emps.slice(0, EXPORT_CAP) : emps;
     if (!list.length) return { rows: [], totals: this.emptyTotals(), capped };
     const empIds = list.map((e) => e.id);
-    const { start, end } = monthRange(f.year, f.month);
     const yr = yearRange(f.year);
     const now = new Date();
     const yearEnd = yr.end < now ? yr.end : now;
@@ -163,7 +199,7 @@ class AmsReportService {
         leavesThisMonthByType, leavesThisMonth: Object.values(leavesThisMonthByType).reduce((s, n) => s + n, 0),
         leavesTakenYear, leaveEntitlementYear: entitlement, remainingLeaveYear: Math.max(0, entitlement - leavesTakenYear),
         medicalEligible, holidaysWeeklyOffs: holidayCount, shortEarlyLeaves: earlyLeaves,
-        remark: remarkByEmp.get(e.id) || "",
+        remark: leftNote(e, remarkByEmp.get(e.id) || ""),
       };
       rows.push(row);
 
@@ -354,11 +390,19 @@ class AmsReportService {
       }),
       prisma.leaveRequest.findMany({
         where: { employeeId, isDeleted: null, startDate: { lte: yr.end }, endDate: { gte: yr.start } },
-        select: { id: true, startDate: true, endDate: true, status: true, leaveType: true, reason: true, exceedsBalance: true },
+        select: { id: true, startDate: true, endDate: true, status: true, leaveType: true, reason: true, exceedsBalance: true, updatedById: true },
         orderBy: { startDate: "desc" },
       }),
     ]);
     const snap = await this.hr.employeePolicySnapshot(emp, yr.end, rules);
+
+    // Resolve "approved by" (the reviewer who last set APPROVED/REJECTED = updatedById) → username.
+    const reviewerIds = Array.from(new Set(leaves.filter((l) => l.status !== "PENDING" && (l as any).updatedById).map((l) => (l as any).updatedById as string)));
+    const reviewerNames = new Map<string, string>();
+    if (reviewerIds.length) {
+      const us = await prisma.user.findMany({ where: { id: { in: reviewerIds } }, select: { id: true, username: true } });
+      for (const u of us) reviewerNames.set(u.id, u.username);
+    }
 
     const entitled = ent?.annualLeaveDays ?? 0;
     const medicalEligible = ent?.medicalEligible ?? false;
@@ -375,14 +419,15 @@ class AmsReportService {
 
     const typeName = (s: string | null | undefined) => (s || "CASUAL").toUpperCase();
     const allocType = (a: any) => (a.source === "POLICY" ? "ANNUAL" : typeName(a.leaveConfig?.name));
-    const byType = new Map<string, { type: string; entitled: number; allocated: number; taken: number; pending: number; remaining: number }>();
-    const ensure = (t: string) => { let r = byType.get(t); if (!r) { r = { type: t, entitled: 0, allocated: 0, taken: 0, pending: 0, remaining: 0 }; byType.set(t, r); } return r; };
+    const byType = new Map<string, { type: string; entitled: number; allocated: number; allowed: number; taken: number; pending: number; remaining: number }>();
+    const ensure = (t: string) => { let r = byType.get(t); if (!r) { r = { type: t, entitled: 0, allocated: 0, allowed: 0, taken: 0, pending: 0, remaining: 0 }; byType.set(t, r); } return r; };
     const rule: any = ent?.rule;
     if (rule?.leaveByType && typeof rule.leaveByType === "object") for (const [t, n] of Object.entries(rule.leaveByType)) ensure(typeName(t)).entitled = Number(n) || 0;
     for (const a of allocations) ensure(allocType(a)).allocated += a.assignedDays || 0;
     for (const l of approved) ensure(typeName(l.leaveType)).taken += overlapDays(new Date(l.startDate), new Date(l.endDate), yr.start, yearEndCap);
     for (const l of pendingReqs) ensure(typeName(l.leaveType)).pending += overlapDays(new Date(l.startDate), new Date(l.endDate), yr.start, yr.end);
-    for (const r of byType.values()) r.remaining = Math.max(0, (r.allocated || r.entitled || 0) - r.taken);
+    for (const r of byType.values()) { r.allowed = r.allocated > 0 ? r.allocated : r.entitled; r.remaining = Math.max(0, r.allowed - r.taken); }
+    const medicalTaken = Array.from(byType.values()).filter((t) => /MEDICAL|SICK/.test(t.type)).reduce((s, t) => s + t.taken, 0);
 
     // Month-by-month strip of approved leave days taken.
     const monthly: number[] = [];
@@ -396,20 +441,46 @@ class AmsReportService {
       employeeId: emp.id, code: emp.code, name: `${emp.name} ${emp.surname || ""}`.trim(), year,
       band: { label: snap.band, years: snap.years },
       entitled, entitledApplied, allocated, allocatedEffective,
-      taken, pending, remaining, medicalEligible,
+      taken, pending, remaining, medicalEligible, medicalTaken,
       serviceYears: ent?.serviceYearsAtStart ?? snap.years,
       policyDetail: ent?.detail ?? "",
       byType: Array.from(byType.values()).sort((a, b) => a.type.localeCompare(b.type)),
       monthly,
       allocations: allocations.map((a) => ({ id: a.id, assignedDays: a.assignedDays, source: a.source || "MANUAL", type: allocType(a), reason: a.manualReason || a.note || null })),
-      requests: leaves.map((l) => ({ id: l.id, startDate: l.startDate, endDate: l.endDate, status: l.status, leaveType: typeName(l.leaveType), days: overlapDays(new Date(l.startDate), new Date(l.endDate), yr.start, yr.end), reason: l.reason || null, exceedsBalance: l.exceedsBalance })),
+      requests: leaves.map((l) => ({ id: l.id, startDate: l.startDate, endDate: l.endDate, status: l.status, leaveType: typeName(l.leaveType), days: overlapDays(new Date(l.startDate), new Date(l.endDate), yr.start, yr.end), reason: l.reason || null, exceedsBalance: l.exceedsBalance, approvedBy: l.status !== "PENDING" && (l as any).updatedById ? (reviewerNames.get((l as any).updatedById) || null) : null })),
+    };
+  }
+
+  /**
+   * One employee's YEAR summary for the detail-page overview cards — attendance (present/late/half/
+   * absent counted over the year) PLUS the shared leave numbers (allowed/taken/remaining/medical), so
+   * the cards always match the monthly report and the Leaves tab. Access: own employee, or
+   * employee.read/leaves + unit access (reuses leaveSummary's own check).
+   */
+  async employeeYearSummary(userId: string | undefined, employeeId: string, year: number): Promise<any> {
+    const leave = await this.leaveSummary(userId, employeeId, year); // throws on access / not-found
+    const yr = yearRange(year);
+    const grouped = await prisma.attendance.groupBy({
+      by: ["status"],
+      where: { employeeId, isDeleted: null, date: { gte: yr.start, lte: yr.end } },
+      _count: { _all: true },
+    });
+    const c: Record<string, number> = {};
+    for (const g of grouped) c[g.status] = (g._count as any)._all;
+    return {
+      employeeId, year,
+      present: c.PRESENT || 0, late: c.LATE || 0, halfDay: c.HALF_DAY || 0, absent: c.ABSENT || 0,
+      onLeave: c.ON_LEAVE || 0, holidays: c.HOLIDAYS || 0,
+      leaveAllowed: leave.allocatedEffective, leaveTaken: leave.taken, leaveRemaining: leave.remaining, leavePending: leave.pending,
+      medicalEligible: leave.medicalEligible, medicalTaken: leave.medicalTaken,
+      band: leave.band, entitledApplied: leave.entitledApplied,
     };
   }
 
   // ====== 6. ATTENDANCE BY UNIT (month) =======================================================
   async attendanceByUnit(userId: string | undefined, f: MonthlyFilters): Promise<any[]> {
     const unitIds = userId ? await getAccessibleUnitIds(userId, "ams.viewAll.unit.*") : null;
-    const units = await prisma.unit.findMany({ where: { isDeleted: null, ...(unitIds !== null ? { id: { in: unitIds } } : {}), ...(f.unitId ? { id: f.unitId } : {}) }, select: { id: true, name: true, employees: { where: { isDeleted: null }, select: { employeeId: true } } } });
+    const units = await prisma.unit.findMany({ where: { isDeleted: null, ...(unitIds !== null ? { id: { in: unitIds } } : {}), ...(f.unitId ? { id: f.unitId } : {}) }, select: { id: true, name: true, employees: { where: { isDeleted: null, employee: activeEmployeeRelation() }, select: { employeeId: true } } } });
     const { start, end } = monthRange(f.year, f.month);
     const out: any[] = [];
     for (const u of units) {
