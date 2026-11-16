@@ -12,6 +12,7 @@ import { notify, userIdsForEmployees } from "../../../Work/shared/workHelpers";
 import accessModel from "../../../rbac/Access/models/access.model";
 import userModel from "../../../rbac/user/models/user.model";
 import { getAccessibleEmployeeIds } from "../../../AMS/Unit/helper/unitAccess.helper";
+import { excludeQaTestCodeWhere } from "../../../AMS/Employee/helper/employeeStatus.helper";
 import { getHrSettings, updateHrSettings, HrSettings } from "../helper/hrSettings";
 import {
   completedServiceYears, applicableRule, entitlementForYear, bandLabel, probationDefaultEnd, EntitlementResult,
@@ -199,6 +200,7 @@ class HrPolicyService {
       isDeleted: null,
       probationClearedAt: null,
       status: { notIn: ["FIRE", "RESIGNED"] },
+      ...excludeQaTestCodeWhere(), // safety net: never surface a leaked QA_ fixture in the probation dialog
     };
     if (scope !== null) where.id = { in: scope };
     const emps = await prisma.employee.findMany({

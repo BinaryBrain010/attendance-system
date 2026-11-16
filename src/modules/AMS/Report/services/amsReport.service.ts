@@ -7,7 +7,7 @@ import prisma from "../../../../core/models/base.model";
 import { formatInTimeZone } from "date-fns-tz";
 import { AppError } from "../../../../core/errors/app.error";
 import { getAccessibleEmployeeIds, getAccessibleUnitIds } from "../../Unit/helper/unitAccess.helper";
-import { FORMER_EMPLOYEE_STATUSES, activeEmployeeRelation, isFormerEmployee } from "../../Employee/helper/employeeStatus.helper";
+import { FORMER_EMPLOYEE_STATUSES, activeEmployeeRelation, isFormerEmployee, excludeQaTestCodeWhere } from "../../Employee/helper/employeeStatus.helper";
 import SystemConfigService from "../../SystemConfig/services/systemConfig.service";
 import HrPolicyService from "../../../HR/Policy/services/hrPolicy.service";
 import { EXPORT_CAP } from "../../../../core/export/tableExport";
@@ -82,7 +82,7 @@ class AmsReportService {
     }
     const scope = userId ? await getAccessibleEmployeeIds(userId) : null;
     if (scope !== null && scope.length === 0) return [];
-    const where: any = { isDeleted: null };
+    const where: any = { isDeleted: null, ...excludeQaTestCodeWhere() }; // never list QA test-fixture employees
     if (scope !== null) where.id = { in: scope };
     if (f.department) where.department = f.department;
     if (f.company) where.company = f.company;

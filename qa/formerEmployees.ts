@@ -5,6 +5,8 @@
  *
  *   npx ts-node qa/formerEmployees.ts   (results in qa/.former-last.txt)
  */
+process.env.QA_KEEP_TEST_EMPLOYEES = "1"; // QA harness: let this suite see the QA_ fixtures it creates (safety-net bypass; never set in prod)
+
 import * as fs from "fs";
 import prisma from "../src/core/models/base.model";
 import { runWithContext } from "../src/core/context/requestContext";

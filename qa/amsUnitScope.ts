@@ -1,3 +1,4 @@
+process.env.QA_KEEP_TEST_EMPLOYEES = "1"; // QA harness: let this suite see the QA_ fixtures it creates (safety-net bypass; never set in prod)
 /**
  * HOTFIX 2026-10-23 — AMS unit-scoping model verification (QA_ data only, self-cleaning).
  *
@@ -20,6 +21,7 @@ import {
 import leaveReqModel from "../src/modules/AMS/Leaves/models/leaveReq.model";
 import EmployeeService from "../src/modules/AMS/Employee/services/employee.service";
 import employeeModel from "../src/modules/AMS/Employee/models/employee.model";
+import { purgeQaEmployees } from "./qaPurge";
 
 const TAG = `QA_SCOPE_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -177,6 +179,10 @@ async function main() {
     for (const id of createdUeIds) await prisma.unitEmployee.delete({ where: { id } }).catch(() => {});
     for (const id of createdUserIds) await prisma.user.delete({ where: { id } }).catch(() => {});
     for (const id of createdEmpIds) await prisma.employee.delete({ where: { id } }).catch(() => {});
+    // Safety net: the scope test marks attendance for its employees that isn't individually tracked;
+    // an untracked row blocks the per-id employee.delete above. Sweep every QA_SCOPE_ employee + all
+    // FK dependents (this run or a prior failed one) so none can linger in pickers/reports. See qaPurge.ts.
+    await purgeQaEmployees(prisma, "QA_SCOPE_").catch(() => {});
     for (const id of createdUnitIds) await prisma.unit.delete({ where: { id } }).catch(() => {});
   }
 

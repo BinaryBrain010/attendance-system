@@ -202,15 +202,36 @@ class LeadService {
     const t1 = new Date(start); t1.setDate(t1.getDate() + 1);
     const wk = new Date(start); wk.setDate(wk.getDate() + 7);
     const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
-    const [overdue, dueToday, next7, contactedToday, wonThisMonth, pipe] = await Promise.all([
+    const [overdue, dueToday, next7, contactedToday, pipe, wonThisMonth] = await Promise.all([
       prisma.lead.count({ where: open({ nextFollowUpAt: { lt: start } }) }),
       prisma.lead.count({ where: open({ nextFollowUpAt: { gte: start, lte: endToday } }) }),
       prisma.lead.count({ where: open({ nextFollowUpAt: { gte: t1, lte: wk } }) }),
       prisma.lead.count({ where: { AND: [...base.AND, { lastContactAt: { gte: start, lte: endToday } }] } }),
-      prisma.lead.count({ where: { AND: [...base.AND, { stage: "WON" }, { updatedAt: { gte: monthStart } }] } }),
       prisma.lead.aggregate({ _sum: { estimatedValue: true }, where: open({}) }),
+      this.wonThisMonthCount(scope.where, monthStart),
     ]);
     return { overdue, dueToday, next7, contactedToday, wonThisMonth, openPipelineValue: pipe._sum.estimatedValue || 0 };
+  }
+
+  /** "Won this month" = leads whose stage CHANGED to WON within the current month, read from the audit
+   *  trail (the stage-history date), scoped to the caller. Deliberately NOT "all WON leads" nor "WON
+   *  leads merely updated this month": we count only a genuine transition from a non-WON stage to WON
+   *  (audit `changes.stage.before` present and != WON), so a lead created or bulk-imported directly as
+   *  WON (before = null) does not inflate the figure. */
+  private async wonThisMonthCount(scopeWhere: any, monthStart: Date): Promise<number> {
+    const wonAudit = await prisma.auditLog.findMany({
+      where: { entity: "Lead", createdAt: { gte: monthStart }, changes: { path: ["stage", "after"], equals: "WON" } },
+      select: { entityId: true, changes: true },
+    });
+    const wonIds = Array.from(new Set(
+      wonAudit
+        .filter((a) => { const b = (a.changes as any)?.stage?.before; return b != null && b !== "WON"; })
+        .map((a) => a.entityId)
+        .filter(Boolean),
+    )) as string[];
+    if (!wonIds.length) return 0;
+    // Keep only those still in the caller's scope and still WON (a lead moved back out is not a win).
+    return prisma.lead.count({ where: { AND: [{ id: { in: wonIds } }, { isDeleted: null }, scopeWhere, { stage: "WON" }] } });
   }
 
   /** All leads matching the current filters + sort (scope-respecting), capped at EXPORT_CAP + 1 so the

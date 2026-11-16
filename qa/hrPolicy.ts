@@ -1,3 +1,4 @@
+process.env.QA_KEEP_TEST_EMPLOYEES = "1"; // QA harness: let this suite see the QA_ fixtures it creates (safety-net bypass; never set in prod)
 /**
  * HR Policy QA (QA_ data only, self-cleaning). Covers:
  *   - band calculation at 11 months / 2 years / 3 years 1 day (pure policyCalc)
@@ -15,6 +16,7 @@ import HrPolicyService from "../src/modules/HR/Policy/services/hrPolicy.service"
 import LeaveReqService from "../src/modules/AMS/Leaves/services/leaveReq.service";
 import { completedServiceYears, applicableRule, entitlementForYear, probationDefaultEnd } from "../src/modules/HR/Policy/helper/policyCalc";
 import { LeaveStatus } from "@prisma/client";
+import { purgeQaEmployees } from "./qaPurge";
 
 const TAG = `QA_HR_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -206,6 +208,9 @@ async function main() {
     for (const id of createdUserIds) await prisma.user.delete({ where: { id } }).catch(() => {});
     await prisma.attendance.deleteMany({ where: { employeeId: { in: createdEmpIds } } }).catch(() => {}); // RESTRICT FK: clear before employee delete
     for (const id of createdEmpIds) await prisma.employee.delete({ where: { id } }).catch(() => {});
+    // Safety net: sweep EVERY QA_HR_ employee (this run or a prior failed one) with all FK dependents,
+    // so a leftover PROBATION fixture can never reappear in the probation-due dialog. See qaPurge.ts.
+    await purgeQaEmployees(prisma, "QA_HR_").catch(() => {});
   }
 
   out(`\n[hrPolicy] ${pass} passed, ${fail} failed`);

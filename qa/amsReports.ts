@@ -1,3 +1,4 @@
+process.env.QA_KEEP_TEST_EMPLOYEES = "1"; // QA harness: let this suite see the QA_ fixtures it creates (safety-net bypass; never set in prod)
 /**
  * Quick Mark Reports QA (QA_ data only, self-cleaning). Covers:
  *   - Monthly Employee Report numbers for an employee with KNOWN attendance (present/late/half/absent/

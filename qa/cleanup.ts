@@ -51,7 +51,10 @@ async function main() {
 
   try {
     const QA_NAME = { startsWith: "QA_" };
-    const empWhere = { OR: [{ name: "QAWF" }, { name: "QASelf" }, { code: { startsWith: "QAWF-" } }, { code: { startsWith: "QAUT-SELF-" } }] };
+    // `code startsWith "QA_"` catches the DB-fixture employees (QA_HR_, QA_SCOPE_, QA_ORPH_, QA_SCREENS…)
+    // that the name/code patterns below miss — the exact rows that leak into the probation dialog and
+    // pickers when a script's finally fails. Real employee codes are never "QA_"-prefixed.
+    const empWhere = { OR: [{ name: "QAWF" }, { name: "QASelf" }, { code: { startsWith: "QAWF-" } }, { code: { startsWith: "QAUT-SELF-" } }, { code: { startsWith: "QA_" } }] };
     const qaEmpIds = await ids("employee", empWhere);
     // QA users: the RBAC personas (*@test.local) + the users auto-provisioned for QA employees
     const qaUserIds = await ids("user", { OR: [{ username: { contains: "@test.local" } }, ...(qaEmpIds.length ? [{ employeeId: { in: qaEmpIds } }] : [])] });
@@ -61,6 +64,8 @@ async function main() {
     // dependents of QA employees
     if (qaEmpIds.length) {
       const eIn = { employeeId: { in: qaEmpIds } };
+      await run("probationDecision", () => prisma.probationDecision.deleteMany({ where: eIn }));
+      await run("salesAgent(emp)", () => prisma.salesAgent.deleteMany({ where: eIn }));
       await run("attendanceRequest", () => prisma.attendanceRequest.deleteMany({ where: eIn }));
       await run("attendance", () => prisma.attendance.deleteMany({ where: eIn }));
       await run("leaveRequest", () => prisma.leaveRequest.deleteMany({ where: eIn }));
