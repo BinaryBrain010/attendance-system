@@ -152,7 +152,11 @@ return await userModel.user.gpNonAssociatedUsers();
   }
 
   async changePassword(userId: string, password: string) {
-    return await userModel.user.changePassowrd(userId, password);
+    const res = await userModel.user.changePassowrd(userId, password);
+    // Part 3: clear the first-login flag once the user sets their own password (raw SQL — the column
+    // may post-date the local Prisma client).
+    try { await prisma.$executeRawUnsafe(`UPDATE "User" SET "mustChangePassword" = false WHERE id = $1`, userId); } catch { /* column absent pre-migration */ }
+    return res;
   }
 
   async totalUsers(userId: string): Promise<number> {
