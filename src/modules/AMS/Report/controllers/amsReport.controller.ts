@@ -76,8 +76,11 @@ class AmsReportController extends BaseController<AmsReportService> {
   async monthlyPdf(req: Request, res: Response) {
     const b = req.body || {};
     const f = { year: Number(b.year) || nowY(), month: Number(b.month) || new Date().getMonth() + 1, unitId: b.unitId, department: b.department, company: b.company, status: b.status };
-    const { rows, totals } = await this.service.monthlyRows(uid(req), f);
-    const doc = buildMonthlyPdf(rows, totals, f);
+    const [{ rows, totals }, metaInfo] = await Promise.all([
+      this.service.monthlyRows(uid(req), f),
+      this.service.monthlyReportMeta(uid(req), f),
+    ]);
+    const doc = buildMonthlyPdf(rows, totals, { year: f.year, month: f.month, ...metaInfo });
     doc.getBuffer((buffer: Buffer) => sendPdf(req, res, buffer, `Monthly-Report_${monthTag(f.year, f.month)}.pdf`));
   }
 
