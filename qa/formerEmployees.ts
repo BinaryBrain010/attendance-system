@@ -14,6 +14,7 @@ import { GOD_ID } from "../src/modules/CRM/shared/access";
 import AmsReportService from "../src/modules/AMS/Report/services/amsReport.service";
 import AttendanceScheduleService from "../src/modules/AMS/Attendance/services/schedule.service";
 import employeeModel from "../src/modules/AMS/Employee/models/employee.model";
+import EmployeeService from "../src/modules/AMS/Employee/services/employee.service";
 
 const TAG = `QA_FORMER_${Date.now()}`;
 let pass = 0, fail = 0;
@@ -79,16 +80,27 @@ async function main() {
       check("Picker: resigned EXCLUDED", !inPicker(resigned.id));
       check("Picker: fired EXCLUDED", !inPicker(fired.id));
 
-      // 5) Employee list default = Active; 'all' shows formers; 'RESIGNED' shows only resigned.
+      // 5) Employee LIST endpoint: the DEFAULT (no filter) now = ALL — the employees page shows former
+      //    staff (muted). An EXPLICIT "active" excludes them (what every OTHER caller passes), and a
+      //    specific status ("RESIGNED") shows only that status.
       const listDefault: any = await (employeeModel as any).employee.gpPgFindManyWithSortAndFilter(1, 500, "createdAt", "desc", undefined, "QAFormer", undefined, undefined, undefined, GOD_ID);
+      const listActive: any = await (employeeModel as any).employee.gpPgFindManyWithSortAndFilter(1, 500, "createdAt", "desc", "active", "QAFormer", undefined, undefined, undefined, GOD_ID);
       const listAll: any = await (employeeModel as any).employee.gpPgFindManyWithSortAndFilter(1, 500, "createdAt", "desc", "all", "QAFormer", undefined, undefined, undefined, GOD_ID);
       const listResigned: any = await (employeeModel as any).employee.gpPgFindManyWithSortAndFilter(1, 500, "createdAt", "desc", "RESIGNED", "QAFormer", undefined, undefined, undefined, GOD_ID);
       const dd = (listDefault.data || listDefault) as any[];
+      const dac = (listActive.data || listActive) as any[];
       const da = (listAll.data || listAll) as any[];
       const dr = (listResigned.data || listResigned) as any[];
-      check("List default: active present, formers absent", dd.some((r) => r.id === active.id) && !dd.some((r) => r.id === resigned.id) && !dd.some((r) => r.id === fired.id));
+      check("List DEFAULT: includes the resigned + fired employee (list page shows all)", dd.some((r) => r.id === active.id) && dd.some((r) => r.id === resigned.id) && dd.some((r) => r.id === fired.id));
+      check("List explicit 'active': active present, formers EXCLUDED (every other caller passes this)", dac.some((r) => r.id === active.id) && !dac.some((r) => r.id === resigned.id) && !dac.some((r) => r.id === fired.id));
       check("List 'all': formers present", da.some((r) => r.id === resigned.id) && da.some((r) => r.id === fired.id));
       check("List 'RESIGNED': only resigned", dr.some((r) => r.id === resigned.id) && !dr.some((r) => r.id === active.id) && !dr.some((r) => r.id === fired.id));
+
+      // 5b) The OTHER list caller — EmployeeService.getEmployees (POST /employee/get) — forces "active",
+      //     so former staff stay out of it even though the shared endpoint now defaults to all.
+      const postList: any = await new EmployeeService().getEmployees(1, 500, GOD_ID);
+      const pl = (postList.data || postList) as any[];
+      check("POST /get list: active present, formers EXCLUDED (explicit active)", pl.some((r) => r.id === active.id) && !pl.some((r) => r.id === resigned.id) && !pl.some((r) => r.id === fired.id));
 
       // 6) Absent cron source: never returns a former employee (so they're never marked absent).
       const nonMarked = await new AttendanceScheduleService().getNonMarkedEmployees();

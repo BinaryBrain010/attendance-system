@@ -782,13 +782,16 @@ const employeeModel = prisma.$extends({
         const isFilterMode = filter === "true";
         const norm = (filter || "").toString().trim().toLowerCase();
 
-        // Default to CURRENT employees (exclude resigned/fired). "all" shows everyone (HR history view);
-        // "active" is the explicit default; any other value is a single status (ACTIVE/RESIGNED/…).
+        // Status default for THIS list endpoint is now "all" (the employees page shows everyone,
+        // including resigned/fired). Every OTHER caller passes an explicit "active" (or filter=true for
+        // the dropdown field mode), so former employees stay excluded everywhere else — see the three
+        // callers in employee.service.ts (getEmployees forces "active"; the list page + export forward
+        // the page's explicit filter). "active" = exclude former; a specific enum = that single status.
         if (isFilterMode) {
           where.status = { notIn: FORMER_EMPLOYEE_STATUSES };
-        } else if (norm === "all") {
-          // no status filter — include former employees
-        } else if (norm === "active" || norm === "") {
+        } else if (norm === "all" || norm === "") {
+          // list-page default — include former employees (no status filter)
+        } else if (norm === "active") {
           where.status = { notIn: FORMER_EMPLOYEE_STATUSES };
         } else {
           where.status = filter; // explicit single status
@@ -883,6 +886,8 @@ const employeeModel = prisma.$extends({
               address: true,
               contactNo: true,
               company: true,
+              status: true, // status chip on the list row
+              resignationDate: true, // exit date shown for former employees
             };
 
         // Execute query with pagination, sorting, and filtering

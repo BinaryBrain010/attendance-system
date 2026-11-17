@@ -32,8 +32,10 @@ class EmployeeService {
   async getEmployees(page: number, pageSize: number, userId?: string): Promise<paginatedData> {
     // HOTFIX unit scoping: route the POST list through the unit-aware paginator so it is scoped by
     // the caller's accessible units (ams.viewAll.unit bypasses; no unit = self), same as GET /get.
+    // The list endpoint's status DEFAULT is now "all"; this POST list must stay current-staff-only, so
+    // it passes an explicit "active" filter (former employees are excluded everywhere but the list page).
     return await employeeModel.employee.gpPgFindManyWithSortAndFilter(
-      page, pageSize, 'createdAt', 'desc', undefined, undefined, undefined, undefined, undefined, userId
+      page, pageSize, 'createdAt', 'desc', 'active', undefined, undefined, undefined, undefined, userId
     );
   }
 
