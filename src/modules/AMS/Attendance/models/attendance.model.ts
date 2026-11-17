@@ -1379,10 +1379,19 @@ ORDER BY
             });
 
             for (const request of approvedRequests) {
-              await leaveReqModel.leaveRequest.gpUpdateStatus(request.id, 'REJECTED');
+              // Undo the leave for THIS day via the dedicated cancel path — never the guarded reject
+              // path (which throws "already approved and cannot be rejected again"). Single-day leaves
+              // are cancelled + balance restored; multi-day leaves are left intact with a note.
+              const outcome = await leaveReqModel.leaveRequest.gpCancelApprovedLeaveForDay(
+                request.id,
+                new Date(baseDate),
+                'Attendance changed off leave',
+              );
+              console.info(`[attendance update] leave ${request.id} on ${new Date(baseDate).toISOString().slice(0, 10)}: ${outcome.action} — ${outcome.reason}`);
             }
           } catch (error) {
-            console.error('Error cancelling leave request after attendance update:', error);
+            // Never let leave-sync break the attendance update itself; log and continue.
+            console.error('Error adjusting leave request after attendance update:', error);
           }
         }
 

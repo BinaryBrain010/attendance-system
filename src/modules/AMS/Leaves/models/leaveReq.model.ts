@@ -346,6 +346,54 @@ const leaveReqModel = prisma.$extends({
         }
       },
 
+      /**
+       * Internal: an attendance edit moved an ON_LEAVE day to a worked/absent status, so the APPROVED
+       * leave that covered that day must be undone — WITHOUT going through the guarded approve/reject
+       * path (which rightly refuses to "reject" an already-approved request and was the source of the
+       * prod error "Leave request is already approved and cannot be rejected again").
+       *   - A single-day approved leave on that day is CANCELLED: status -> REJECTED (our only
+       *     "cancelled" marker — the enum has no CANCELLED) and the allocation balance is restored.
+       *   - A multi-day approved leave is LEFT INTACT (we never silently reject a whole multi-day leave
+       *     because one of its days changed); the caller is told why so it can be logged.
+       * Never throws for the already-approved case. Returns a short outcome for logging.
+       */
+      async gpCancelApprovedLeaveForDay(
+        requestId: string,
+        day: Date,
+        note?: string
+      ): Promise<{ action: "cancelled" | "skipped"; reason: string }> {
+        const req = await prisma.leaveRequest.findUnique({ where: { id: requestId } }) as any;
+        if (!req) return { action: "skipped", reason: "leave request not found" };
+        if (req.status !== LeaveStatus.APPROVED) return { action: "skipped", reason: `leave is ${String(req.status).toLowerCase()}, not approved` };
+
+        const start = getStartOfDayPakistan(new Date(req.startDate));
+        const end = getStartOfDayPakistan(new Date(req.endDate));
+        const isSingleDay = start.getTime() === end.getTime();
+        if (!isSingleDay) {
+          // Trimming / splitting a multi-day leave for a single attendance edit is out of scope and
+          // risky; leave it untouched and surface a clear note instead of rejecting the whole thing.
+          return { action: "skipped", reason: "leave spans multiple days — left intact (only the attendance day was changed)" };
+        }
+
+        // Single-day approved leave covering this day -> cancel it and restore the balance.
+        await prisma.leaveRequest.update({
+          where: { id: requestId },
+          data: { status: LeaveStatus.REJECTED, reviewNote: note ?? "Auto-cancelled: attendance changed off this leave day" } as any,
+        });
+        if (req.leaveAllocationId) {
+          const allocation = await prisma.leaveAllocation.findUnique({ where: { id: req.leaveAllocationId } }) as any;
+          if (allocation) {
+            // Exclude this (now rejected) request so its day is no longer counted as used.
+            const usedDays = await this.calculateUsedDaysForAllocation(req.leaveAllocationId, requestId);
+            await prisma.leaveAllocation.update({
+              where: { id: req.leaveAllocationId },
+              data: { usedDays, remainingDays: allocation.assignedDays - usedDays, updatedAt: new Date() } as any,
+            });
+          }
+        }
+        return { action: "cancelled", reason: "single-day approved leave cancelled; balance restored" };
+      },
+
       // Calculate used days for an allocation (excluding current request if provided)
       async calculateUsedDaysForAllocation(leaveAllocationId: string, excludeRequestId?: string): Promise<number> {
         const where: any = {

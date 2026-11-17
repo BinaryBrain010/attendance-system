@@ -43,7 +43,11 @@
     "qa:notiftargets": "ts-node qa/notificationTargets.ts",
     "seed:hr": "ts-node seedHrAndReports.ts",
     "qa:enforceprep": "ts-node qa/enforcePreflight.ts",
-    "qa:exportgrants": "ts-node qa/exportRoleGrants.ts"
+    "qa:exportgrants": "ts-node qa/exportRoleGrants.ts",
+    "qa:leavesync": "ts-node qa/leaveAttendanceSync.ts",
+    "qa:rbacpreflight": "ts-node qa/rbacPreflight.ts",
+    "qa:emprole": "ts-node qa/employeeRoleEnforce.ts",
+    "qa:rbacgrant": "ts-node qa/applyRbacGrants.ts"
   },
   "author": "ahad",
   "license": "ISC",
