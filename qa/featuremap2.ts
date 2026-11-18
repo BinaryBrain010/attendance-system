@@ -156,6 +156,25 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /user/refreshSession": { feature: "-", kind: "update", access: "token", note: "sliding-session renewal (Stay signed in)" },
   "GET /user/preferences": { feature: "-", kind: "read", access: "token", note: "own preferences" },
   "POST /user/preferences": { feature: "-", kind: "update", access: "token", note: "save own preferences" },
+
+  // ---- Prod RBAC-preflight fixes ----
+  // Exiting impersonation must work for any logged-in / impersonated session (it restores the admin's
+  // own token), so it is token-access, not user.read.*.
+  "POST /user/impersonate/exit": { feature: "-", kind: "update", access: "token", note: "exit impersonation — any logged-in/impersonated session" },
+  // Self-OR-feature: the caller's OWN employee record is allowed; acting on ANOTHER employee needs the
+  // listed feature. Ownership is derived server-side in requirePermission (see SELF_OWNER for the two
+  // routes whose owner id isn't body.employeeId: /employee/getById uses body.id; /attendanceReq/getById
+  // resolves AttendanceRequest.employeeId).
+  "POST /employee/getById": { feature: "employee.read.*", kind: "read", access: "self", note: "own employee (body.id) else employee.read.*" },
+  "POST /employee/files": { feature: "employee.read.*", kind: "read", access: "self", note: "own employee's documents (body.employeeId) else employee.read.*" },
+  "POST /shift/assignmentsByEmployee": { feature: "shift.read.*", kind: "read", access: "self", note: "own shift assignments (body.employeeId) else shift.read.*" },
+  "POST /attendanceReq/getById": { feature: "attendanceReq.read.*", kind: "read", access: "self", note: "own attendance request (AttendanceRequest.employeeId) else attendanceReq.read.*" },
+  "POST /leave/leave-requests/overviewByEmployee": { feature: "leaveReq.read.*", kind: "read", access: "self", note: "own leave overview (body.employeeId) else leaveReq.read.*" },
+  "POST /unitEmployee/getUnitsByEmployeeId": { feature: "unit.read.*", kind: "read", access: "self", note: "own units (body.employeeId) else unit.read.*" },
+  // Own activity log — same handler as GET /activityLog/me; no target -> the caller's own activity.
+  "POST /activityLog/me": { feature: "activityLog.read.own.*", kind: "read", access: "self", note: "own activity (no target); else activityLog.read.*" },
+  // Employee photo bytes only — any logged-in user (used across avatars; no record detail leaked).
+  "GET /employee/photo": { feature: "-", kind: "read", access: "token", note: "photo bytes only; any logged-in user" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

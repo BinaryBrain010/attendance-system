@@ -4,7 +4,7 @@ Flip the backend from permissive to enforcing (`requirePermission` starts return
 just logging). Everything here is **read-only until the grant step (§4) and the flip (§5)**. Do it in
 this order; nothing before §4 changes prod.
 
-Prereqs: prod runs the backend under **pm2** as `okasha-backend`; `.env` holds `RBAC_ENFORCE`
+Prereqs: prod runs the backend under **pm2** as `server`; `.env` holds `RBAC_ENFORCE`
 (absent = `off`). The committed `featureMap.json` is current — `npm run qa:routes && npm run qa:featuremap`
 should report **0 unmapped** (see PROD_DEPLOY_PLAN §4.2). Best signal comes from first running prod in
 `RBAC_ENFORCE=log` for ~1–2 weeks so `logs/rbac_denials.log` accumulates the real would-403 calls.
@@ -16,7 +16,7 @@ should report **0 unmapped** (see PROD_DEPLOY_PLAN §4.2). Best signal comes fro
 On the prod box (or any box pointed at the prod `DATABASE_URL`):
 
 ```bash
-npx ts-node qa/exportRoleGrants.ts --allow-remote --out=/root/rbac/roleGrants-$(date +%F).json
+npx ts-node qa/exportRoleGrants.ts --allow-remote --out=$HOME/rbac/roleGrants-$(date +%F).json
 ```
 
 SELECT-only. Writes **outside the repo** a JSON of every role/group: `allowedFeatures`, the groups that
@@ -28,7 +28,7 @@ denials to the exact role). Copy that file to wherever you'll run the preflight.
 If prod has been running `RBAC_ENFORCE=log`, copy its denial log:
 
 ```bash
-cp /var/www/okasha-backend/logs/rbac_denials.log /root/rbac/rbac_denials.log
+cp /var/www/server/logs/rbac_denials.log $HOME/rbac/rbac_denials.log
 ```
 
 Each line is `{ts,userId,route,reason,mode}` — exactly the routes real users hit that **would** 403.
@@ -41,15 +41,16 @@ On your machine, with the two files from §1–§2:
 
 ```bash
 npx ts-node qa/rbacPreflight.ts \
-  --grants=/root/rbac/roleGrants-YYYY-MM-DD.json \
-  --denials=/root/rbac/rbac_denials.log \
+  --grants=$HOME/rbac/roleGrants-YYYY-MM-DD.json \
+  --denials=$HOME/rbac/rbac_denials.log \
   --days=14
 ```
 
-Writes `docs/RBAC_ENFORCE_PREFLIGHT_<date>.md`: per role → its users, the would-be-blocked routes they
-actually called in the window, and the single **feature to grant** that clears each cluster. (Omit
-`--denials` to get the nav-derived view.) `qa/enforcePreflight.ts --grants=…` gives the same per-role
-gap table without the call-history scoping if you want the full in-module list too.
+Writes `$HOME/rbac/RBAC_ENFORCE_PREFLIGHT_<date>.md` (outside the repo; pass `--out=` to change it):
+per role → its users, the would-be-blocked routes they actually called in the window, and the single
+**feature to grant** that clears each cluster. (Omit `--denials` to get the nav-derived view.)
+`qa/enforcePreflight.ts --grants=… --out=$HOME/rbac/…` gives the same per-role gap table without the
+call-history scoping if you want the full in-module list too.
 
 ## 4. Review the gaps, then grant the agreed ones
 
@@ -73,12 +74,12 @@ Apply it — **dry-run first** (changes nothing), then `--apply`:
 
 ```bash
 # dry run — prints exactly what it would add, writes nothing
-npx ts-node qa/applyRbacGrants.ts --grants=/root/rbac/grants.json --allow-remote
+npx ts-node qa/applyRbacGrants.ts --grants=$HOME/rbac/grants.json --allow-remote
 ```
 
 ```bash
 # write it (additive + idempotent: only ever ADDS features, re-running is a no-op)
-npx ts-node qa/applyRbacGrants.ts --grants=/root/rbac/grants.json --apply --allow-remote
+npx ts-node qa/applyRbacGrants.ts --grants=$HOME/rbac/grants.json --apply --allow-remote
 ```
 
 **Canonical alternative (version-controlled):** add the features to the role's recipe in
@@ -112,8 +113,8 @@ Re-run §1 + §3 to confirm the gaps are closed (the preflight should now show �
 ```bash
 # in the backend .env on prod
 sed -i 's/^RBAC_ENFORCE=.*/RBAC_ENFORCE=on/' .env || echo 'RBAC_ENFORCE=on' >> .env
-pm2 restart okasha-backend --update-env        # --update-env re-reads .env
-pm2 logs okasha-backend --lines 50             # confirm clean boot + "mode on"
+pm2 restart server --update-env        # --update-env re-reads .env
+pm2 logs server --lines 50             # confirm clean boot + "mode on"
 ```
 
 ## 6. Verify after the flip
@@ -128,7 +129,7 @@ pm2 logs okasha-backend --lines 50             # confirm clean boot + "mode on"
 Back to permissive logging immediately, no 403s, no data change:
 
 ```bash
-sed -i 's/^RBAC_ENFORCE=on/RBAC_ENFORCE=log/' .env && pm2 restart okasha-backend --update-env
+sed -i 's/^RBAC_ENFORCE=on/RBAC_ENFORCE=log/' .env && pm2 restart server --update-env
 ```
 
 (Use `RBAC_ENFORCE=off` to also stop the denial logging.)

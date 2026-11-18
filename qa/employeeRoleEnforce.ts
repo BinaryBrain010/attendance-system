@@ -39,6 +39,17 @@ async function main() {
     if (group) await prisma.userGroup.create({ data: { userId: user.id, groupId: group.id, active: true } as any });
     token = mintTokenFor(user.id, []);
 
+    // Another employee (for the "someone else" 403 checks) and an attendance request the persona OWNS.
+    const other = await prisma.employee.create({ data: { name: "QAEmpRole", surname: "Other", address: "QA", dob: new Date("1995-01-01"), joiningDate: new Date("2023-01-01"), bloodGroup: "O+", contactNo: "0300", designation: "Staff", department: "QA", martialStatus: "Single", company: "SOLARMAX", code: `${TAG}_OTHER`, status: "ACTIVE" } as any });
+    const otherId = other.id;
+    const ownReq = await prisma.attendanceRequest.create({ data: { employeeId: emp.id, reason: "QA own request", status: "PENDING" } as any });
+    const ownReqId = ownReq.id;
+    // A persona that can READ gate passes (voucher.read.*) — to prove gate pass keeps working under
+    // enforce AND that the capital-/GatePass case-insensitive mapping resolves.
+    const gpUser = await prisma.user.create({ data: { username: `${TAG}.gp@test.local`, password: "x" } as any });
+    await prisma.featurePermission.create({ data: { parentType: "User", parentId: gpUser.id, permissions: { allowedFeatures: ["login.admin.*", "voucher.read.*"] } as any, createdAt: new Date() } as any });
+    const gpToken = mintTokenFor(gpUser.id, []);
+
     const B = { token } as const;
     // Confirm enforcement is actually ON: an unmapped-feature route must 403 for this persona. We use
     // the employee list as the canary; if it returns 200 the server is NOT enforcing — abort loudly.
@@ -78,10 +89,43 @@ async function main() {
     await expect(403, "CRM My Day (POST /lead/myDay)", "POST", "/lead/myDay", {});
     await expect(403, "settings (GET /systemConfig/get)", "GET", "/systemConfig/get");
 
+    out("\n-- 200: own profile/files/shift/photo/own request (self-or-feature, owner derived server-side) --");
+    await expect(200, "own profile (POST /employee/getById, own id)", "POST", "/employee/getById", { id: empId });
+    await expect(200, "own documents (POST /employee/files, own)", "POST", "/employee/files", { employeeId: empId });
+    await expect(200, "own shift assignments (own)", "POST", "/shift/assignmentsByEmployee", { employeeId: empId });
+    await expect(200, "own attendance request (POST /attendanceReq/getById, own)", "POST", "/attendanceReq/getById", { id: ownReqId });
+    await expect(200, "own leave overview (own)", "POST", "/leave/leave-requests/overviewByEmployee", { employeeId: empId });
+    await expect(200, "own units (own)", "POST", "/unitEmployee/getUnitsByEmployeeId", { employeeId: empId });
+    const photo = await http("GET", `/employee/photo?employeeId=${empId}`, B);
+    check("own photo reachable (GET /employee/photo, token — not 403)", photo.status !== 403, `status ${photo.status}`);
+
+    out("\n-- 403: another employee's record requires the feature --");
+    await expect(403, "another employee's profile (getById, other id)", "POST", "/employee/getById", { id: otherId });
+    await expect(403, "another employee's documents (files, other id)", "POST", "/employee/files", { employeeId: otherId });
+
+    out("\n-- impersonate exit: any logged-in/low-privilege session (token) --");
+    const exitRes = await http("POST", "/user/impersonate/exit", B);
+    check("impersonate exit NOT blocked by the gate (token access)", exitRes.status !== 403, `status ${exitRes.status}`);
+
+    out("\n-- gate pass read works under enforce + capital /GatePass maps (case-insensitive) --");
+    const gpLower = await http("POST", "/gatePass/get", { token: gpToken, body: { page: 1, pageSize: 5 } });
+    check("/gatePass/get -> 200 for a gatePass reader (voucher.read.*)", gpLower.status === 200, `status ${gpLower.status}`);
+    const gpUpper = await http("POST", "/GatePass/get", { token: gpToken, body: { page: 1, pageSize: 5 } });
+    check("/GatePass/get (capital) -> 200 too (case-insensitive featureMap lookup)", gpUpper.status === 200, `status ${gpUpper.status}`);
+
     out("\n-- gap probe (reported, not asserted): lead-participant detail is feature-gated --");
     const leadDetail = await http("POST", "/lead/getById", { token, body: { id: "00000000-0000-0000-0000-000000000000" } });
     out(`NOTE  POST /lead/getById -> ${leadDetail.status} (feature crm.lead.read.own.*). A mentioned Employee 403s at the gate under enforce; grant crm.lead.read.own.* to the Employee role if deep-linked lead participation must open for pure Employees (own-scope returns only their own leads, so no list leak).`);
   } finally {
+    // The gate-pass persona has no employee, so sweep it (and any TAG user) by username first.
+    const tagUsers = await prisma.user.findMany({ where: { username: { startsWith: TAG } }, select: { id: true } }).catch(() => [] as any[]);
+    const tagUserIds = tagUsers.map((u) => u.id);
+    if (tagUserIds.length) {
+      await prisma.featurePermission.deleteMany({ where: { parentType: "User", parentId: { in: tagUserIds } } }).catch(() => {});
+      await prisma.userRole.deleteMany({ where: { userId: { in: tagUserIds } } }).catch(() => {});
+      await prisma.userGroup.deleteMany({ where: { userId: { in: tagUserIds } } }).catch(() => {});
+      await prisma.user.deleteMany({ where: { id: { in: tagUserIds } } }).catch(() => {});
+    }
     await purgeQaEmployees(prisma, "QA_EMPROLE_").catch(() => {});
   }
 

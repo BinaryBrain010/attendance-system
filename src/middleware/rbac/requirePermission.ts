@@ -19,6 +19,23 @@ import logger from "../../core/logger/logger";
 const GOD_ID = "58c55d6a-910c-46f8-a422-4604bea6cd15";
 const MAP: Record<string, { access: string; feature: string; kind: string }> =
   JSON.parse(fs.readFileSync(path.join(__dirname, "featureMap.json"), "utf8"));
+// Case-insensitive fallback index. Prod clients (the old app / mobile) call some routes with a
+// different case than the mount (e.g. "GET /GatePass/get" vs "/gatePass/get"); Express still routes
+// them, but the exact-case map lookup misses and they'd 403 as "unmapped" under enforce. On an exact
+// miss we retry by lower-cased key so those keep their feature.
+const MAP_LC: Record<string, { access: string; feature: string; kind: string }> = {};
+for (const [k, v] of Object.entries(MAP)) MAP_LC[k.toLowerCase()] = v;
+
+// For `access: "self"` routes whose owning employee id is NOT in body.employeeId, how to derive it:
+//   { idKey }            -> the target employee id is body[idKey] (e.g. /employee/getById uses body.id)
+//   { entity, idKey }    -> look up prisma[entity] by body[idKey], owner = its employeeId (indirect)
+// Routes not listed here fall back to body.employeeId (the generic self rule).
+const SELF_OWNER: Record<string, { idKey?: string; entity?: string; field?: string }> = {
+  "POST /employee/getById": { idKey: "id" },
+  "POST /attendanceReq/getById": { entity: "attendanceRequest", idKey: "id" },
+};
+const selfOwnerFor = (key: string) => SELF_OWNER[key] || SELF_OWNER[key.toLowerCase()] || null;
+
 const accessService = new AccessService();
 const PARENT_FEATURE: Record<string, string> = { User: "user", Role: "role", Group: "group" };
 const LOG_FILE = path.join(__dirname, "..", "..", "..", "logs", "rbac_denials.log");
@@ -73,7 +90,7 @@ export default async function requirePermission(req: Request, res: Response, nex
   const userId = (req as Request & { userId?: string }).userId || "";
   const fullPath = (req.baseUrl + (req.path || "")).replace(/\/+$/, "") || "/";
   const key = `${req.method} ${fullPath}`;
-  const entry = MAP[key];
+  const entry = MAP[key] || MAP_LC[key.toLowerCase()];
 
   const deny = (reason: string) => {
     logDenial({ userId, route: key, reason, mode: m });
@@ -92,13 +109,35 @@ export default async function requirePermission(req: Request, res: Response, nex
     if (access === "self") {
       const body: any = req.body || {};
       const query: any = req.query || {};
-      const reqEmp = body.employeeId ?? query.employeeId ?? null;
+      const owner = selfOwnerFor(key);
       const reqUser = body.userId ?? query.userId ?? null;
-      if (reqEmp === null && reqUser === null) return next();   // no target -> the caller's own record
       if (reqUser !== null && String(reqUser) === String(userId)) return next(); // own user account
-      if (reqEmp !== null) {
+
+      // Server-derived ownership: the employee id this request acts on.
+      let targetEmp: string | null = null;
+      if (owner?.entity && owner.idKey) {
+        // Indirect: look up the row by its id, read its employeeId (e.g. an AttendanceRequest).
+        const rowId = body[owner.idKey] ?? query[owner.idKey] ?? null;
+        if (rowId != null) {
+          try {
+            const field = owner.field || "employeeId";
+            const row: any = await (prisma as any)[owner.entity].findUnique({ where: { id: String(rowId) }, select: { [field]: true } });
+            targetEmp = row && row[field] != null ? String(row[field]) : null;
+          } catch { targetEmp = null; }
+        }
+      } else {
+        const idKey = owner?.idKey || "employeeId"; // default: body.employeeId
+        const v = body[idKey] ?? query[idKey] ?? null;
+        targetEmp = v != null ? String(v) : null;
+      }
+
+      // Routes WITHOUT a configured owner keep the legacy "no target -> own record" allowance (the
+      // generic self endpoints that default to the caller). Configured routes must RESOLVE a target to
+      // count as self; an unresolved or someone-else's target falls through to the feature check.
+      if (!owner && targetEmp === null && reqUser === null) return next();
+      if (targetEmp !== null) {
         const ownEmp = await callerEmployeeId(userId);
-        if (ownEmp && String(ownEmp) === String(reqEmp)) return next();           // own employee
+        if (ownEmp && String(ownEmp) === targetEmp) return next();                 // own employee
       }
       const s = await permSet(req, userId);
       if (holds(s, feature)) return next();          // acting on another employee/user needs the feature

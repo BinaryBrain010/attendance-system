@@ -15,12 +15,13 @@
  *                                 operates in (its granted roots = the apps/tabs its nav shows) that it
  *                                 would 403 on. Broader, but needs no prod log.
  *   --days=14                     denial-log window (default 14).
- *   --out=<md path>               report path (default docs/RBAC_ENFORCE_PREFLIGHT_<date>.md).
+ *   --out=<md path>               report path (default $HOME/rbac/RBAC_ENFORCE_PREFLIGHT_<date>.md).
  *
  *   npx ts-node qa/rbacPreflight.ts --grants=/tmp/prodGrants.json --denials=/tmp/rbac_denials.log
  */
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 type FM = Record<string, { access?: string; feature: string; kind?: string; note?: string }>;
 const featureMap: FM = require("../src/middleware/rbac/featureMap.json");
@@ -197,7 +198,8 @@ function main() {
     report.push("");
   }
 
-  const out = outArg || path.join(__dirname, "..", "docs", `RBAC_ENFORCE_PREFLIGHT_${today}.md`);
+  // Default OUTSIDE the repo — $HOME/rbac — so a prod preflight never lands in the working tree.
+  const out = outArg || path.join(os.homedir(), "rbac", `RBAC_ENFORCE_PREFLIGHT_${today}.md`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, report.join("\n") + "\n");
   console.log(`[rbacPreflight] ${sourceLine.replace(/\*\*/g, "")}`);

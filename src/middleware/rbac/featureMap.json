@@ -65,8 +65,8 @@
     "kind": "self"
   },
   "POST /activityLog/me": {
-    "access": "feature",
-    "feature": "activityLog.read.*",
+    "access": "self",
+    "feature": "activityLog.read.own.*",
     "kind": "read"
   },
   "POST /amsReport/absentees": {
@@ -375,7 +375,7 @@
     "kind": "read"
   },
   "POST /attendanceReq/getById": {
-    "access": "feature",
+    "access": "self",
     "feature": "attendanceReq.read.*",
     "kind": "read"
   },
@@ -910,7 +910,7 @@
     "kind": "export"
   },
   "POST /employee/files": {
-    "access": "feature",
+    "access": "self",
     "feature": "employee.read.*",
     "kind": "read"
   },
@@ -935,7 +935,7 @@
     "kind": "read"
   },
   "POST /employee/getById": {
-    "access": "feature",
+    "access": "self",
     "feature": "employee.read.*",
     "kind": "read"
   },
@@ -985,8 +985,8 @@
     "kind": "read"
   },
   "GET /employee/photo": {
-    "access": "feature",
-    "feature": "employee.read.*",
+    "access": "token",
+    "feature": "-",
     "kind": "read"
   },
   "GET /employee/presentToday": {
@@ -1865,7 +1865,7 @@
     "kind": "self"
   },
   "POST /leave/leave-requests/overviewByEmployee": {
-    "access": "feature",
+    "access": "self",
     "feature": "leaveReq.read.*",
     "kind": "read"
   },
@@ -2210,7 +2210,7 @@
     "kind": "special"
   },
   "POST /shift/assignmentsByEmployee": {
-    "access": "feature",
+    "access": "self",
     "feature": "shift.read.*",
     "kind": "read"
   },
@@ -2535,7 +2535,7 @@
     "kind": "read"
   },
   "POST /unitEmployee/getUnitsByEmployeeId": {
-    "access": "feature",
+    "access": "self",
     "feature": "unit.read.*",
     "kind": "read"
   },
@@ -2610,9 +2610,9 @@
     "kind": "read"
   },
   "POST /user/impersonate/exit": {
-    "access": "feature",
-    "feature": "user.read.*",
-    "kind": "read"
+    "access": "token",
+    "feature": "-",
+    "kind": "update"
   },
   "POST /user/linkEmployee": {
     "access": "feature",

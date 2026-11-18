@@ -11,7 +11,7 @@ Verified on real data: receptionuser@phw holds `attendance.*` (not the leaf), an
 
 **IMPORTANT caveat on "held by":** this local DB is a partial/old restore. Only 1 of the 10 users (receptionuser@phw, 30 features) has any grants; the other 9 (incl. azeem_ijaz, muhammad_shahid1 and 7 qawf_test*) have ZERO. So almost every feature shows held=0 here. These numbers are NOT the rollout impact — the DB-impact script (Phase 3, to build) must be run against a current prod copy for real counts.
 
-Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 16. God-only: 4. Token-only: 25. Open: 6.
+Proposed features not yet registered: 0 (all mapped features exist in the DB). Dynamic routes (feature chosen from body): 7. Self routes: 23. God-only: 4. Token-only: 27. Open: 6.
 
 | Method | Path | Kind | Access | Feature | Registered | Held by (of 181) | Note |
 |---|---|---|---|---|---|---|---|
@@ -28,7 +28,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /activityLog/getByUnit | read | feature | `activityLog.read.*` | yes | 3 |  |
 | POST | /activityLog/getByUser | read | feature | `activityLog.read.*` | yes | 3 |  |
 | GET | /activityLog/me | self | self | `activityLog.read.own.*` | - | 3 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /activityLog/me | read | feature | `activityLog.read.*` | yes | 3 |  |
+| POST | /activityLog/me | read | self | `activityLog.read.own.*` | - | 3 | own activity (no target); else activityLog.read.* |
 | POST | /amsReport/absentees | read | feature | `ams.report.read.*` | yes | 1 |  |
 | POST | /amsReport/byUnit | read | feature | `ams.report.read.*` | yes | 1 |  |
 | POST | /amsReport/daily | read | feature | `ams.report.read.*` | yes | 1 |  |
@@ -90,7 +90,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /attendanceReq/export | export | feature | `attendanceReq.export.*` | yes | 4 |  |
 | GET | /attendanceReq/get | read | feature | `attendanceReq.export.*` | yes | 4 | bulk get-all; export only (UI uses paginated POST /get + /stats) |
 | POST | /attendanceReq/get | read | feature | `attendanceReq.read.*` | yes | 4 |  |
-| POST | /attendanceReq/getById | read | feature | `attendanceReq.read.*` | yes | 4 |  |
+| POST | /attendanceReq/getById | read | self | `attendanceReq.read.*` | - | 4 | own attendance request (AttendanceRequest.employeeId) else attendanceReq.read.* |
 | POST | /attendanceReq/getEmployee | self | self | `attendanceReq.read.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
 | POST | /attendanceReq/restore | restore | feature | `attendanceReq.restore.*` | yes | 4 |  |
 | POST | /attendanceReq/search | read | feature | `attendanceReq.read.*` | yes | 4 |  |
@@ -197,12 +197,12 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /employee/delete | delete | feature | `employee.delete.*` | yes | 22 |  |
 | GET | /employee/distinctFields | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/export | export | feature | `employee.export.*` | yes | 22 |  |
-| POST | /employee/files | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/files | read | self | `employee.read.*` | - | 22 | own employee's documents (body.employeeId) else employee.read.* |
 | POST | /employee/filesDel | update | feature | `employee.update.*` | yes | 22 |  |
 | GET | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/get | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/getByCode | read | feature | `employee.read.*` | yes | 22 |  |
-| POST | /employee/getById | read | feature | `employee.read.*` | yes | 22 |  |
+| POST | /employee/getById | read | self | `employee.read.*` | - | 22 | own employee (body.id) else employee.read.* |
 | POST | /employee/getByUserId | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
 | POST | /employee/getCard | export | feature | `employee.export.*` | yes | 22 |  |
 | POST | /employee/getDeleted | read | feature | `employee.read.*` | yes | 22 |  |
@@ -212,7 +212,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /employee/getLinkedUser | read | self | `employee.read.*` | - | 22 | own user (body.userId) else employee.read.* |
 | POST | /employee/myFiles | read | token | `-` | - | - | Part 2: caller's own documents (self; employeeId derived from the user) |
 | POST | /employee/overview | read | feature | `employee.read.*` | yes | 22 |  |
-| GET | /employee/photo | read | feature | `employee.read.*` | yes | 22 |  |
+| GET | /employee/photo | read | token | `-` | - | - | photo bytes only; any logged-in user |
 | GET | /employee/presentToday | read | feature | `employee.read.*` | yes | 22 | employees currently present |
 | POST | /employee/referredToSearch | read | feature | `employee.read.*` | yes | 22 |  |
 | POST | /employee/restore | restore | feature | `employee.restore.*` | yes | 22 |  |
@@ -388,7 +388,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /leave/leave-requests/get | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | GET | /leave/leave-requests/getById | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | POST | /leave/leave-requests/getEmployee | self | self | `leaveReq.read.*` | - | 4 | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
-| POST | /leave/leave-requests/overviewByEmployee | read | feature | `leaveReq.read.*` | yes | 4 |  |
+| POST | /leave/leave-requests/overviewByEmployee | read | self | `leaveReq.read.*` | - | 4 | own leave overview (body.employeeId) else leaveReq.read.* |
 | POST | /leave/leave-requests/restore | restore | feature | `leaveReq.restore.*` | yes | 4 |  |
 | POST | /leave/leave-requests/search | read | feature | `leaveReq.read.*` | yes | 4 |  |
 | GET | /leave/leave-requests/total | read | feature | `leaveReq.read.*` | yes | 4 |  |
@@ -457,7 +457,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /salesReturn/transition | update | feature | `crm.return.transition.*` | yes | 3 | return status change |
 | PUT | /salesReturn/update | update | feature | `crm.return.update.*` | yes | 3 |  |
 | POST | /shift/assignedEmployees | special | feature | `shift.assignments.assignedEmployees.*` | yes | 3 |  |
-| POST | /shift/assignmentsByEmployee | read | feature | `shift.read.*` | yes | 3 |  |
+| POST | /shift/assignmentsByEmployee | read | self | `shift.read.*` | - | 3 | own shift assignments (body.employeeId) else shift.read.* |
 | POST | /shift/assignToEmployee | special | feature | `shift.assignments.assignToEmployee.*` | yes | 3 |  |
 | POST | /shift/assignToEmployees | special | feature | `shift.assignments.assignToEmployee.*` | yes | 3 |  |
 | POST | /shift/assignToUnit | special | feature | `shift.assignments.assignToUnit.*` | yes | 3 |  |
@@ -522,7 +522,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | POST | /unitEmployee/addEmployeesToUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /unitEmployee/assignEmployeesToUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /unitEmployee/getEmployeesByUnitId | read | feature | `unit.read.*` | yes | 3 |  |
-| POST | /unitEmployee/getUnitsByEmployeeId | read | feature | `unit.read.*` | yes | 3 |  |
+| POST | /unitEmployee/getUnitsByEmployeeId | read | self | `unit.read.*` | - | 3 | own units (body.employeeId) else unit.read.* |
 | POST | /unitEmployee/removeEmployeeFromUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /unitEmployee/removeEmployeesFromUnit | update | feature | `unit.update.*` | yes | 3 |  |
 | POST | /user/changePassword | self | self | `(own account)` | - | - | caller's own employee -> allow; otherwise needs this feature (match on body.employeeId) |
@@ -537,7 +537,7 @@ Proposed features not yet registered: 0 (all mapped features exist in the DB). D
 | GET | /user/getLoggedInUser | read | token | `-` | - | - | every logged-in user needs their own profile |
 | GET | /user/getNonAssociatedUsers | read | feature | `user.read.*` | yes | 2 |  |
 | POST | /user/impersonate | read | feature | `user.read.*` | yes | 2 |  |
-| POST | /user/impersonate/exit | read | feature | `user.read.*` | yes | 2 |  |
+| POST | /user/impersonate/exit | update | token | `-` | - | - | exit impersonation — any logged-in/impersonated session |
 | POST | /user/linkEmployee | read | feature | `user.read.*` | yes | 2 |  |
 | GET | /user/me | read | token | `-` | - | - | own profile for the Me app |
 | GET | /user/preferences | read | token | `-` | - | - | own preferences |
