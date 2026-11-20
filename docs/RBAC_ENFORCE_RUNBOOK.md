@@ -4,16 +4,15 @@ Flip the backend from permissive to enforcing (`requirePermission` starts return
 just logging). Everything here is **read-only until the grant step (§4) and the flip (§5)**. Do it in
 this order; nothing before §4 changes prod.
 
-Prereqs: prod runs the backend under **pm2**. **Confirm the app name first — the committed deploy notes
-disagree** (the 2026-10-17 deploy log used `gatepass`, `PROD_DEPLOY_PLAN.md` uses `okasha-backend`), so
-read it off the live process list and use that everywhere below:
+Prereqs: the production API runs under **pm2** as **`server`** (pm2 id 2). This runbook writes the name
+as `$PM2_APP`; set it once, verifying against the live list:
 
 ```bash
-pm2 list        # note the backend app's Name (the API process); the commands below write PM2_APP="<that name>"
+PM2_APP="server"   # confirmed name of the backend API process
+pm2 list           # sanity-check: "server" should be listed (older deploy notes used gatepass, then okasha-backend)
 ```
 
-This runbook writes the name as `$PM2_APP`; set it once: `PM2_APP="<name from pm2 list>"`. `.env` holds
-`RBAC_ENFORCE` (absent = `off`). The committed `featureMap.json` is current —
+`.env` holds `RBAC_ENFORCE` (absent = `off`). The committed `featureMap.json` is current —
 `npm run qa:routes && npm run qa:featuremap` should report **0 unmapped**, and `npm run qa:selfowners`
 should pass (every `self` route derives an owner). Best signal comes from first running prod in
 `RBAC_ENFORCE=log` for ~1–2 weeks so `logs/rbac_denials.log` accumulates the real would-403 calls.

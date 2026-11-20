@@ -56,6 +56,8 @@ Let TS = the timestamp printed by Block 2.
 - DB:    `DBURL=$(grep -E '^DATABASE_URL=' ~/server/.env | cut -d= -f2- | tr -d '"'); \
           pg_restore --no-owner --no-privileges --clean --if-exists -d "$DBURL" ~/backups/pre_erp_<TS>.dump`
 - Restart: `pm2 restart gatepass --update-env`
+  - **Note (updated):** the pm2 app was later renamed from **`gatepass`** to **`server`** (pm2 id 2).
+    On current prod use `pm2 restart server --update-env`; confirm with `pm2 list`.
 
 ## Step 3+ — Ship code / schema / seed / switch / smoke
 _(pending recon; commands added here as they are run)_

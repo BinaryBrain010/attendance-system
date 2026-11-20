@@ -26,6 +26,8 @@ approval required** before proceeding.
   seed), `seedRoles.ts` (role recipes), `seedOnlineOrdersAgent.ts`, `leadImportDryRun.ts` /
   `qa/runLeadImportReal.ts`, `returnImportDryRun.ts` / `qa/runReturnImportReal.ts`.
 - Record the prod values you'll need: `DATABASE_URL` (prod), the server host/path, the pm2 app name,
+  - **pm2 app name:** the backend API runs as **`server`** (pm2 id 2). It was renamed over time:
+    originally **gatepass**, then **okasha-backend**, now **server** — use `server` (confirm with `pm2 list`).
   the Vercel project.
 
 ---
@@ -224,8 +226,8 @@ ls -l src/middleware/rbac/featureMap.json
 
 # ensure RBAC stays OFF for now, then restart
 # (.env) RBAC_ENFORCE=off   NODE_ENV=production   (see §8)
-pm2 restart okasha-backend --update-env
-pm2 logs okasha-backend --lines 50                # confirm clean boot, DB connected
+pm2 restart server --update-env
+pm2 logs server --lines 50                # confirm clean boot, DB connected
 ```
 > `npm run build` is `tsc` with no `outDir`, so it compiles `.ts → .js` **in place**; `index.js`
 > (`node index.js`, via `src/core/server/server`) is the entry. `prisma generate` must run **before**
@@ -448,7 +450,7 @@ The admin is a Next.js app (`codes/admin`, `next build`) deployed on Vercel.
   `JWT_SECRET`, `CODE`, `ALLOWED_ORIGINS`, `NODE_ENV`, `RBAC_ENFORCE`.
 - **pm2 startup hook:** make the backend survive a server reboot:
   ```bash
-  pm2 start index.js --name okasha-backend        # if not already registered
+  pm2 start index.js --name server        # if not already registered
   pm2 save                                         # snapshot the process list
   pm2 startup                                       # prints a sudo command; run it once to install the boot hook
   ```
@@ -471,7 +473,7 @@ denials remain (e.g. an agent correctly denied cost/margin, or another agent's r
 ### 9.2 🖥️ Switch to `log` mode for a few days
 ```bash
 # .env: RBAC_ENFORCE=log
-pm2 restart okasha-backend --update-env
+pm2 restart server --update-env
 ```
 In `log` mode nothing is blocked; every would-be denial is appended to `Backend/logs/rbac_denials.log`.
 Let real users work normally for a few days.
@@ -487,7 +489,7 @@ tail -n 200 logs/rbac_denials.log
 ### 9.4 🖥️ Turn enforcement on
 ```bash
 # .env: RBAC_ENFORCE=on
-pm2 restart okasha-backend --update-env
+pm2 restart server --update-env
 ```
 Watch `logs/rbac_denials.log` and user reports closely for the first hours. **Unmapped routes are
 denied under `on`**, so §4.2's `not-registered: 0` gate must hold.
