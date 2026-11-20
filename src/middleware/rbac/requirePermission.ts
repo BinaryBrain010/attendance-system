@@ -105,7 +105,8 @@ export default async function requirePermission(req: Request, res: Response, nex
     if (!entry) return deny("unmapped route");
     const { access, feature } = entry;
 
-    if (access === "open" || access === "token") return next();
+    // "public" routes (face capture links) are mounted without login and check their own token.
+    if (access === "open" || access === "public" || access === "token") return next();
     if (access === "god") return deny("god-only route");
 
     if (access === "self") {

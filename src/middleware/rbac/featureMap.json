@@ -1029,6 +1029,81 @@
     "feature": "employee.update.*",
     "kind": "update"
   },
+  "POST /faceCapture/deletePhotos": {
+    "access": "feature",
+    "feature": "faceCapture.delete.*",
+    "kind": "delete"
+  },
+  "POST /faceCapture/export": {
+    "access": "feature",
+    "feature": "faceCapture.read.*",
+    "kind": "read"
+  },
+  "GET /faceCapture/image": {
+    "access": "feature",
+    "feature": "faceCapture.read.*",
+    "kind": "read"
+  },
+  "POST /faceCapture/link/create": {
+    "access": "feature",
+    "feature": "faceCapture.link.create.*",
+    "kind": "create"
+  },
+  "POST /faceCapture/list": {
+    "access": "feature",
+    "feature": "faceCapture.read.*",
+    "kind": "read"
+  },
+  "POST /faceCapture/note": {
+    "access": "feature",
+    "feature": "faceCapture.verify.*",
+    "kind": "update"
+  },
+  "POST /faceCapture/redo": {
+    "access": "feature",
+    "feature": "faceCapture.verify.*",
+    "kind": "update"
+  },
+  "POST /faceCapture/register": {
+    "access": "feature",
+    "feature": "faceCapture.register.*",
+    "kind": "update"
+  },
+  "POST /faceCapture/status": {
+    "access": "feature",
+    "feature": "faceCapture.read.*",
+    "kind": "read"
+  },
+  "POST /faceCapture/test": {
+    "access": "feature",
+    "feature": "faceCapture.register.*",
+    "kind": "read"
+  },
+  "GET /faceCapture/thumb": {
+    "access": "feature",
+    "feature": "faceCapture.read.*",
+    "kind": "read"
+  },
+  "POST /faceCapture/verify": {
+    "access": "feature",
+    "feature": "faceCapture.verify.*",
+    "kind": "update"
+  },
+  "GET /faceCapture/zip": {
+    "access": "feature",
+    "feature": "faceCapture.download.*",
+    "kind": "read"
+  },
+  "GET /faceCapturePublic/info/:token": {
+    "access": "public",
+    "feature": "-",
+    "kind": "public"
+  },
+  "POST /faceCapturePublic/upload/:token": {
+    "access": "public",
+    "feature": "-",
+    "kind": "public"
+  },
   "POST /featurePermission/allowedFeatures": {
     "access": "dynamic",
     "feature": "(dynamic) {parentType}.read.*",
@@ -2352,6 +2427,16 @@
   "GET /stats/widgets": {
     "access": "feature",
     "feature": "voucher.read.*",
+    "kind": "read"
+  },
+  "POST /storage/employee": {
+    "access": "feature",
+    "feature": "storage.read.*",
+    "kind": "read"
+  },
+  "POST /storage/list": {
+    "access": "feature",
+    "feature": "storage.read.*",
     "kind": "read"
   },
   "GET /systemConfig/get": {

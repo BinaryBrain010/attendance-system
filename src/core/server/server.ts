@@ -83,6 +83,10 @@ import DailyReportRoutes from "../../modules/Work/DailyReport/routes/dailyReport
 import NotificationRoutes from "../../modules/Work/Notification/routes/notification.routes";
 import WorkReportRoutes from "../../modules/Work/Report/routes/workReport.routes";
 import AuditLogRoutes from "../../modules/Audit/routes/auditLog.routes";
+import FaceCaptureRoutes from "../../modules/AMS/FaceCapture/routes/faceCapture.routes";
+import FaceCapturePublicRoutes from "../../modules/AMS/FaceCapture/routes/faceCapturePublic.routes";
+import FaceCaptureSchedulerHelper from "../../modules/AMS/FaceCapture/helper/faceCaptureSchedule.helper";
+import StorageRoutes from "../../modules/Admin/Storage/routes/storage.routes";
 import WorkSchedulerHelper from "../../modules/Work/helper/workSchedule.helper";
 import { ensureSystemUser } from "../audit/systemUser";
 import { auditBootCheck } from "../audit/auditBoot";
@@ -107,6 +111,7 @@ class App {
     AttendanceSchedulerHelper;
     WorkSchedulerHelper;
     ProbationSchedulerHelper;
+    FaceCaptureSchedulerHelper;
     ensureSystemUser();
     auditBootCheck();
   }
@@ -192,6 +197,8 @@ class App {
       bodyParser.urlencoded({ limit: '50mb', extended: true })(req, res, next);
     });
     
+    // Face capture photos are personal data: never served statically, only through /faceCapture.
+    this.app.use('/uploads/face-captures', (_req: Request, res: Response) => { res.status(404).json({ success: false, message: "Not found", statusCode: 404 }); });
     this.app.use('/uploads', express.static(UPLOADS_DIR));
   }
 
@@ -257,6 +264,7 @@ class App {
       AnalyticsRoutes,
       HrPolicyRoutes,
       AmsReportRoutes,
+      FaceCaptureRoutes,
 
       //ActivityLog
       ActivityLogRoutes,
@@ -287,12 +295,13 @@ class App {
 
       //Audit
       AuditLogRoutes,
+      StorageRoutes,
 
       //Analytics / Insights
       InsightsRoutes
     ];
     
-    const openRoutes: any[] = [AuthRoutes, WebhookRoutes];
+    const openRoutes: any[] = [AuthRoutes, WebhookRoutes, FaceCapturePublicRoutes];
     
     // Health check endpoint with timezone info
     this.app.get("/", (req: Request, res: Response) => {

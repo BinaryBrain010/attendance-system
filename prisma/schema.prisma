@@ -1631,3 +1631,52 @@ model SavedWidget {
   @@index([ownerId])
   @@index([isDeleted])
 }
+
+// Face capture links and captures (employee self-capture for face registration).
+// A link is sent to the employee; only the SHA-256 of its token is stored. One upload per link.
+model FaceCaptureLink {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  employeeId  String    @db.VarChar(36)
+  tokenHash   String    @unique @db.VarChar(64)
+  expiresAt   DateTime
+  createdById String?   @db.VarChar(36)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  usedAt      DateTime?
+
+  @@index([employeeId, createdAt])
+}
+
+// One uploaded set of face photos. Files live on disk under uploads/face-captures/<employeeId>/<id>/
+// and are never served statically. Status: CAPTURED | REGISTERED | VERIFIED | NEEDS_REDO.
+model FaceCapture {
+  id             String    @id @default(uuid()) @db.VarChar(36)
+  employeeId     String    @db.VarChar(36)
+  linkId         String?   @db.VarChar(36)
+  imageCount     Int       @default(0)
+  bytes          Int       @default(0)
+  status         String    @default("CAPTURED")
+  capturedAt     DateTime  @default(now())
+  device         String?
+  files          Json?     @db.JsonB // [{ name, bucket, bytes, width, height, sharpness, brightness, yaw, pitch }]
+  registeredById String?   @db.VarChar(36)
+  registeredAt   DateTime?
+  registerResult Json?     @db.JsonB // frames enrolled, holdout, test result
+  verifiedById   String?   @db.VarChar(36)
+  verifiedAt     DateTime?
+  redoById       String?   @db.VarChar(36)
+  redoAt         DateTime?
+  redoReason     String?
+  testResult     Json?     @db.JsonB // last Test match
+  note           String?
+  deleteAfter    DateTime?
+  deletedAt      DateTime? // photos removed from disk (record kept)
+  deletedById    String?   @db.VarChar(36)
+  replacedAt     DateTime? // a newer upload replaced this set
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([employeeId, capturedAt])
+  @@index([status])
+  @@index([deleteAfter])
+}

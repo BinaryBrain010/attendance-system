@@ -20,7 +20,9 @@ export type NotifType =
   // AMS: a leave / attendance-correction request the employee filed was approved or rejected.
   | "LEAVE_DECISION" | "ATTENDANCE_DECISION"
   // HR: an employee's probation is ending soon / today (sent to HR managers).
-  | "PROBATION_DUE";
+  | "PROBATION_DUE"
+  // Face capture: the employee sent their photos (to whoever created the link).
+  | "FACE_CAPTURE";
 
 /** Create a notification for each recipient User id (deduped, skips empties). */
 export async function notify(userIds: (string | null | undefined)[], type: NotifType, title: string, body?: string, entityType?: string, entityId?: string): Promise<void> {

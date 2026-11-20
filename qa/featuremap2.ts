@@ -72,6 +72,22 @@ const kindFromName = (p: string): string => {
 // pick the most specific existing feature for a route, else fall back to root.kind.*
 // Explicit per-route overrides (checked first). Fix routes the heuristic maps wrong.
 const OVERRIDE: Record<string, { feature: string; kind: string; access: string; note?: string }> = {
+  // Face capture (signed in) and storage. The public capture routes are handled below.
+  "POST /faceCapture/link/create": { feature: "faceCapture.link.create.*", kind: "create", access: "feature" },
+  "POST /faceCapture/status": { feature: "faceCapture.read.*", kind: "read", access: "feature" },
+  "POST /faceCapture/list": { feature: "faceCapture.read.*", kind: "read", access: "feature" },
+  "POST /faceCapture/export": { feature: "faceCapture.read.*", kind: "read", access: "feature" },
+  "GET /faceCapture/thumb": { feature: "faceCapture.read.*", kind: "read", access: "feature" },
+  "GET /faceCapture/image": { feature: "faceCapture.read.*", kind: "read", access: "feature" },
+  "GET /faceCapture/zip": { feature: "faceCapture.download.*", kind: "read", access: "feature" },
+  "POST /faceCapture/register": { feature: "faceCapture.register.*", kind: "update", access: "feature" },
+  "POST /faceCapture/test": { feature: "faceCapture.register.*", kind: "read", access: "feature" },
+  "POST /faceCapture/verify": { feature: "faceCapture.verify.*", kind: "update", access: "feature" },
+  "POST /faceCapture/redo": { feature: "faceCapture.verify.*", kind: "update", access: "feature" },
+  "POST /faceCapture/note": { feature: "faceCapture.verify.*", kind: "update", access: "feature" },
+  "POST /faceCapture/deletePhotos": { feature: "faceCapture.delete.*", kind: "delete", access: "feature" },
+  "POST /storage/employee": { feature: "storage.read.*", kind: "read", access: "feature" },
+  "POST /storage/list": { feature: "storage.read.*", kind: "read", access: "feature" },
   // HR Policy: single manage leaf gates every route (there is no hr.policy.read.* leaf).
   "GET /hrPolicy/settings": { feature: "hr.policy.manage.*", kind: "read", access: "feature" },
   "POST /hrPolicy/settings": { feature: "hr.policy.manage.*", kind: "update", access: "feature" },
@@ -257,6 +273,8 @@ function resolveFeature(method: string, p: string): { feature: string; kind: str
 
   // open
   if (p.startsWith("/auth/") || p.startsWith("/webhook/")) return { feature: "-", kind: "open", access: "open" };
+  // public: no login; the capture link token in the path is checked (hash, expiry, single use) by the service
+  if (p.startsWith("/faceCapturePublic/")) return { feature: "-", kind: "public", access: "public", note: "capture link token checked by the service" };
   // internal permission checks: token only
   if (p.startsWith("/access/")) return { feature: "-", kind: "read", access: "token", note: "internal permission check" };
 

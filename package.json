@@ -48,7 +48,8 @@
     "qa:rbacpreflight": "ts-node qa/rbacPreflight.ts",
     "qa:emprole": "ts-node qa/employeeRoleEnforce.ts",
     "qa:rbacgrant": "ts-node qa/applyRbacGrants.ts",
-    "qa:selfowners": "ts-node qa/selfOwnerCheck.ts"
+    "qa:selfowners": "ts-node qa/selfOwnerCheck.ts",
+    "qa:facecapture": "ts-node qa/faceCapture.ts"
   },
   "author": "ahad",
   "license": "ISC",

@@ -52,6 +52,9 @@ import NotificationRoutes from "../src/modules/Work/Notification/routes/notifica
 import WorkReportRoutes from "../src/modules/Work/Report/routes/workReport.routes";
 import AuditLogRoutes from "../src/modules/Audit/routes/auditLog.routes";
 import InsightsRoutes from "../src/modules/Insights/routes/insights.routes";
+import FaceCaptureRoutes from "../src/modules/AMS/FaceCapture/routes/faceCapture.routes";
+import FaceCapturePublicRoutes from "../src/modules/AMS/FaceCapture/routes/faceCapturePublic.routes";
+import StorageRoutes from "../src/modules/Admin/Storage/routes/storage.routes";
 
 const authed: any[] = [
   CustomerRoutes, GatePassRoutes, GatePassItemRoutes, ItemRoutes, StatsRoutes,
@@ -59,14 +62,14 @@ const authed: any[] = [
   FeaturePermissionRoutes, AccessRoutes, AppFeatureRoutes,
   EmployeeRoutes, LeaveRoutes, AttendanceReqRoutes, AttendanceRoutes, HolidayRoutes,
   UnitRoutes, UnitEmployeeRoutes, ShiftRoutes, SystemConfigRoutes, AnalyticsRoutes,
-  HrPolicyRoutes, AmsReportRoutes,
+  HrPolicyRoutes, AmsReportRoutes, FaceCaptureRoutes,
   ActivityLogRoutes, VisitorRoutes,
   CrmCategoryRoutes, CrmBrandRoutes, CrmProductRoutes, CrmPriceListRoutes, CrmBundleRoutes,
   SalesAgentRoutes, LeadRoutes, LeadActivityRoutes, LeadReviewRoutes, QuotationRoutes, SalesOrderRoutes, SalesReturnRoutes, CrmReportRoutes,
   TeamRoutes, TaskRoutes, DailyReportRoutes, NotificationRoutes, WorkReportRoutes,
-  AuditLogRoutes,
+  AuditLogRoutes, StorageRoutes,
   InsightsRoutes,
 ];
-const open: any[] = [AuthRoutes, WebhookRoutes];
+const open: any[] = [AuthRoutes, WebhookRoutes, FaceCapturePublicRoutes];
 
 export { authed, open };
