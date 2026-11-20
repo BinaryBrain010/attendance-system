@@ -33,6 +33,7 @@ for (const [k, v] of Object.entries(MAP)) MAP_LC[k.toLowerCase()] = v;
 export const SELF_OWNER: Record<string, { idKey?: string; entity?: string; field?: string }> = {
   "POST /employee/getById": { idKey: "id" },
   "POST /employee/getLinkedUser": { idKey: "id" }, // body.id IS the employee id (own employee's linked user)
+  "GET /employee/photo": { idKey: "id" },          // query.id IS the employee id (own avatar)
   "POST /attendanceReq/getById": { entity: "attendanceRequest", idKey: "id" },
 };
 const selfOwnerFor = (key: string) => SELF_OWNER[key] || SELF_OWNER[key.toLowerCase()] || null;

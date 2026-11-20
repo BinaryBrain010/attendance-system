@@ -985,8 +985,8 @@
     "kind": "read"
   },
   "GET /employee/photo": {
-    "access": "token",
-    "feature": "-",
+    "access": "self",
+    "feature": "employee.read.*",
     "kind": "read"
   },
   "GET /employee/presentToday": {

@@ -95,7 +95,7 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /attendance/markableEmployees": { feature: "attendance.read.*", kind: "read", access: "feature", note: "Part 3/4: active in-scope employees + today's mark for the attendance picker" },
   "GET /user/getLoggedInUser": { feature: "-", kind: "read", access: "token", note: "every logged-in user needs their own profile" },
   "POST /employee/getByUserId": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
-  "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own user (body.userId) else employee.read.*" },
+  "POST /employee/getLinkedUser": { feature: "employee.read.*", kind: "read", access: "self", note: "own employee's linked user (body.id) else employee.read.*" },
   "POST /user/changeUserPassword": { feature: "user.update.*", kind: "update", access: "feature" },
   "PUT /role/changeRole": { feature: "role.update.*", kind: "update", access: "feature" },
   "POST /employee/filesDel": { feature: "employee.update.*", kind: "update", access: "feature" },
@@ -173,8 +173,11 @@ const OVERRIDE: Record<string, { feature: string; kind: string; access: string; 
   "POST /unitEmployee/getUnitsByEmployeeId": { feature: "unit.read.*", kind: "read", access: "self", note: "own units (body.employeeId) else unit.read.*" },
   // Own activity log — same handler as GET /activityLog/me; no target -> the caller's own activity.
   "POST /activityLog/me": { feature: "activityLog.read.own.*", kind: "read", access: "self", note: "own activity (no target); else activityLog.read.*" },
-  // Employee photo bytes only — any logged-in user (used across avatars; no record detail leaked).
-  "GET /employee/photo": { feature: "-", kind: "read", access: "token", note: "photo bytes only; any logged-in user" },
+  // Employee photo bytes: OWN photo (query.id = caller's employee) is always allowed (Me page); another
+  // employee's photo needs employee.read.*. Not token — every cross-employee avatar surface is already
+  // feature-gated, and a low-priv user has no surface that shows other faces, so token would only enable
+  // bulk-harvesting ids for no UI benefit. LazyPhoto degrades to initials on 403.
+  "GET /employee/photo": { feature: "employee.read.*", kind: "read", access: "self", note: "own photo (query.id) else employee.read.*" },
 };
 
 // ---- CRM mounts -> feature roots (first path segment) ----

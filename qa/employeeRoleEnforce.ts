@@ -96,12 +96,14 @@ async function main() {
     await expect(200, "own attendance request (POST /attendanceReq/getById, own)", "POST", "/attendanceReq/getById", { id: ownReqId });
     await expect(200, "own leave overview (own)", "POST", "/leave/leave-requests/overviewByEmployee", { employeeId: empId });
     await expect(200, "own units (own)", "POST", "/unitEmployee/getUnitsByEmployeeId", { employeeId: empId });
-    const photo = await http("GET", `/employee/photo?employeeId=${empId}`, B);
-    check("own photo reachable (GET /employee/photo, token — not 403)", photo.status !== 403, `status ${photo.status}`);
+    const ownPhoto = await http("GET", `/employee/photo?id=${empId}`, B);
+    check("own photo reachable (GET /employee/photo?id=own — self, not 403)", ownPhoto.status !== 403, `status ${ownPhoto.status}`);
 
-    out("\n-- 403: another employee's record requires the feature --");
+    out("\n-- 403: another employee's record/photo requires the feature --");
     await expect(403, "another employee's profile (getById, other id)", "POST", "/employee/getById", { id: otherId });
     await expect(403, "another employee's documents (files, other id)", "POST", "/employee/files", { employeeId: otherId });
+    const otherPhoto = await http("GET", `/employee/photo?id=${otherId}`, B);
+    check("another employee's photo -> 403 (needs employee.read.*)", otherPhoto.status === 403, `status ${otherPhoto.status}`);
 
     out("\n-- impersonate exit: any logged-in/low-privilege session (token) --");
     const exitRes = await http("POST", "/user/impersonate/exit", B);
