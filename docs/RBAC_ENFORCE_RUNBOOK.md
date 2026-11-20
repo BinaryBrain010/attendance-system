@@ -4,9 +4,18 @@ Flip the backend from permissive to enforcing (`requirePermission` starts return
 just logging). Everything here is **read-only until the grant step (§4) and the flip (§5)**. Do it in
 this order; nothing before §4 changes prod.
 
-Prereqs: prod runs the backend under **pm2** as `server`; `.env` holds `RBAC_ENFORCE`
-(absent = `off`). The committed `featureMap.json` is current — `npm run qa:routes && npm run qa:featuremap`
-should report **0 unmapped** (see PROD_DEPLOY_PLAN §4.2). Best signal comes from first running prod in
+Prereqs: prod runs the backend under **pm2**. **Confirm the app name first — the committed deploy notes
+disagree** (the 2026-10-17 deploy log used `gatepass`, `PROD_DEPLOY_PLAN.md` uses `okasha-backend`), so
+read it off the live process list and use that everywhere below:
+
+```bash
+pm2 list        # note the backend app's Name (the API process); the commands below write PM2_APP="<that name>"
+```
+
+This runbook writes the name as `$PM2_APP`; set it once: `PM2_APP="<name from pm2 list>"`. `.env` holds
+`RBAC_ENFORCE` (absent = `off`). The committed `featureMap.json` is current —
+`npm run qa:routes && npm run qa:featuremap` should report **0 unmapped**, and `npm run qa:selfowners`
+should pass (every `self` route derives an owner). Best signal comes from first running prod in
 `RBAC_ENFORCE=log` for ~1–2 weeks so `logs/rbac_denials.log` accumulates the real would-403 calls.
 
 ---
@@ -113,8 +122,8 @@ Re-run §1 + §3 to confirm the gaps are closed (the preflight should now show �
 ```bash
 # in the backend .env on prod
 sed -i 's/^RBAC_ENFORCE=.*/RBAC_ENFORCE=on/' .env || echo 'RBAC_ENFORCE=on' >> .env
-pm2 restart server --update-env        # --update-env re-reads .env
-pm2 logs server --lines 50             # confirm clean boot + "mode on"
+pm2 restart "$PM2_APP" --update-env        # --update-env re-reads .env
+pm2 logs "$PM2_APP" --lines 50             # confirm clean boot + "mode on"
 ```
 
 ## 6. Verify after the flip
@@ -129,7 +138,7 @@ pm2 logs server --lines 50             # confirm clean boot + "mode on"
 Back to permissive logging immediately, no 403s, no data change:
 
 ```bash
-sed -i 's/^RBAC_ENFORCE=on/RBAC_ENFORCE=log/' .env && pm2 restart server --update-env
+sed -i 's/^RBAC_ENFORCE=on/RBAC_ENFORCE=log/' .env && pm2 restart "$PM2_APP" --update-env
 ```
 
 (Use `RBAC_ENFORCE=off` to also stop the denial logging.)

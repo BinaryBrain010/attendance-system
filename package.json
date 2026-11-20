@@ -47,7 +47,8 @@
     "qa:leavesync": "ts-node qa/leaveAttendanceSync.ts",
     "qa:rbacpreflight": "ts-node qa/rbacPreflight.ts",
     "qa:emprole": "ts-node qa/employeeRoleEnforce.ts",
-    "qa:rbacgrant": "ts-node qa/applyRbacGrants.ts"
+    "qa:rbacgrant": "ts-node qa/applyRbacGrants.ts",
+    "qa:selfowners": "ts-node qa/selfOwnerCheck.ts"
   },
   "author": "ahad",
   "license": "ISC",

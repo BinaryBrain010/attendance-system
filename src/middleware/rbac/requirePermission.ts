@@ -30,8 +30,9 @@ for (const [k, v] of Object.entries(MAP)) MAP_LC[k.toLowerCase()] = v;
 //   { idKey }            -> the target employee id is body[idKey] (e.g. /employee/getById uses body.id)
 //   { entity, idKey }    -> look up prisma[entity] by body[idKey], owner = its employeeId (indirect)
 // Routes not listed here fall back to body.employeeId (the generic self rule).
-const SELF_OWNER: Record<string, { idKey?: string; entity?: string; field?: string }> = {
+export const SELF_OWNER: Record<string, { idKey?: string; entity?: string; field?: string }> = {
   "POST /employee/getById": { idKey: "id" },
+  "POST /employee/getLinkedUser": { idKey: "id" }, // body.id IS the employee id (own employee's linked user)
   "POST /attendanceReq/getById": { entity: "attendanceRequest", idKey: "id" },
 };
 const selfOwnerFor = (key: string) => SELF_OWNER[key] || SELF_OWNER[key.toLowerCase()] || null;
